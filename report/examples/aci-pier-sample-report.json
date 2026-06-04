@@ -1,0 +1,50 @@
+{
+  "report_id": "aci-pier-sample-001",
+  "tool_id": "aci_core_smoke",
+  "mode": "aci + pier domain",
+  "domain": "pier",
+  "scan_scope": "common/aci",
+  "generated_at": "2026-06-04",
+  "verification_status": "executed",
+  "summary": {
+    "total_findings": 1,
+    "by_severity": {
+      "medium": 1
+    },
+    "by_actor_label": {
+      "manual refinement of ACI output": 1
+    },
+    "blocker_count": 0,
+    "residual_count": 1
+  },
+  "findings": [
+    {
+      "finding_id": "F-PIER-001",
+      "ci_id": "CI-27",
+      "signal": "PATCHWORK_GRAFT",
+      "severity": "medium",
+      "actor_label": "manual refinement of ACI output",
+      "target_file": "python/aci_working_mirror_sync.py",
+      "line": 1,
+      "excerpt": "working-memory mirror for this Codex thread",
+      "reason": "Working mirror drift remains possible if sync checks are skipped.",
+      "evidence_ref": "python/aci_working_mirror_sync.py",
+      "recommended_action": "Run the bounded sync helper after official five-layer changes.",
+      "owner_lane": "human-judgment",
+      "verification_status": "executed"
+    }
+  ],
+  "blockers": [],
+  "residuals": [
+    {
+      "residual_id": "R-001",
+      "classification": "structural-debt",
+      "reason": "The working mirror still exists by design.",
+      "next_wave": "closed under ACI mirror governance"
+    }
+  ],
+  "next_actions": [
+    "Read python/aci_working_mirror_sync.py",
+    "Run the bounded sync helper after official five-layer changes"
+  ]
+}

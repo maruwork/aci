@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Smoke check
+        run: python python/aci_public_smoke.py
+      - name: Compile check
+        run: python -m py_compile python/*.py runtime/python/*.py domains/pier/python/*.py

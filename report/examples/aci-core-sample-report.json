@@ -1,0 +1,43 @@
+{
+  "report_id": "aci-core-sample-001",
+  "tool_id": "aci_core_smoke",
+  "mode": "aci core only",
+  "domain": "core-only",
+  "scan_scope": "common/aci",
+  "generated_at": "2026-06-04",
+  "verification_status": "executed",
+  "summary": {
+    "total_findings": 1,
+    "by_severity": {
+      "medium": 1
+    },
+    "by_actor_label": {
+      "ACI-detected": 1
+    },
+    "blocker_count": 0,
+    "residual_count": 0
+  },
+  "findings": [
+    {
+      "finding_id": "F-CORE-001",
+      "ci_id": "CI-27",
+      "signal": "PATCHWORK_GRAFT",
+      "severity": "medium",
+      "actor_label": "ACI-detected",
+      "target_file": "README.md",
+      "line": 1,
+      "excerpt": "generic common shelf authority",
+      "reason": "Temporary bridge language remains visible in the common shelf and needs explicit closure judgment.",
+      "evidence_ref": "design/aci-ci27-patchwork-structure-design.md",
+      "recommended_action": "Close the bridge and leave one clear authority surface.",
+      "owner_lane": "human-judgment",
+      "verification_status": "executed"
+    }
+  ],
+  "blockers": [],
+  "residuals": [],
+  "next_actions": [
+    "Read design/aci-ci27-patchwork-structure-design.md",
+    "Confirm whether the bridge is still intentionally temporary"
+  ]
+}
