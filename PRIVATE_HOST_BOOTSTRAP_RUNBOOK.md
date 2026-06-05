@@ -59,7 +59,7 @@ Do not carry by default:
 1. Create `fumimaruwork/aci` with `private` visibility.
 2. Prepare the repository root with the carried files and directories.
 3. Add `LICENSE` using the chosen license text.
-4. Promote `CONTRIBUTING_DRAFT.md` and `SECURITY_DRAFT.md` into the private repository copy after replacing draft-only wording as intended.
+4. Carry `CONTRIBUTING.md`, `SECURITY.md`, and `CODE_OF_CONDUCT.md` as the active repository community files.
 5. Keep internal-only files out unless they are intentionally needed for the private repository.
 6. Configure the chosen CI scope in the private repository.
 

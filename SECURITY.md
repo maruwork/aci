@@ -1,20 +1,23 @@
-# ACI Security Policy (Draft)
+# Security Policy
 
-Status: Active
+## Supported Versions
 
-This is a pre-publication placeholder. `ACI` is not public yet, so this file only defines the shape of the future policy.
+ACI is currently maintained as a single active release line.
 
-## Current Position
+| Version | Supported |
+| --- | --- |
+| latest | :white_check_mark: |
+| older | :warning: |
 
-- security-report intake posture for first repository bootstrap: GitHub private vulnerability reporting if enabled
-- private disclosure from day one: `yes`
-- promised response posture: best effort, no fixed SLA
+## Reporting A Vulnerability
 
-## Future Public Policy Must Decide
+If you believe you found a security problem in ACI, do not include exploit details, credentials, or sensitive local file data in a public issue.
 
-- whether the first-bootstrap defaults remain unchanged at actual public release
-- whether response posture should become more specific than best effort
+If private vulnerability reporting is enabled for the hosted repository, use that route first. Otherwise, contact the repository owner through the GitHub account that maintains this repository and include:
 
-## Scope Reminder
+- affected version or commit
+- reproduction steps
+- impact summary
+- whether the issue involves analyzers, domain packs, local files, credentials, or generated reports
 
-`ACI` is a common inspection shelf. Project-local security posture, deployment secrets, and runtime writeback surfaces stay outside this shelf.
+The maintainer will review the report on a best-effort basis and decide whether follow-up should stay private or move into a normal issue after the risk is understood.

@@ -1,37 +1,35 @@
-# Contributing to ACI
+# Contributing
 
-Status: Active
+Thank you for considering a contribution to ACI.
 
-This file is a pre-publication draft. It exists so the repository can be published later without inventing the contribution surface from memory.
+## Before You Start
 
-## Current Intent
+- read `README.md`
+- read `NON_GOALS.md` and `DOMAIN_PACK_EXTENSION_GUIDE.md`
+- read `SECURITY.md` if the change may involve credentials, local files, vulnerability behavior, or report evidence
+- check whether the issue already exists
 
-- keep `ACI core` domain-independent
-- keep project-local runtime rules out of core
-- add a domain pack only when the vocabulary is reusable beyond one runtime copy
-- prefer bounded, reviewable additions over broad structural rewrites
+## Preferred Contribution Flow
 
-## Expected Contribution Areas
+1. open or confirm an issue when the change is non-trivial
+2. keep generic core, optional domain-pack, and downstream-local boundaries explicit
+3. keep the change small enough to review
+4. update repo-relative docs when behavior, commands, or boundaries change
+5. run the documented verification commands before opening a pull request
 
-- inspection catalog and contracts
-- domain-pack loader support
-- report contract improvements
-- public examples and smoke verification
-- documentation clarity
+## Pull Request Expectations
 
-## Must Not Be Treated As Core Contributions
+- explain what changed
+- explain why it changed
+- list the checks you ran
+- mention any remaining limitations or follow-up work
+- call out any boundary decisions that affect generic core versus optional domain packs
 
-- project-local trigger wiring
-- project-local DB writeback rules
-- project-local operator workflows
-- downstream current-state records
+## Verification
 
-## Before Opening Public Contributions
+- `python python/aci_public_smoke.py`
+- `python -m py_compile python/*.py runtime/python/*.py domains/pier/python/*.py`
 
-Chosen defaults for the first repository bootstrap are:
+## Review Notes
 
-- license: `MIT`
-- repository: `fumimaruwork/aci`
-- issue policy: issues open from day one
-- pull request policy: PRs accepted from day one with maintainer review
-- minimum public CI expectations: required at repository creation
+Maintainers may ask contributors to narrow scope, add evidence, or split follow-up work before merge.
