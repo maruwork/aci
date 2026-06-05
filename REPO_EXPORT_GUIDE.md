@@ -25,6 +25,8 @@ Describe how to read and extract `ACI` as a standalone repository even while it 
 ├── PUBLIC_RELEASE_CHECKLIST.md
 ├── PRIVATE_HOST_BOOTSTRAP_RUNBOOK.md
 ├── PRIVATE_RELEASE_HOLD_LINE.md
+├── SUPPORT.md
+├── .github/
 ├── core/
 ├── python/
 ├── domains/
@@ -43,6 +45,7 @@ Describe how to read and extract `ACI` as a standalone repository even while it 
 - quickstart file paths
 - public sample report references
 - shelf classification examples
+- support and issue-template links
 
 ## May Stay Monorepo-Aware
 

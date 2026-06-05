@@ -85,6 +85,7 @@ python python/aci_public_smoke.py
 - `PUBLIC_RELEASE_CHECKLIST.md`
 - `PRIVATE_HOST_BOOTSTRAP_RUNBOOK.md`
 - `PRIVATE_RELEASE_HOLD_LINE.md`
+- `SUPPORT.md`
 
 ## 棚
 
@@ -126,6 +127,8 @@ python python/aci_public_smoke.py
 ├── PUBLIC_RELEASE_CHECKLIST.md
 ├── PRIVATE_HOST_BOOTSTRAP_RUNBOOK.md
 ├── PRIVATE_RELEASE_HOLD_LINE.md
+├── SUPPORT.md
+├── .github/
 ├── core/
 ├── python/
 ├── domains/
@@ -188,6 +191,13 @@ The following are execution-grade docs for preparing the repository in a private
 
 - `PRIVATE_HOST_BOOTSTRAP_RUNBOOK.md`
 - `PRIVATE_RELEASE_HOLD_LINE.md`
+
+## Repository Community Files
+
+- `SUPPORT.md`
+- `.github/ISSUE_TEMPLATE/`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/CODEOWNERS`
 
 ## 使い方
 
