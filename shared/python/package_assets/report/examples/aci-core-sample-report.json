@@ -1,0 +1,87 @@
+{
+  "report_format_version": "1.0.0",
+  "report_id": "aci-core-sample-001",
+  "tool_id": "aci_core_smoke",
+  "tool_version": "0.1.0",
+  "mode": "aci core only",
+  "domain": "core-only",
+  "scan_scope": "repo-root",
+  "generated_at": "2026-06-04",
+  "verification_status": "executed",
+  "summary": {
+    "total_findings": 1,
+    "by_severity": {
+      "medium": 1
+    },
+    "by_confidence": {
+      "medium": 1
+    },
+    "by_actor_label": {
+      "ACI-detected": 1
+    },
+    "by_triage_state": {
+      "review-first": 1
+    },
+    "by_priority": {
+      "P2": 1
+    },
+    "by_baseline_status": {
+      "new": 1
+    },
+    "by_lifecycle_state": {
+      "in-review": 1
+    },
+    "waived_count": 0,
+    "suppressed_count": 0,
+    "new_count": 1,
+    "existing_baseline_count": 0,
+    "blocker_count": 0,
+    "residual_count": 0,
+    "resolved_baseline_count": 0
+  },
+  "findings": [
+    {
+      "finding_id": "F-CORE-001",
+      "ci_id": "CI-04",
+      "signal": "RESPONSIBILITY_SPROUT",
+      "severity": "medium",
+      "confidence": "medium",
+      "actor_label": "ACI-detected",
+      "triage_state": "review-first",
+      "priority": "P2",
+      "fixability": "owner-decision",
+      "baseline_status": "new",
+      "waiver_status": "none",
+      "lifecycle_state": "in-review",
+      "target_file": "python/aci_scan.py",
+      "line": 920,
+      "excerpt": "def _scan_side_program_leak(",
+      "reason": "Multiple distinct inspection responsibilities are handled within a single scanner function without explicit ownership boundaries.",
+      "evidence_ref": "core/aci-code-inspection-execution-spec.md",
+      "recommended_action": "Split distinct responsibilities into separate modules; each module should own one concern.",
+      "owner_lane": "human-judgment",
+      "verification_status": "executed"
+    }
+  ],
+  "blockers": [],
+  "residuals": [],
+  "resolved_baseline_entries": [],
+  "gate": {
+    "decision": "pass",
+    "blocking_severities": [
+      "high",
+      "critical"
+    ],
+    "blocking_count": 0,
+    "analyzer_failure_count": 0,
+    "reasons": [],
+    "reason_details": [],
+    "severity_threshold": "high",
+    "fail_on_new_findings": false,
+    "fail_on_analyzer_errors": false
+  },
+  "next_actions": [
+    "Review python/aci_scan.py for responsibility boundary",
+    "Decide whether the scan function should be split by ownership"
+  ]
+}

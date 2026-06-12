@@ -1,0 +1,14 @@
+[baseline]
+entries = [
+  { fingerprint = "CI-21|src/legacy/error_handler.py|1", ci_id = "CI-21", reason = "known legacy broad exception — scheduled for refactor", first_seen = "2026-06-01" }
+]
+
+[suppression]
+entries = [
+  { suppression_id = "SUP-001", match = "sample-text-only", reason = "non-live sample artifact", reviewer = "aci-maintainer" }
+]
+
+[waiver]
+entries = [
+  { waiver_id = "WAV-001", fingerprint = "CI-21|src/legacy/error_handler.py|1", owner = "aci-maintainer", reason = "accepted residual until refactor wave", review_condition = "recheck when error handling refactor is complete" }
+]

@@ -1,0 +1,93 @@
+{
+  "report_format_version": "1.0.0",
+  "report_id": "aci-pier-sample-001",
+  "tool_id": "aci_core_smoke",
+  "tool_version": "0.1.0",
+  "mode": "aci + pier domain",
+  "domain": "pier",
+  "scan_scope": "repo-root",
+  "generated_at": "2026-06-04",
+  "verification_status": "executed",
+  "summary": {
+    "total_findings": 1,
+    "by_severity": {
+      "medium": 1
+    },
+    "by_confidence": {
+      "medium": 1
+    },
+    "by_actor_label": {
+      "manual refinement of ACI output": 1
+    },
+    "by_triage_state": {
+      "accepted-residual": 1
+    },
+    "by_priority": {
+      "P3": 1
+    },
+    "by_baseline_status": {
+      "existing-baseline": 1
+    },
+    "by_lifecycle_state": {
+      "accepted": 1
+    },
+    "waived_count": 1,
+    "suppressed_count": 0,
+    "new_count": 0,
+    "existing_baseline_count": 1,
+    "blocker_count": 0,
+    "residual_count": 1
+  },
+  "findings": [
+    {
+      "finding_id": "F-PIER-001",
+      "ci_id": "CI-04",
+      "signal": "RESPONSIBILITY_SPROUT",
+      "severity": "medium",
+      "confidence": "medium",
+      "actor_label": "manual refinement of ACI output",
+      "triage_state": "accepted-residual",
+      "priority": "P3",
+      "fixability": "monitor-only",
+      "baseline_status": "existing-baseline",
+      "waiver_status": "active-waiver",
+      "lifecycle_state": "accepted",
+      "target_file": "domains/pier/python/pier_domain_rules.py",
+      "line": 1,
+      "excerpt": "pier domain rules module",
+      "reason": "The pier domain rules file handles both vocabulary configuration and domain registration responsibilities in the same module.",
+      "evidence_ref": "core/aci-code-inspection-execution-spec.md",
+      "recommended_action": "Split distinct responsibilities into separate modules; each module should own one concern.",
+      "owner_lane": "human-judgment",
+      "verification_status": "executed"
+    }
+  ],
+  "blockers": [],
+  "residuals": [
+    {
+      "residual_id": "R-001",
+      "classification": "structural-debt",
+      "reason": "Optional domain guidance can grow faster than the common entry if it is not reviewed.",
+      "next_wave": "bounded domain-pack review"
+    }
+  ],
+  "gate": {
+    "decision": "pass",
+    "blocking_severities": [
+      "high",
+      "critical"
+    ],
+    "blocking_count": 0,
+    "analyzer_failure_count": 0,
+    "reasons": [],
+    "reason_details": [],
+    "severity_threshold": "high",
+    "fail_on_new_findings": false,
+    "fail_on_analyzer_errors": false
+  },
+  "next_actions": [
+    "Review domains/pier/python/pier_domain_rules.py for responsibility boundary",
+    "Consider splitting vocabulary config from domain registration",
+    "Recheck waiver when pier module scope expands"
+  ]
+}

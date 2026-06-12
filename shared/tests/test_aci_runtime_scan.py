@@ -1,0 +1,240 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from aci.aci_automation import validate_report_payload
+from aci.aci_config import load_cli_config
+from aci.aci_domain_contract import CORE_ONLY_DOMAIN_ID
+from aci.aci_profiles import PROFILE_QUICK_GATE
+from aci.aci_sarif import build_sarif_report, validate_sarif_report
+from aci.aci_scan import scan_target
+
+
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def test_scan_applies_operations_and_gate_controls(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "sample.py",
+        "# TODO: track this\ntry:\n    pass\nexcept Exception:\n    pass\n",
+    )
+    _write(
+        tmp_path / "operations.toml",
+        "\n".join(
+            [
+                "[baseline]",
+                'entries = [{ ci_id = "CI-03", target_file = "sample.py", line = 1 }]',
+                "",
+                "[waiver]",
+                'entries = [{ waiver_id = "W1", ci_id = "CI-21", target_file = "sample.py", line = 4 }]',
+            ]
+        ),
+    )
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        tmp_path / "operations.toml",
+        severity_threshold="critical",
+        fail_on_new_findings=True,
+        include_external_analyzers=False,
+    )
+
+    assert report["summary"]["existing_baseline_count"] == 1
+    assert report["summary"]["waived_count"] == 1
+    assert report["gate"]["decision"] == "pass"  # all new findings are waived; nothing unacknowledged remains
+
+
+def test_scan_report_validates_when_empty(tmp_path: Path) -> None:
+    _write(tmp_path / "clean.py", "print('ok')\n")
+    report = scan_target(
+        tmp_path,
+        "startup",
+        "core-only",
+        include_external_analyzers=False,
+    )
+
+    result = validate_report_payload("report.json", report)
+    assert result["ok"] is True
+
+
+def test_scan_skipped_targets_are_reported(tmp_path: Path) -> None:
+    _write(tmp_path / "large.txt", "A" * 1_000_001)
+    _write(tmp_path / "artifact.bin", "placeholder")
+
+    report = scan_target(
+        tmp_path,
+        "startup",
+        "core-only",
+        include_external_analyzers=False,
+    )
+
+    skipped = {item["path"]: item["reason"] for item in report["skipped_targets"]}
+    assert skipped["large.txt"] == "max-file-size-exceeded"
+    assert skipped["artifact.bin"] == "unsupported-suffix"
+
+
+def test_gate_can_fail_on_analyzer_errors(tmp_path: Path) -> None:
+    _write(tmp_path / "clean.py", "print('ok')\n")
+    report = scan_target(
+        tmp_path,
+        PROFILE_QUICK_GATE,
+        CORE_ONLY_DOMAIN_ID,
+        severity_threshold="critical",
+        fail_on_analyzer_errors=True,
+    )
+
+    assert report["gate"]["decision"] == "fail"
+    assert "analyzer-runtime-error" in report["gate"]["reasons"]
+
+
+def test_sarif_emission_contains_results(tmp_path: Path) -> None:
+    _write(tmp_path / "danger.py", "eval('1+1')\n")
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        include_external_analyzers=False,
+    )
+
+    sarif = build_sarif_report(report)
+    results = sarif["runs"][0]["results"]
+    assert sarif["version"] == "2.1.0"
+    assert results
+    assert results[0]["ruleId"] == "CI14_DYNAMIC_CODE_EXECUTION"
+    validation = validate_sarif_report(sarif)
+    assert validation["ok"] is True
+
+
+def test_ignore_file_excludes_targets(tmp_path: Path) -> None:
+    _write(tmp_path / ".aciignore", "danger.py\n")
+    _write(tmp_path / "danger.py", "eval('1+1')\n")
+    _write(tmp_path / "sample.py", "print('ok')\n")
+
+    report = scan_target(
+        tmp_path,
+        "startup",
+        "core-only",
+        include_external_analyzers=False,
+    )
+
+    target_files = [item["target_file"] for item in report["findings"]]
+    assert "danger.py" not in target_files
+    assert report["scope_rules"]["ignore_patterns"] == ["danger.py"]
+
+
+def test_secrets_and_http_detectors_emit_findings(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "secrets.py",
+        'API_KEY = "SECRET12345"\nENDPOINT = "http://internal.example.local/api"\n',
+    )
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        include_external_analyzers=False,
+    )
+
+    signals = {item["signal"] for item in report["findings"]}
+    assert "CI14_PLAINTEXT_SECRET" in signals
+    assert "CI14_INSECURE_HTTP" in signals
+
+
+def test_blockers_and_residuals_are_materialized(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "sample.py",
+        "# TODO: tracked work\ntry:\n    pass\nexcept Exception:\n    pass\n",
+    )
+    _write(
+        tmp_path / "operations.toml",
+        "\n".join(
+            [
+                "[waiver]",
+                'entries = [{ waiver_id = "W1", ci_id = "CI-21", target_file = "sample.py", line = 4 }]',
+            ]
+        ),
+    )
+    _write(tmp_path / "secrets.py", 'API_KEY = "SECRET12345"\n')
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        tmp_path / "operations.toml",
+        severity_threshold="critical",
+        include_external_analyzers=False,
+    )
+
+    assert report["blockers"]
+    assert report["blockers"][0]["signal"] == "CI14_PLAINTEXT_SECRET"
+    assert report["residuals"]
+    assert report["residuals"][0]["classification"] == "accepted-risk"
+
+
+def test_generated_paths_are_skipped(tmp_path: Path) -> None:
+    _write(tmp_path / ".pytest_cache" / "README.md", "generated cache\n")
+    _write(tmp_path / "sample.py", "print('ok')\n")
+
+    report = scan_target(
+        tmp_path,
+        "startup",
+        "core-only",
+        include_external_analyzers=False,
+    )
+
+    skipped = {item["path"]: item["reason"] for item in report["skipped_targets"]}
+    assert skipped[".pytest_cache/README.md"] == "generated-path-skipped"
+    assert report["scope_rules"]["skip_generated_paths"] is True
+
+
+def test_cli_config_loads_scan_gate_defaults(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "aci.toml",
+        "\n".join(
+            [
+                "[aci]",
+                'severity_threshold = "critical"',
+                "fail_on_new_findings = true",
+                "fail_on_analyzer_errors = true",
+            ]
+        ),
+    )
+
+    cfg = load_cli_config(tmp_path / "aci.toml")
+    assert cfg.severity_threshold == "critical"
+    assert cfg.fail_on_new_findings is True
+    assert cfg.fail_on_analyzer_errors is True
+
+
+def test_gate_reason_details_list_triggering_findings(tmp_path: Path) -> None:
+    _write(tmp_path / "secrets.py", 'API_KEY = "SECRET12345"\n')
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        severity_threshold="critical",
+        fail_on_new_findings=True,
+        include_external_analyzers=False,
+    )
+
+    reason_details = {item["reason"]: item for item in report["gate"]["reason_details"]}
+    assert "severity-threshold" in reason_details
+    assert "new-findings-present" in reason_details
+    assert reason_details["severity-threshold"]["finding_ids"]
+
+
+def test_report_contains_tool_version(tmp_path: Path) -> None:
+    _write(tmp_path / "clean.py", "print('ok')\n")
+    report = scan_target(
+        tmp_path,
+        "startup",
+        "core-only",
+        include_external_analyzers=False,
+    )
+
+    assert report["tool_version"] == "0.1.0"

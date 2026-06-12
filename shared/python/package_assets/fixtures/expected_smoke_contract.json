@@ -1,0 +1,17 @@
+{
+  "tool": "ACI",
+  "mode_checks": {
+    "core_only_domain": "core-only"
+  },
+  "finding_sample": {
+    "ci_id": "CI-04",
+    "signal": "RESPONSIBILITY_SPROUT",
+    "severity": "medium",
+    "confidence": "medium",
+    "triage_state": "review-first",
+    "priority": "P2",
+    "fixability": "owner-decision",
+    "baseline_status": "new",
+    "waiver_status": "none"
+  }
+}

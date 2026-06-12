@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and analyzer dependencies
+        run: |
+          pip install -e .
+          pip install pytest ruff pyflakes mypy
+
+      - name: Run test suite
+        run: pytest shared/tests/ -v
+
+      - name: Lint (ruff)
+        run: ruff check python/
+
+      - name: Type check (mypy)
+        run: mypy python/ --ignore-missing-imports --no-error-summary
+
+      - name: ACI automation smoke
+        run: aci automation-smoke
+
+      - name: ACI self-scan (informational)
+        run: |
+          aci scan \
+            --target python/ \
+            --profile full \
+            --domain core-only \
+            --severity-threshold critical \
+            --no-external-analyzers \
+            --output-format json
+        continue-on-error: true
+
+  release-gate:
+    name: Release gate
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Verify installed package (release gate lane)
+        run: aci installed-package-check
+
+      - name: Build distribution artifacts
+        run: |
+          pip install build
+          python -m build
+
+      - name: Verify wheel and sdist were produced
+        run: |
+          python - <<'EOF'
+          from pathlib import Path
+          dist = Path("dist")
+          wheels = list(dist.glob("aci-*.whl"))
+          sdists = list(dist.glob("aci-*.tar.gz"))
+          assert wheels, f"No wheel found in {dist}: {list(dist.iterdir())}"
+          assert sdists, f"No sdist found in {dist}: {list(dist.iterdir())}"
+          print(f"wheel: {wheels[-1].name}")
+          print(f"sdist: {sdists[-1].name}")
+          EOF
+
+      - name: Record build provenance (T56)
+        # Provenance posture:
+        #   current:  unsigned artifacts; provenance recorded as CI step output only.
+        #   intent:   PyPI Trusted Publisher (OIDC via GitHub Actions) — no long-lived secrets.
+        #   future:   Sigstore/Cosign artifact signing for supply-chain attestation.
+        #   not-used: PGP/GPG signing (deprecated on PyPI).
+        run: |
+          python - <<'EOF'
+          import json, sys
+          from datetime import datetime, UTC
+          sha = "${{ github.sha }}"
+          ref = "${{ github.ref_name }}"
+          py = sys.version.split()[0]
+          provenance = {
+            "tool": "aci",
+            "version": ref,
+            "commit_sha": sha,
+            "build_ref": ref,
+            "python_version": py,
+            "built_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "signing_posture": "unsigned",
+            "signing_intent": "pypi-trusted-publisher-oidc",
+          }
+          print(json.dumps(provenance, indent=2))
+          EOF

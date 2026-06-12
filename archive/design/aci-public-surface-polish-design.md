@@ -1,0 +1,195 @@
+# ACI Public Surface Polish Design
+
+Status: Complete
+
+## PSP-T1
+
+- Purpose:
+  - identify every public-facing file and phrase that still reads like internal migration history
+- Start Conditions:
+  - current `ACI` shelf is readable
+- Inputs:
+  - `README.md`
+  - `runtime/aci-generic-quickstart.md`
+  - `report/examples/`
+  - smoke output
+- Read:
+  - ``
+- Write:
+  - ``
+  - `common/refernce/`
+- No-Touch:
+  - downstream project shelves
+- Action:
+  - enumerate public surfaces and tag wording problems
+- Output:
+  - stable task list for rewrites
+- Acceptance:
+  - all rewrite targets are explicit
+- Failure Conditions:
+  - inventory misses a public-facing route referenced by README
+- Stop Conditions:
+  - a rewrite would require changing authority rather than wording
+- Send-Back Conditions:
+  - public/internal split cannot be made without owner decision
+- Human Decision Gate:
+  - none unless authority shift is required
+- Evidence:
+  - updated task progress
+- Record Destination:
+  - this design and task board
+- Final Decider:
+  - Codex B
+
+## PSP-T2
+
+- Purpose:
+  - make the main README user-first
+- Start Conditions:
+  - public inventory complete
+- Inputs:
+  - `README.md`
+  - public-facing checklist from `PSP-T1`
+- Read:
+  - `README.md`
+- Write:
+  - `README.md`
+- No-Touch:
+  - roadmap/task/design authority files
+- Action:
+  - move user route ahead of maintainer route
+  - compress internal migration language
+  - relabel maintainer-only reading orders
+- Output:
+  - revised README
+- Acceptance:
+  - a first-time reader can tell what ACI is, how to try it, and where to go next without reading internal wave docs
+- Failure Conditions:
+  - user route still depends on internal context
+- Stop Conditions:
+  - README changes would conflict with export/public-prep docs
+- Send-Back Conditions:
+  - user and maintainer routes cannot coexist in one README
+- Human Decision Gate:
+  - none unless README split is required
+- Evidence:
+  - updated README
+- Record Destination:
+  - task progress and final summary
+- Final Decider:
+  - Codex B
+
+## PSP-T3
+
+- Purpose:
+  - align quickstart and smoke wording with actual behavior
+- Start Conditions:
+  - README route updated
+- Inputs:
+  - `runtime/aci-generic-quickstart.md`
+  - `python/aci_public_smoke.py`
+  - smoke output
+- Read:
+  - `runtime/`
+  - `python/`
+- Write:
+  - `runtime/`
+  - `python/` only if wording-support change is needed
+- No-Touch:
+  - domain contract and signal schema
+- Action:
+  - neutralize wording
+  - clarify standalone vs monorepo behavior
+- Output:
+  - revised quickstart and, only if needed, revised smoke output text
+- Acceptance:
+  - documented expected output matches actual result
+- Failure Conditions:
+  - quickstart still overpromises checks that are skipped
+- Stop Conditions:
+  - smoke behavior change would alter contract rather than wording
+- Send-Back Conditions:
+  - behavior mismatch requires broader design decision
+- Human Decision Gate:
+  - none unless contract change is needed
+- Evidence:
+  - smoke run result
+- Record Destination:
+  - task progress and summary
+- Final Decider:
+  - Codex B
+
+## PSP-T4
+
+- Purpose:
+  - make sample reports neutral and reusable
+- Start Conditions:
+  - target tone fixed
+- Inputs:
+  - `report/examples/`
+  - `report/aci-generic-report-contract.md`
+- Read:
+  - `report/`
+- Write:
+  - `report/examples/`
+- No-Touch:
+  - report schema documents unless wording demands a small clarifier
+- Action:
+  - replace internal migration flavored sample text with neutral structure issue examples
+- Output:
+  - updated sample reports
+- Acceptance:
+  - samples read like generic tool output rather than repo self-commentary
+- Failure Conditions:
+  - sample still assumes internal history
+- Stop Conditions:
+  - neutral example would violate current report contract
+- Send-Back Conditions:
+  - sample requires schema change to become neutral
+- Human Decision Gate:
+  - none
+- Evidence:
+  - updated sample files
+- Record Destination:
+  - task progress and summary
+- Final Decider:
+  - Codex B
+
+## PSP-T5
+
+- Purpose:
+  - verify the polished public surface end to end
+- Start Conditions:
+  - README, quickstart, and samples updated
+- Inputs:
+  - revised public-facing files
+  - smoke output
+  - compile output
+- Read:
+  - ``
+- Write:
+  - `common/refernce/`
+- No-Touch:
+  - downstream projects
+- Action:
+  - run smoke
+  - run compile
+  - perform manual read review
+- Output:
+  - completion judgment
+- Acceptance:
+  - no public-facing inconsistency remains in reviewed surfaces
+- Failure Conditions:
+  - any reviewed file still requires internal context to make sense
+- Stop Conditions:
+  - newly found issue requires a new wave
+- Send-Back Conditions:
+  - public surface issue cannot be fixed without changing deeper contracts
+- Human Decision Gate:
+  - none unless broader contract changes are uncovered
+- Evidence:
+  - smoke and compile results
+- Record Destination:
+  - summary
+- Final Decider:
+  - Codex B
