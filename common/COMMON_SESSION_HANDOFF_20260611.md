@@ -61,10 +61,10 @@ Do not do these in `common` work:
 Start here:
 
 1. `C:\Users\f_tan\project\common\pj-template\README.md`
-2. `C:\Users\f_tan\project\common\pj-template\frameworks\project-progression-rule.md`
-3. `C:\Users\f_tan\project\common\pj-template\frameworks\project-progression-rule-integration-audit.md`
+2. `C:\Users\f_tan\project\common\pj-template\frameworks\core\progression-rule.md`
+3. `C:\Users\f_tan\project\common\pj-template\frameworks\core\integration-audit.md`
 4. `C:\Users\f_tan\project\common\pj-template\templates\project-file-taxonomy-template.md`
-5. `C:\Users\f_tan\project\common\pj-template\policies\external-tool-placement-policy.md`
+5. `C:\Users\f_tan\project\common\pj-template\policies\structure\external-tool-placement.md`
 
 Then scan the rest of `pj-template` for:
 

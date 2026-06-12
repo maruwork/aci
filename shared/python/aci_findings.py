@@ -32,6 +32,22 @@ SEVERITY_HIGH = "high"
 SEVERITY_MEDIUM = "medium"
 SEVERITY_LOW = "low"
 
+CONFIDENCE_HIGH = "high"
+CONFIDENCE_MEDIUM = "medium"
+CONFIDENCE_LOW = "low"
+
+FINDING_CLASS_CONFIRMED_DEFECT = "confirmed defect"
+FINDING_CLASS_DESIGN_REVIEW = "design/review question"
+
+# CI-IDs where the finding represents a design/scope question rather than a clear defect.
+# Callers should treat these as discussion starters, not mandatory fixes.
+_DESIGN_REVIEW_CI_IDS: frozenset[str] = frozenset({"CI-06", "CI-08", "CI-11", "CI-12"})
+
+
+def _finding_class_for(ci_id: str) -> str:
+    return FINDING_CLASS_DESIGN_REVIEW if ci_id in _DESIGN_REVIEW_CI_IDS else FINDING_CLASS_CONFIRMED_DEFECT
+
+
 STRUCTURE_SIGNAL_TO_CI_ID: dict[str, str] = {
     SIGNAL_RESPONSIBILITY_SPROUT: "CI-04",
     SIGNAL_SIDE_PROGRAM_LEAK: "CI-19",
@@ -212,4 +228,5 @@ def build_finding(
         evidence_ref=evidence_ref,
         recommended_action=recommended_action,
         verification_status=verification_status,
+        finding_class=_finding_class_for(ci_id),
     )

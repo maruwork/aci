@@ -6,7 +6,7 @@
 
 Use this before release, before merging cross-module changes, or when adding a new integration point. Unit tests are assumed to have passed already.
 
-This checklist concretizes the integration-side of `../frameworks/project-progression-rule.md`, especially:
+This checklist concretizes the integration-side of `../frameworks/core/progression-rule.md`, especially:
 
 - `advance one checkpoint at a time`
 - `verification`

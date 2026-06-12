@@ -13,9 +13,9 @@
 **status**: Draft / Approved  
 **companion rulebook**: [`project-structure-governance-starter-pack.md`](./project-structure-governance-starter-pack.md) - shelf-class definitions, workspace rules, cleanup procedure  
 **companion policies**:
-- `../policies/entry-guide-reference-separation-policy.md`
-- `../policies/file-operation-policy.md`
-- `../policies/naming-and-shelf-policy.md`
+- `../policies/structure/entry-guide-reference.md`
+- `../policies/structure/file-operations.md`
+- `../policies/structure/naming-shelf.md`
 
 ---
 

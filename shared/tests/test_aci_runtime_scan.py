@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 from aci.aci_automation import validate_report_payload
 from aci.aci_config import load_cli_config
@@ -238,3 +240,65 @@ def test_report_contains_tool_version(tmp_path: Path) -> None:
     )
 
     assert report["tool_version"] == "0.1.0"
+
+
+# ── diff-from tests ────────────────────────────────────────────────────────
+
+def test_diff_from_limits_scan_to_changed_files(tmp_path: Path) -> None:
+    # changed.py triggers CI-21; unchanged.py would too, but should be filtered out
+    _write(tmp_path / "changed.py", "def f():\n    try:\n        pass\n    except Exception:\n        pass\n")
+    _write(tmp_path / "unchanged.py", "def g():\n    try:\n        pass\n    except Exception:\n        pass\n")
+
+    with patch("aci.aci_scan._git_changed_files", return_value=frozenset(["changed.py"])) as mock_git:
+        report = scan_target(
+            tmp_path, "full", "core-only",
+            include_external_analyzers=False,
+            diff_from="HEAD~1",
+        )
+        mock_git.assert_called_once_with(tmp_path.resolve(), "HEAD~1")
+
+    file_targets = {item["target_file"] for item in report["findings"]}
+    assert all("changed" in t for t in file_targets), f"unexpected targets: {file_targets}"
+    assert not any("unchanged" in t for t in file_targets), f"unchanged.py leaked into findings"
+
+
+def test_diff_from_recorded_in_scope_rules(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "x = 1\n")
+
+    with patch("aci.aci_scan._git_changed_files", return_value=frozenset(["a.py"])):
+        report = scan_target(
+            tmp_path, "full", "core-only",
+            include_external_analyzers=False,
+            diff_from="origin/main",
+        )
+
+    assert report["scope_rules"]["diff_from"] == "origin/main"
+
+
+def test_diff_from_none_scope_rules_is_null(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "x = 1\n")
+    report = scan_target(
+        tmp_path, "full", "core-only",
+        include_external_analyzers=False,
+    )
+    assert report["scope_rules"]["diff_from"] is None
+
+
+def test_diff_from_invalid_ref_raises_value_error(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "x = 1\n")
+    mock_result = subprocess.CompletedProcess(
+        args=["git", "diff", "--name-only", "no-such-ref", "--"],
+        returncode=128,
+        stdout="",
+        stderr="fatal: bad revision 'no-such-ref'",
+    )
+    with patch("aci.aci_scan.subprocess.run", return_value=mock_result):
+        try:
+            scan_target(
+                tmp_path, "full", "core-only",
+                include_external_analyzers=False,
+                diff_from="no-such-ref",
+            )
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "no-such-ref" in str(exc)

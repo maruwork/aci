@@ -4,7 +4,7 @@
 **Replace Per Project**: verdict names, handling of the test-data contract, and names of related design records.  
 **Do Not Put Here**: the body of the implementation plan, the live current-state authority, or a project-specific current board.
 
-This checklist concretizes the following parts of `../frameworks/project-progression-rule.md` on the post-implementation verification surface:
+This checklist concretizes the following parts of `../frameworks/core/progression-rule.md` on the post-implementation verification surface:
 
 - `verification`
 - `definition of advancement`

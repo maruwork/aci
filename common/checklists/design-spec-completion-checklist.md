@@ -1,11 +1,11 @@
 # Design Spec Completion Checklist
 
 **When to use**: Use this during review to quickly check whether a design spec reaches completion-level quality.  
-**Related**: `../policies/spec-review-and-skill-policy.md`  
+**Related**: `../policies/operations/spec-review-skill.md`  
 **Replace**: owner name, completion wording, related policy name.  
 **Do not write**: the design spec itself, current-state management, or project-specific current operations.
 
-This checklist concretizes the design-spec completion side of `../frameworks/project-progression-rule.md`, especially:
+This checklist concretizes the design-spec completion side of `../frameworks/core/progression-rule.md`, especially:
 
 - `definition of completion`
 - `explicit completion conditions`

@@ -54,7 +54,7 @@
       "waiver_status": "none",
       "lifecycle_state": "in-review",
       "target_file": "python/aci_scan.py",
-      "line": 920,
+      "line": 351,
       "excerpt": "def _scan_side_program_leak(",
       "reason": "Multiple distinct inspection responsibilities are handled within a single scanner function without explicit ownership boundaries.",
       "evidence_ref": "core/aci-code-inspection-execution-spec.md",

@@ -29,8 +29,8 @@
 
 Support rules to read as needed:
 
-- `../policies/file-operation-policy.md`
-- `../policies/naming-and-shelf-policy.md`
+- `../policies/structure/file-operations.md`
+- `../policies/structure/naming-shelf.md`
 
 ## 3. Completion Conditions
 

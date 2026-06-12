@@ -1,14 +1,10 @@
 # Shared Checklists
 
 This shelf stores checklists reusable across review, implementation, testing, and release work.
+This is the verification shelf under `../frameworks/core/progression-rule.md`.
+Use this shelf when you are checking whether work is complete, safe, or ready to proceed.
 
-Treat this shelf as the verification shelf under:
-
-- `../frameworks/project-progression-rule.md`
-
-Follow the first-read order in `../README.md`.
-
-## Open These Checklists First
+## Open First
 
 - [implementation-audit-checklist.md](./implementation-audit-checklist.md)
 - [unit-test-checklist.md](./unit-test-checklist.md)
@@ -17,7 +13,14 @@ Follow the first-read order in `../README.md`.
 - [security-review-checklist.md](./security-review-checklist.md)
 - [design-spec-completion-checklist.md](./design-spec-completion-checklist.md)
 
-Start with the list above and open the rest only when needed.
+## Boundary
+
+Do not use this shelf for plan bodies, design documents, or live project-state tracking.
+
+## Open Later
+
+- the rest only when needed
+- `../README.md` only if you need the shelf map
 
 ## Keep As-Is Versus Replace
 
@@ -31,11 +34,4 @@ Start with the list above and open the rest only when needed.
   - project-specific verdict names
   - project-specific current-surface names
 
-## Detailed Checklists
-
-- module creation
-- support items extracted from project-specific source checklists
-- do not crowd the entry README with merged or retired checklist detail; inspect history only when needed
-
 Project-specific source checklists should remain on their original shelf until a separate placement decision is complete.
-If unsure, return to `../README.md`.

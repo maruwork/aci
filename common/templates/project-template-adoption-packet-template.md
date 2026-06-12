@@ -18,7 +18,7 @@
 - keep project-local authority separate from the shared template
 
 This packet is not the first place to define project-specific rules.
-Use it after `../frameworks/project-progression-rule.md` to map the entry route, writeback destination, and owner-only decisions into the project-local surface.
+Use it after `../frameworks/core/progression-rule.md` to map the entry route, writeback destination, and owner-only decisions into the project-local surface.
 
 ## 2. Reading Route
 

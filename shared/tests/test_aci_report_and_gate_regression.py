@@ -11,7 +11,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from aci.aci_automation import validate_report_payload, REQUIRED_SAMPLE_TOP_LEVEL_FIELDS
-from aci.aci_findings import LANE_HUMAN_JUDGMENT
+from aci.aci_findings import (
+    FINDING_CLASS_CONFIRMED_DEFECT,
+    FINDING_CLASS_DESIGN_REVIEW,
+    LANE_HUMAN_JUDGMENT,
+    build_finding,
+)
 from aci.aci_scan import scan_target
 
 
@@ -198,3 +203,30 @@ def test_gate_resolved_baseline_count_in_summary(tmp_path: Path) -> None:
     assert report["summary"]["resolved_baseline_count"] == 1
     assert len(report["resolved_baseline_entries"]) == 1
     assert report["resolved_baseline_entries"][0]["lifecycle_state"] == "resolved"
+
+
+# ── finding_class classification ───────────────────────────────────────────
+
+
+def _make_finding(ci_id: str) -> object:
+    return build_finding(
+        finding_id="F-0001",
+        ci_id=ci_id,
+        signal="TEST_SIGNAL",
+        severity="medium",
+        target_file="sample.py",
+        reason="test",
+        evidence_ref="test",
+    )
+
+
+def test_design_review_ci_ids_get_design_review_class() -> None:
+    for ci_id in ("CI-06", "CI-08", "CI-11", "CI-12"):
+        finding = _make_finding(ci_id)
+        assert finding.finding_class == FINDING_CLASS_DESIGN_REVIEW, ci_id  # type: ignore[union-attr]
+
+
+def test_other_ci_ids_get_confirmed_defect_class() -> None:
+    for ci_id in ("CI-02", "CI-03", "CI-07", "CI-14", "CI-22"):
+        finding = _make_finding(ci_id)
+        assert finding.finding_class == FINDING_CLASS_CONFIRMED_DEFECT, ci_id  # type: ignore[union-attr]

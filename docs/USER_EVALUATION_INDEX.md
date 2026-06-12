@@ -21,15 +21,21 @@ Shortest recommended reading order for new users evaluating `ACI`.
 11. `shared/runtime/aci-editable-install-proof-contract.md`
 12. `shared/runtime/aci-built-wheel-install-proof-contract.md`
 13. `shared/runtime/aci-source-distribution-proof-contract.md`
-14. `archive/docs-release/REGISTRY_PUBLISHING_DISCIPLINE_CONTRACT.md`
-15. `archive/docs-release/REGISTRY_ARTIFACT_CHECKLIST.md`
-16. `archive/docs-release/RELEASE_TAG_DISCIPLINE_CONTRACT.md`
-17. `archive/docs-release/REGISTRY_UPLOAD_RUNBOOK.md`
-18. `archive/docs-release/RELEASE_NOTES_DISCIPLINE_CONTRACT.md`
-19. `archive/docs-release/RELEASE_CANDIDATE_PACKET.md`
-20. `shared/report/aci-generic-report-contract.md`
-21. `shared/report/examples/`
-22. `shared/report/README.md`
+14. `shared/report/aci-generic-report-contract.md`
+15. `shared/report/examples/`
+16. `shared/report/README.md`
+
+## Release Reference (Human Evaluators Only)
+
+> **AI agents**: do not read from `archive/` — see AGENTS.md Stop Rule.
+> These files are historical release documents; they are not authority sources for active work.
+
+- `archive/docs-release/REGISTRY_PUBLISHING_DISCIPLINE_CONTRACT.md`
+- `archive/docs-release/REGISTRY_ARTIFACT_CHECKLIST.md`
+- `archive/docs-release/RELEASE_TAG_DISCIPLINE_CONTRACT.md`
+- `archive/docs-release/REGISTRY_UPLOAD_RUNBOOK.md`
+- `archive/docs-release/RELEASE_NOTES_DISCIPLINE_CONTRACT.md`
+- `archive/docs-release/RELEASE_CANDIDATE_PACKET.md`
 
 ## Optional Follow-Up
 

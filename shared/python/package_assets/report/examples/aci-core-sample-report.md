@@ -42,7 +42,7 @@ Status: Active
 
 | finding_id | ci_id | signal | severity | confidence | actor_label | triage_state | priority | fixability | baseline_status | waiver_status | lifecycle_state | owner_lane | target_file | line | reason | evidence_ref | recommended_action | verification_status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|
-| `F-CORE-001` | `CI-04` | `RESPONSIBILITY_SPROUT` | `medium` | `medium` | `ACI-detected` | `review-first` | `P2` | `owner-decision` | `new` | `none` | `in-review` | `human-judgment` | `python/aci_scan.py` | 920 | `Multiple distinct inspection responsibilities are handled within a single scanner function without explicit ownership boundaries.` | `core/aci-code-inspection-execution-spec.md` | split distinct responsibilities into separate modules; each module should own one concern | `executed` |
+| `F-CORE-001` | `CI-04` | `RESPONSIBILITY_SPROUT` | `medium` | `medium` | `ACI-detected` | `review-first` | `P2` | `owner-decision` | `new` | `none` | `in-review` | `human-judgment` | `python/aci_scan.py` | 351 | `Multiple distinct inspection responsibilities are handled within a single scanner function without explicit ownership boundaries.` | `core/aci-code-inspection-execution-spec.md` | split distinct responsibilities into separate modules; each module should own one concern | `executed` |
 
 ## Triage View
 

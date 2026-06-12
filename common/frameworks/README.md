@@ -1,21 +1,32 @@
 # Shared Frameworks
 
-This shelf holds the live frameworks used as the reading, design, progression, and decision baseline.
-Read the core frameworks first. Open support only when needed.
+This shelf holds reusable ways of thinking, decomposing, progressing, and deciding.
+Use this shelf when you need a method, progression model, or decision baseline.
+If you need required rules or gates, go to `../policies/`.
 
-## Read First
+## Role Map
 
-1. [project-progression-rule.md](./project-progression-rule.md) - top rule for progression, stop conditions, and re-grounding
-2. [project-progression-rule-integration-audit.md](./project-progression-rule-integration-audit.md) - role map for frameworks, policies, and checklists
-3. [goal-path-checkpoint-task-design-framework.md](./goal-path-checkpoint-task-design-framework.md) - five-layer breakdown of goal, path, checkpoint, task, and design
-4. [business-workflow-spine.md](./business-workflow-spine.md) if needed - workflow spine from design to execution to verification
+- `core/`: primary frameworks and progression authority
+- `support/`: optional guides and helper frameworks
+- `review/`: review-specific lenses
 
-## Read As Support
+## Open First
 
-- [ps-suite-guide.md](./ps-suite-guide.md) - PS-family support guide, not a core rule
-- [framework-selection-guide.md](./framework-selection-guide.md) - help choosing a framework
-- [prompt-quality-improvement-cycle.md](./prompt-quality-improvement-cycle.md) - prompt-improvement support loop
-- [decision-to-implementation-consistency-review.md](./decision-to-implementation-consistency-review.md) - review consistency between decisions and implementation
+1. [core/progression-rule.md](./core/progression-rule.md) - top rule for progression, stop conditions, and re-grounding
+2. [core/integration-audit.md](./core/integration-audit.md) - role map for frameworks, policies, and checklists
+3. [core/goal-path-checkpoint-design.md](./core/goal-path-checkpoint-design.md) - five-layer breakdown of goal, path, checkpoint, task, and design
 
-Read `../README.md` first if you entered from the parent shelf.
+## Open Later
+
+- [core/workflow-spine.md](./core/workflow-spine.md) - workflow spine from design to execution to verification
+- [support/ps-suite-guide.md](./support/ps-suite-guide.md) - PS-family support guide, not a core rule
+- [support/selection-guide.md](./support/selection-guide.md) - help choosing a framework
+- [support/prompt-improvement-cycle.md](./support/prompt-improvement-cycle.md) - prompt-improvement support loop
+- [review/decision-implementation-review.md](./review/decision-implementation-review.md) - review consistency between decisions and implementation
+
+## Boundary
+
+Do not use this shelf as the source for mandatory gates, placement rules, or project-specific enforcement.
+
+If you entered here directly, skim `../README.md` for the full shelf map.
 Time-bound judgment calls and exploration history belong under `../../reference/`.

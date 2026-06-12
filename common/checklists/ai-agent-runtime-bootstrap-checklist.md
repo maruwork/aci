@@ -4,7 +4,7 @@
 **Replace**: tool names, compression methods, context operations, rollback conditions.  
 **Do not write**: the project's formal local rules themselves or day-to-day current operations.
 
-This checklist concretizes the new-project bootstrap side of `../frameworks/project-progression-rule.md`, especially:
+This checklist concretizes the new-project bootstrap side of `../frameworks/core/progression-rule.md`, especially:
 
 - `define the entry surface`
 - `separate canonical and helper surfaces`

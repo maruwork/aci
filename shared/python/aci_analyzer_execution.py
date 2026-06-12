@@ -458,6 +458,8 @@ def _mypy_findings(stdout: str, stderr: str, target_root: Path, next_id: int) ->
             relative = path.resolve().relative_to(target_root.resolve()).as_posix()
         except ValueError:
             relative = path.as_posix()
+        code_match = re.search(r"\[([^\]]+)\]$", message.strip())
+        mypy_code = code_match.group(1) if code_match else None
         findings.append(
             build_finding(
                 finding_id=f"F-EXT-{next_id + len(findings):04d}",
@@ -477,7 +479,7 @@ def _mypy_findings(stdout: str, stderr: str, target_root: Path, next_id: int) ->
                 line=int(line_text),
                 excerpt=message,
                 reason=message,
-                evidence_ref="mypy",
+                evidence_ref=f"mypy:{mypy_code}" if mypy_code else "mypy",
                 recommended_action="Align declared and actual interfaces so the type contract stays explicit.",
                 verification_status=VERIFICATION_EXECUTED,
             )

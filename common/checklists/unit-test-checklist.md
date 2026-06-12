@@ -6,7 +6,7 @@
 
 Use this before refactoring, before PR merge, or before accepting generated code.
 
-This checklist concretizes the unit-test side of `../frameworks/project-progression-rule.md`, especially:
+This checklist concretizes the unit-test side of `../frameworks/core/progression-rule.md`, especially:
 
 - `pre-start checks`
 - `verification`

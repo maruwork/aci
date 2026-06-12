@@ -70,6 +70,15 @@ def test_mypy_output_is_normalized_into_findings(tmp_path: Path) -> None:
     assert findings[0].signal == "EXT_MYPY"
     assert findings[0].line == 5
     assert findings[0].severity == "high"
+    assert findings[0].evidence_ref == "mypy"
+
+
+def test_mypy_evidence_ref_includes_error_code(tmp_path: Path) -> None:
+    stdout = f"{tmp_path / 'sample.py'}:3: error: Item 'None' of 'int | None' has no attribute 'bit_length'  [union-attr]\n"
+    findings = execmod._mypy_findings(stdout, "", tmp_path, 0)
+
+    assert len(findings) == 1
+    assert findings[0].evidence_ref == "mypy:union-attr"
 
 
 def test_ruff_pt_code_maps_to_ci09(tmp_path: Path) -> None:

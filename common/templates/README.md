@@ -1,8 +1,8 @@
 # Shared Templates
 
 This shelf stores reusable document starters for use across projects.
-
-Read [PJ Template README](../README.md) first, then the purpose section of the exact template you need.
+Open only the exact template that matches the document you are creating.
+Use this shelf when you need a starting structure, not when you need the current truth for one project.
 
 Keep prose in clear shared English.
 Exact English should remain where tooling depends on it, such as `Status`, `ID`, `PASS / FAIL`, schema keys, or field names tied to external tools.
@@ -14,7 +14,7 @@ Label tokens clearly so a reader can tell whether something is prose, a fixed va
 - code-level names such as `field_name` or `variable_name` should stay in backticks and be identified by type
 - command names, options, and policy names should also be labeled by type
 
-## Open These Templates First
+## Open First
 
 - project structure: [project-structure-governance-starter-pack.md](./project-structure-governance-starter-pack.md), [project-file-taxonomy-template.md](./project-file-taxonomy-template.md), [project-boundary-register-template.md](./project-boundary-register-template.md), [project-workspace-and-artifact-policy-template.md](./project-workspace-and-artifact-policy-template.md)
 - entry: [navigation-template.md](./navigation-template.md)
@@ -25,28 +25,20 @@ Label tokens clearly so a reader can tell whether something is prose, a fixed va
 
 There are additional templates in this shelf, but the list above is enough for the first pass.
 
-## Detailed Templates
+## Boundary
 
-- do not overload the entry README with merged or retired sub-items; check history and audit notes only when needed
-- these are reusable starters that can be carried into other projects
-- when extracting from a project-specific source document, move only the portable part into the shared template and keep the source project's canonical version in its original shelf
+Do not use this shelf as the canonical home for a project's live status, operating log, or runtime facts.
 
-## First-Use Entry Order
+## Open Later
 
-Follow `../README.md` first.
-Then choose only the one template that directly matches the current need.
-
-1. if you are entering through project structure work:
-   - [project-structure-governance-starter-pack.md](./project-structure-governance-starter-pack.md)
-2. if you are writing a project entry or guide surface:
-   - [navigation-template.md](./navigation-template.md)
-3. if you need task, design, or judgment document starters:
-   - open only the exact template you need
-
-You do not need to read the whole template shelf in order.
-If unsure, return to `../README.md`.
+- additional templates only when the first-pass list is not enough
+- `../README.md` only if you need the shelf map
+- do not read the whole template shelf in order
 
 ## Keep As-Is Versus Replace
 
 - keep as-is: section structure, fill-in viewpoint, owner-judgment capture
 - replace per project: paths, file names for the current view, validator or healthcheck names, command names, and project-specific shelf names
+
+Move only portable structure into this shelf.
+Keep each project's canonical content on that project's own shelf.

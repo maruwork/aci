@@ -6,7 +6,7 @@
 
 Portable checklist for reviewing security-sensitive design changes, runtime paths, database paths, external integrations, and permission changes.
 
-This checklist concretizes the security side of `../frameworks/project-progression-rule.md`, especially:
+This checklist concretizes the security side of `../frameworks/core/progression-rule.md`, especially:
 
 - `pre-start checks`
 - `verification`

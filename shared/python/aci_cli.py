@@ -28,6 +28,7 @@ try:
     from .aci_fixture_check import run_fixture_check
     from .aci_profile_catalog import profile_catalog, profile_support_levels
     from .aci_public_smoke import build_public_smoke_result, detect_repo_root
+    from .aci_ratchet import check_ratchet
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
@@ -49,6 +50,7 @@ except ImportError:  # pragma: no cover - direct script/module import path
     from aci_fixture_check import run_fixture_check
     from aci_profile_catalog import profile_catalog, profile_support_levels
     from aci_public_smoke import build_public_smoke_result, detect_repo_root
+    from aci_ratchet import check_ratchet
 
 
 EXIT_OK = 0
@@ -259,6 +261,29 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["json", "pretty-json"],
         help="Override output format for this invocation",
     )
+    scan.add_argument(
+        "--ratchet",
+        action="store_true",
+        help=(
+            "Enable ratchet gate: fail if any CI-ID finding count increases since "
+            "the last passing run. On first run, writes a baseline state file."
+        ),
+    )
+    scan.add_argument(
+        "--ratchet-file",
+        type=Path,
+        default=None,
+        help="Path to ratchet state file (default: .aci-ratchet under --target)",
+    )
+    scan.add_argument(
+        "--diff-from",
+        default=None,
+        metavar="REF",
+        help=(
+            "Limit scan to files changed since git ref REF (e.g. origin/main, HEAD~1). "
+            "Requires git to be available on PATH and the target to be inside a git repository."
+        ),
+    )
     return parser
 
 
@@ -424,13 +449,22 @@ def main() -> int:
                 args.ignore_file,
                 args.domain_file,
                 args.fail_on_unreviewed_review_required or cfg.fail_on_unreviewed_review_required,
+                diff_from=args.diff_from,
             )
+            ratchet_result: dict[str, object] | None = None
+            if args.ratchet:
+                ratchet_path = args.ratchet_file or (args.target / ".aci-ratchet")
+                findings: list[dict[str, object]] = result.get("findings", [])  # type: ignore[assignment]
+                ratchet_result = check_ratchet(findings, state_path=ratchet_path)
+                result["ratchet"] = ratchet_result
+
             _print_json(result, output_format)
             gate = result.get("gate")
             summary = result.get("summary")
             if not isinstance(gate, dict) or not isinstance(summary, dict):
                 raise RuntimeError("scan_target returned unexpected result structure")
-            if gate.get("decision") == "fail" or summary.get("total_findings", 0) > 0:
+            ratchet_failed = ratchet_result is not None and ratchet_result.get("decision") == "fail"
+            if gate.get("decision") == "fail" or summary.get("total_findings", 0) > 0 or ratchet_failed:
                 return EXIT_FINDINGS_PRESENT
             return EXIT_OK
     except FileNotFoundError as exc:
