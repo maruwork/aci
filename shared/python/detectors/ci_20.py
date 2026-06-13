@@ -185,6 +185,16 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                 # tree — a symbol reference (re-export / lazy import / registry
                 # key), not a scattered configuration constant.
                 continue
+            container = parent_map.get(node)
+            if isinstance(container, (ast.List, ast.Tuple, ast.Set)):
+                # Member of a data/enum collection (e.g. typing.Literal[...]
+                # values, a set/list of field names) — not a scattered VALUE
+                # constant. A real shared constant is an assignment value, not a
+                # collection element.
+                continue
+            if isinstance(container, ast.Dict) and node in container.keys:
+                # Dict key = a name/identifier, not a scattered value constant.
+                continue
             occurrences.setdefault(text, []).append(
                 (path, getattr(node, "lineno", 0), _is_contract_field_literal_context(node, parent_map))
             )
