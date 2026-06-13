@@ -20,7 +20,11 @@ except ImportError:  # pragma: no cover - direct script/module import path
 SIGNALS_SPAGHETTI: frozenset[str] = frozenset({"CI02_SPAGHETTI_CODE"})
 SIGNALS_LONG: frozenset[str] = frozenset({"CI02_LONG_FUNCTION"})
 
-_NESTING_THRESHOLD = 4
+# Calibrated against a mature-corpus baseline (P1-4): depth 4 is common and
+# acceptable in real code, so only depth >= 5 is reported. Long-function size is
+# measured in logical lines (code only — docstrings, blanks, and comments are
+# excluded) so documentation does not inflate the count.
+_NESTING_THRESHOLD = 5
 _LONG_FUNCTION_THRESHOLD = 50
 
 
@@ -46,6 +50,35 @@ def _max_control_flow_depth(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -
 
     body_mod = ast.Module(body=func_node.body, type_ignores=[])
     return _depth(body_mod, 0)
+
+
+def _logical_line_count(
+    func_node: ast.FunctionDef | ast.AsyncFunctionDef, source_lines: list[str]
+) -> int:
+    """Count code lines in the function body, excluding the docstring, blank
+    lines, and comment-only lines. Returns 0 when the body is only a docstring."""
+    body = func_node.body
+    if not body:
+        return 0
+    first = body[0]
+    is_docstring = (
+        isinstance(first, ast.Expr)
+        and isinstance(first.value, ast.Constant)
+        and isinstance(first.value.value, str)
+    )
+    statements = body[1:] if is_docstring else body
+    if not statements:
+        return 0
+    start = statements[0].lineno
+    end = func_node.end_lineno or start
+    count = 0
+    for i in range(start, end + 1):
+        if i - 1 >= len(source_lines):
+            break
+        stripped = source_lines[i - 1].strip()
+        if stripped and not stripped.startswith("#"):
+            count += 1
+    return count
 
 
 def scan_spaghetti(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
@@ -93,13 +126,14 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
         tree = ast.parse(text)
     except SyntaxError:
         return []
+    source_lines = text.splitlines()
     findings: list[AciFinding] = []
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         if not hasattr(node, "end_lineno") or node.end_lineno is None:
             continue
-        body_lines = node.end_lineno - node.lineno
+        body_lines = _logical_line_count(node, source_lines)
         if body_lines < _LONG_FUNCTION_THRESHOLD:
             continue
         findings.append(
@@ -112,7 +146,7 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
                 line=node.lineno,
                 excerpt=f"def {node.name}(...)",
                 reason=(
-                    f"Function body spans {body_lines} lines, "
+                    f"Function body contains {body_lines} code lines (excluding docstring/blank/comment), "
                     f"exceeding the {_LONG_FUNCTION_THRESHOLD}-line threshold."
                 ),
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",

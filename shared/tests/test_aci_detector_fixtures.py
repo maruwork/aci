@@ -39,7 +39,8 @@ def test_ci02_triggers_on_deep_nesting(tmp_path: Path) -> None:
             "        if a > 1:",
             "            if a > 2:",
             "                if a > 3:",
-            "                    return a",
+            "                    if a > 4:",
+            "                        return a",
         ]),
     )
     assert "CI02_SPAGHETTI_CODE" in _signals(_scan(tmp_path))
