@@ -416,6 +416,59 @@ def test_ci26_clean_on_no_global_mutation(tmp_path: Path) -> None:
     assert "CI26_RACE_HAZARD" not in _signals(_scan(tmp_path))
 
 
+# ── CI-20 (Shotgun Surgery / Scattered Constant) ──────────────────────────
+
+def test_ci20_triggers_on_constant_across_three_files(tmp_path: Path) -> None:
+    for name in ("a.py", "b.py", "c.py"):
+        _write(tmp_path / name, 'DATABASE_URL = "postgresql://prod.example.com/appdb"\n')
+    assert "CI20_SCATTERED_CONSTANT" in _signals(_scan(tmp_path))
+
+
+def test_ci20_clean_when_constant_in_fewer_than_three_files(tmp_path: Path) -> None:
+    for name in ("a.py", "b.py"):
+        _write(tmp_path / name, 'DATABASE_URL = "postgresql://prod.example.com/appdb"\n')
+    assert "CI20_SCATTERED_CONSTANT" not in _signals(_scan(tmp_path))
+
+
+def test_ci20_clean_on_all_export_names(tmp_path: Path) -> None:
+    # Symbol names re-exported via __all__ across modules must not be flagged.
+    for name in ("a.py", "b.py", "c.py"):
+        _write(tmp_path / name, '__all__ = ["ClientSession", "ClientResponse"]\n')
+    assert "CI20_SCATTERED_CONSTANT" not in _signals(_scan(tmp_path))
+
+
+# ── CI-19 (Feature Envy / Side-Program Leak, domain-aware) ────────────────
+
+_DOMAIN_RULES_FIXTURE = "\n".join([
+    "import types",
+    "TESTDOM_DOMAIN_RULES = types.SimpleNamespace(",
+    "    domain_id='testdom',",
+    "    authority_terms=('canonical authority',),",
+    "    side_program_terms=('helper_bot',),",
+    ")",
+    "",
+])
+
+
+def test_ci19_triggers_on_side_program_as_authority(tmp_path: Path) -> None:
+    dom = tmp_path / "testdom_domain_rules.py"
+    _write(dom, _DOMAIN_RULES_FIXTURE)
+    src = tmp_path / "src"
+    _write(src / "m.py", "# helper_bot is treated as the canonical authority surface here\n")
+    report = scan_target(src, "full", "testdom", domain_file=dom, include_external_analyzers=False)
+    assert any(item["ci_id"] == "CI-19" for item in report["findings"])
+
+
+def test_ci19_clean_when_side_program_not_authority(tmp_path: Path) -> None:
+    dom = tmp_path / "testdom_domain_rules.py"
+    _write(dom, _DOMAIN_RULES_FIXTURE)
+    src = tmp_path / "src"
+    # side-program term present but no authority term on the line -> not a leak
+    _write(src / "m.py", "# helper_bot runs as a background worker\n")
+    report = scan_target(src, "full", "testdom", domain_file=dom, include_external_analyzers=False)
+    assert not any(item["ci_id"] == "CI-19" for item in report["findings"])
+
+
 # ── T20: Resolved baseline entries ────────────────────────────────────────
 
 def test_resolved_baseline_entries_reported_when_finding_disappears(tmp_path: Path) -> None:
