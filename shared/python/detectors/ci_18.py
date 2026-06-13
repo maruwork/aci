@@ -134,9 +134,16 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            arg_names = [a.arg for a in node.args.args if a.arg not in {"self", "cls"}]
-            # Calibrated (P1-4): 5 positional args is widely accepted; only 6+
-            # is reported. Constructors with 5 params are common and not a smell.
+            # Data Clump = many REQUIRED values passed together. Count only
+            # required positional params (no default), excluding self/cls/mcs.
+            # This excludes config-style optional-kwarg functions and framework-
+            # mandated signatures (e.g. metaclass __new__(mcs, cls_name, bases,
+            # namespace, **opts)) that inflated the count (precision audit 2026-06-13).
+            positional = node.args.posonlyargs + node.args.args
+            num_defaulted = len(node.args.defaults)
+            required = positional[: len(positional) - num_defaulted] if num_defaulted else positional
+            arg_names = [a.arg for a in required if a.arg not in {"self", "cls", "mcs"}]
+            # 5 required positional args is widely accepted; only 6+ is reported.
             if len(arg_names) < 6:
                 continue
             if _is_boundary_interface_function(node):
