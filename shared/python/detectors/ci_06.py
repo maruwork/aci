@@ -25,6 +25,24 @@ _TRIVIAL_NUMBERS: frozenset = frozenset({
 })
 
 
+def _is_low_value_number(val: int | float) -> bool:
+    """Numbers that are pervasive and not 'magic' in the configuration sense.
+
+    Calibrated (P1-4): small integers (|n| <= 16, common loop/index/byte values)
+    and exact powers of two (bit masks, buffer/window sizes) dominate the
+    cross-file repetition noise on mature code, so they are not reported.
+    """
+    if val in _TRIVIAL_NUMBERS:
+        return True
+    if isinstance(val, int):
+        n = abs(val)
+        if n <= 16:
+            return True
+        if n & (n - 1) == 0:  # exact power of two
+            return True
+    return False
+
+
 def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
     occurrences: dict[int | float, list[tuple[Path, int]]] = {}
     for path in [p for p in paths if p.suffix.lower() == ".py"]:
@@ -42,7 +60,7 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                 continue
             if not isinstance(val, (int, float)):
                 continue
-            if val in _TRIVIAL_NUMBERS:
+            if _is_low_value_number(val):
                 continue
             parent = parent_map.get(node)
             if isinstance(parent, ast.UnaryOp):

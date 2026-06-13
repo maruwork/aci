@@ -38,6 +38,16 @@ def _is_bounded_retry_handler(
     return False
 
 
+def _handler_reraises(handler: ast.ExceptHandler) -> bool:
+    """True when the handler unconditionally re-raises (a top-level `raise`).
+
+    Re-raising propagates the error rather than swallowing it, so such a handler
+    is not the CI-21 smell even though the caught type is broad. A `raise` nested
+    inside a branch does not count — the handler still swallows on other paths.
+    """
+    return any(isinstance(stmt, ast.Raise) for stmt in handler.body)
+
+
 def _is_silent_return_value(node: ast.expr | None) -> bool:
     if node is None:
         return True
@@ -67,6 +77,8 @@ def scan_broad(path: Path, text: str, target_root: Path, next_id: int) -> list[A
         if handler.name is not None:
             continue
         if _is_bounded_retry_handler(handler, parent_map):
+            continue
+        if _handler_reraises(handler):
             continue
         line = handler.lineno
         findings.append(
