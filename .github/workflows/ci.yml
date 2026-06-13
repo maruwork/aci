@@ -60,6 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
+    permissions:
+      id-token: write  # OIDC token for PyPI Trusted Publishing (no long-lived secrets)
 
     steps:
       - uses: actions/checkout@v4
@@ -118,3 +120,11 @@ jobs:
           }
           print(json.dumps(provenance, indent=2))
           EOF
+
+      - name: Publish to PyPI (Trusted Publisher / OIDC)
+        # Requires a one-time PyPI-side Trusted Publisher registration for this
+        # repository + workflow before the first real release:
+        #   https://docs.pypi.org/trusted-publishers/
+        # No API token is stored — authentication is via the job's OIDC id-token.
+        # Runs only on v* tag pushes (the release-gate `if` above).
+        uses: pypa/gh-action-pypi-publish@release/v1
