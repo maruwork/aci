@@ -135,13 +135,40 @@ def _is_export_manifest_literal(node: ast.Constant, parent_map: dict[ast.AST, as
     return False
 
 
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _collect_symbol_names(tree: ast.AST) -> set[str]:
+    """Names defined or imported in a module: class/function names and import
+    aliases. A string literal equal to one of these is a symbol reference
+    (re-export, lazy import, getattr/registry key), not a config constant."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                names.add(alias.asname or alias.name)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                names.add((alias.asname or alias.name).split(".")[0])
+    return names
+
+
 def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
-    occurrences: dict[str, list[tuple[Path, int, bool]]] = {}
-    for path in [p for p in paths if p.suffix.lower() == ".py"]:
+    py_paths = [p for p in paths if p.suffix.lower() == ".py"]
+    trees: list[tuple[Path, ast.Module]] = []
+    symbol_names: set[str] = set()
+    for path in py_paths:
         try:
             tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
         except SyntaxError:
             continue
+        trees.append((path, tree))
+        symbol_names |= _collect_symbol_names(tree)
+
+    occurrences: dict[str, list[tuple[Path, int, bool]]] = {}
+    for path, tree in trees:
         parent_map = _build_parent_map(tree)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
@@ -152,6 +179,11 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
             if _is_low_information_scattered_literal(text):
                 continue
             if _is_export_manifest_literal(node, parent_map):
+                continue
+            if _IDENTIFIER_PATTERN.match(text) and text in symbol_names:
+                # The string names a class/function/import defined in the scanned
+                # tree — a symbol reference (re-export / lazy import / registry
+                # key), not a scattered configuration constant.
                 continue
             occurrences.setdefault(text, []).append(
                 (path, getattr(node, "lineno", 0), _is_contract_field_literal_context(node, parent_map))
