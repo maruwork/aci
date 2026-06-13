@@ -62,6 +62,10 @@ def _is_contract_field_literal_context(
                 return True
     if isinstance(parent, ast.Call):
         func = parent.func
+        # getattr/hasattr/setattr/delattr(obj, 'name', ...): the string is an
+        # attribute NAME being accessed, not a scattered value constant.
+        if isinstance(func, ast.Name) and func.id in {"getattr", "hasattr", "setattr", "delattr"}:
+            return len(parent.args) >= 2 and parent.args[1] is node
         if isinstance(func, ast.Attribute) and func.attr in {"get", "pop", "setdefault"}:
             return bool(parent.args) and parent.args[0] is node
         if isinstance(func, ast.Attribute) and func.attr == "label":
