@@ -20,7 +20,7 @@ Use this file as a compact catalog.
 
 | Lane | Use When | Typical CI IDs |
 |---|---|---|
-| native-static | AST / text / structure can detect the issue directly | CI-02, CI-03, CI-04, CI-05, CI-06, CI-12, CI-13, CI-18, CI-20, CI-21, CI-22, CI-23, CI-25, CI-26 |
+| native-static | AST / text / structure can detect the issue directly | CI-02, CI-03, CI-04, CI-05, CI-06, CI-12, CI-14, CI-18, CI-19, CI-20, CI-21, CI-22, CI-23, CI-25, CI-26 |
 | external analyzer | lint / type / test / dependency tooling gives stronger proof | CI-07, CI-09, CI-13, CI-14, CI-15, CI-21, CI-23, CI-25 |
 | human judgment | design intent, ownership, or domain meaning is required | CI-04, CI-08, CI-11, CI-19, CI-24 |
 
@@ -73,10 +73,10 @@ Severity should reflect blast radius, not how easy the issue was to spot.
 | CI-11 | Golden Hammer | one mechanism forced onto problems that need a different control point | human judgment |
 | CI-12 | Poltergeist | tiny pass-through classes/functions adding indirection without ownership | native-static |
 | CI-13 | Dependency Rot | outdated, unused, unsafe, or mismatched dependency / import surface | external analyzer |
-| CI-14 | Security Neglect | secrets, unsafe input handling, weak auth, unsafe file or shell behavior | external analyzer |
+| CI-14 | Security Neglect | secrets, unsafe input handling, weak auth, unsafe file or shell behavior | native-static / external analyzer |
 | CI-15 | Documentation Rot | docs contradict code, generated snapshots, task state, or canonical rules | external analyzer |
 | CI-18 | Data Clump | repeated parameter groups or record shapes without an explicit contract | native-static |
-| CI-19 | Feature Envy | code reaching into another owner or domain instead of using a boundary | human judgment |
+| CI-19 | Feature Envy | code reaching into another owner or domain instead of using a boundary | native-static (domain-aware) / human judgment |
 | CI-20 | Shotgun Surgery | one concept scattered across many files with no single edit point | native-static |
 | CI-21 | Error Handling Rot | swallowed errors, broad exceptions, unsafe fallback, unbounded retry | native-static |
 | CI-22 | Resource Lifecycle Leak | file/socket/session/process/transaction lifecycle not closed or bounded | native-static |
