@@ -46,10 +46,13 @@ opt-in external analyzers are installed — not the native structure detectors.
 
 ## 3-Minute Evaluation
 
+To scan a project right away, follow `docs/QUICKSTART.md`.
+
 For a first look on GitHub, start here:
 
-1. `docs/USER_EVALUATION_INDEX.md`
-2. `docs/ACI_SHELF_CLASSIFICATION.md`
+1. `docs/QUICKSTART.md`
+2. `docs/USER_EVALUATION_INDEX.md`
+3. `docs/ACI_SHELF_CLASSIFICATION.md`
 
 Minimum smoke check:
 
