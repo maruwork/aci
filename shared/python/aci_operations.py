@@ -118,8 +118,8 @@ def load_operations_state(operations_file: Path | None) -> OperationsState:
     for entry in suppression_entries:
         if not entry.suppression_id or not entry.match:
             raise ValueError("suppression entries require suppression_id and match")
-    for entry in waiver_entries:
-        if not entry.waiver_id:
+    for waiver_entry in waiver_entries:
+        if not waiver_entry.waiver_id:
             raise ValueError("waiver entries require waiver_id")
     return OperationsState(
         baseline_entries=baseline_entries,

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 try:
     from .aci_package_assets import read_text_asset
@@ -36,7 +37,7 @@ def run_fixture_check(repo_root: Path) -> dict[str, object]:
     )
 
     for key, expected_value in expected["mode_checks"].items():
-        actual_value = actual["mode_checks"].get(key)
+        actual_value = cast("dict[str, object]", actual["mode_checks"]).get(key)
         checks.append(
             {
                 "check": f"mode_checks.{key}",
@@ -47,7 +48,7 @@ def run_fixture_check(repo_root: Path) -> dict[str, object]:
         )
 
     for key, expected_value in expected["finding_sample"].items():
-        actual_value = actual["finding_sample"].get(key)
+        actual_value = cast("dict[str, object]", actual["finding_sample"]).get(key)
         checks.append(
             {
                 "check": f"finding_sample.{key}",

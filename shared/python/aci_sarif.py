@@ -3,6 +3,8 @@
 """SARIF emission helpers for ACI."""
 from __future__ import annotations
 
+from typing import cast
+
 try:
     from .aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
 except ImportError:  # pragma: no cover - direct script/module import path
@@ -46,7 +48,7 @@ def build_sarif_report(report: dict[str, object]) -> dict[str, object]:
         if finding.get("line") is not None:
             phys_loc = location["physicalLocation"]
             if isinstance(phys_loc, dict):
-                phys_loc["region"] = {"startLine": int(finding["line"])}  # type: ignore[arg-type]
+                phys_loc["region"] = {"startLine": int(cast(int, finding["line"]))}
         results.append(
             {
                 "ruleId": rule_id,

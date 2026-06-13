@@ -5,9 +5,16 @@ The orchestrator activates a detector when required_signals & active_signals is 
 """
 from __future__ import annotations
 
+from typing import Callable
+
 from . import ci_02, ci_03, ci_04, ci_05, ci_06, ci_12, ci_14, ci_18, ci_20, ci_21, ci_22, ci_23, ci_25, ci_26
 
-PER_FILE_REGISTRY: tuple[tuple[frozenset[str], object], ...] = (
+# Per-file detectors take (path, text, target_root, next_id); cross-file detectors
+# take (paths, root, next_id). Both return a list of normalized findings. The
+# argument list is intentionally untyped (...) because the two shapes differ.
+Detector = Callable[..., list]
+
+PER_FILE_REGISTRY: tuple[tuple[frozenset[str], Detector], ...] = (
     (ci_02.SIGNALS_SPAGHETTI, ci_02.scan_spaghetti),
     (ci_02.SIGNALS_LONG, ci_02.scan_long_functions),
     (ci_03.SIGNALS, ci_03.scan),
@@ -25,7 +32,7 @@ PER_FILE_REGISTRY: tuple[tuple[frozenset[str], object], ...] = (
     (ci_26.SIGNALS, ci_26.scan),
 )
 
-CROSS_FILE_REGISTRY: tuple[tuple[frozenset[str], object], ...] = (
+CROSS_FILE_REGISTRY: tuple[tuple[frozenset[str], Detector], ...] = (
     (ci_05.SIGNALS, ci_05.scan),
     (ci_06.SIGNALS, ci_06.scan),
     (ci_18.SIGNALS, ci_18.scan),

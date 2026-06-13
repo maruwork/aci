@@ -382,7 +382,7 @@ def main() -> int:
             result = build_public_smoke_result(_resolve_repo_root())
             sample_validation = validate_sample_reports()
             smoke_ok = bool(result.get("ok", False))
-            payload = {
+            payload: dict[str, object] = {
                 "tool": "ACI",
                 "command": "automation-smoke",
                 "verification": {

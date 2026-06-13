@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 import json
 import re
 import subprocess
@@ -188,7 +189,7 @@ def profile_execution_plan() -> list[dict[str, object]]:
     readiness_map = {entry["analyzer_id"]: entry for entry in analyzer_availability()}
     rows: list[dict[str, object]] = []
     for entry in profile_catalog():
-        analyzers = entry["default_external_analyzers"]
+        analyzers = cast("list[str]", entry["default_external_analyzers"])
         rows.append(
             {
                 "profile_id": entry["profile_id"],

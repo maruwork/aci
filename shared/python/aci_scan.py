@@ -48,7 +48,7 @@ from datetime import datetime, UTC
 from pathlib import Path
 import re
 import subprocess
-from typing import Protocol
+from typing import cast, Protocol
 
 ACI_TOOL_VERSION = "0.1.0"
 
@@ -514,7 +514,7 @@ def _build_gate_result(
 
 
 def _build_blockers(findings: list[AciFinding], gate: dict[str, object]) -> list[dict[str, object]]:
-    threshold_levels = set(gate["blocking_severities"])  # type: ignore[arg-type]
+    threshold_levels = set(cast("list[str]", gate["blocking_severities"]))
     blockers: list[dict[str, object]] = []
     for finding in findings:
         if finding.severity not in threshold_levels:
@@ -676,14 +676,14 @@ def scan_target(
 
         for required_signals, detector in PER_FILE_REGISTRY:
             if required_signals & active_signals:
-                new = detector(file_path, text, session.target_root, next_id)  # type: ignore[call-arg]
+                new = detector(file_path, text, session.target_root, next_id)
                 next_id += len(new)
                 findings.extend(new)
 
     # Cross-file detectors (run once over all collected files)
     for required_signals, detector in CROSS_FILE_REGISTRY:
         if required_signals & active_signals:
-            new = detector(target_files, session.target_root, next_id)  # type: ignore[call-arg]
+            new = detector(target_files, session.target_root, next_id)
             next_id += len(new)
             findings.extend(new)
 

@@ -224,6 +224,6 @@ def validate_sample_reports() -> dict[str, object]:
     for sample_path in _sample_paths():
         data = json.loads(sample_path.read_text(encoding="utf-8"))
         check = validate_report_payload(sample_path.name, data, require_findings=True)
-        ok = ok and check["ok"]
+        ok = ok and bool(check["ok"])
         checks.append(check)
     return {"ok": ok, "checks": checks}
