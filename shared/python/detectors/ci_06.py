@@ -28,15 +28,18 @@ _TRIVIAL_NUMBERS: frozenset = frozenset({
 def _is_low_value_number(val: int | float) -> bool:
     """Numbers that are pervasive and not 'magic' in the configuration sense.
 
-    Calibrated (P1-4): small integers (|n| <= 16, common loop/index/byte values)
-    and exact powers of two (bit masks, buffer/window sizes) dominate the
-    cross-file repetition noise on mature code, so they are not reported.
+    Calibrated against a diverse mature corpus (P1-4). Cross-file numeric
+    repetition is a weak magic-number signal: sub-byte integers (colors, byte
+    offsets, indices, small limits) and powers of two (bit masks, buffer/window
+    sizes) repeat across files by the hundreds without being magic constants. We
+    therefore only consider integers with |n| >= 256 that are not powers of two.
+    (The one-byte boundary is a first-principles cutoff, not corpus fitting.)
     """
     if val in _TRIVIAL_NUMBERS:
         return True
     if isinstance(val, int):
         n = abs(val)
-        if n <= 16:
+        if n < 256:
             return True
         if n & (n - 1) == 0:  # exact power of two
             return True
@@ -64,6 +67,12 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                 continue
             parent = parent_map.get(node)
             if isinstance(parent, ast.UnaryOp):
+                # Unwrap unary minus/plus so a negated literal is judged by its container.
+                parent = parent_map.get(parent)
+            if isinstance(parent, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
+                # A literal inside a data collection is data (lookup/width/test
+                # tables), not a magic constant in program logic. Skipping these
+                # removes the dominant false-positive source (generated tables).
                 continue
             if isinstance(parent, ast.arguments):
                 continue
