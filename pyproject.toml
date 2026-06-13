@@ -22,7 +22,7 @@ classifiers = [
 aci = "aci.aci_cli:main"
 
 [tool.setuptools]
-packages = ["aci"]
+packages = ["aci", "aci.detectors"]
 include-package-data = true
 
 [tool.setuptools.package-dir]

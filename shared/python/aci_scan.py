@@ -41,7 +41,6 @@ Artifact hygiene and generated-output boundaries (T52):
 """
 from __future__ import annotations
 
-import ast
 from collections import Counter
 from dataclasses import replace
 from dataclasses import dataclass
@@ -55,14 +54,13 @@ ACI_TOOL_VERSION = "0.1.0"
 
 try:
     from .detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY
-    from .detectors._helpers import _relative_path, _line_excerpt, _line_number_from_index, _build_parent_map
+    from .detectors._helpers import _relative_path
     from .aci_analyzer_execution import run_analyzer
     from .aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from .aci_domain_loader import load_domain_rules
     from .aci_findings import (
-        AciFinding, build_finding, build_structure_finding,
+        AciFinding, build_structure_finding,
         LANE_NATIVE_STATIC, LANE_EXTERNAL_ANALYZER, LANE_HUMAN_JUDGMENT,
-        VERIFICATION_EXECUTED,
         SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW,
         CONFIDENCE_MEDIUM,
     )
@@ -83,21 +81,18 @@ try:
     from .aci_signals import (
         STRUCTURE_SIGNALS as _STRUCTURE_SIGNALS,
         SIGNAL_SIDE_PROGRAM_LEAK,
-        LOW_INFO_SCATTERED_LITERALS,
-        LOW_INFO_SCATTERED_LITERAL_SUFFIXES,
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
 except ImportError:  # pragma: no cover - direct script/module import path
     from detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY  # type: ignore[no-redef]
-    from detectors._helpers import _relative_path, _line_excerpt, _line_number_from_index, _build_parent_map  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path  # type: ignore[no-redef]
     from aci_analyzer_execution import run_analyzer
     from aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from aci_domain_loader import load_domain_rules
     from aci_findings import (
-        AciFinding, build_finding, build_structure_finding,
+        AciFinding, build_structure_finding,
         LANE_NATIVE_STATIC, LANE_EXTERNAL_ANALYZER, LANE_HUMAN_JUDGMENT,
-        VERIFICATION_EXECUTED,
         SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW,
         CONFIDENCE_MEDIUM,
     )
@@ -118,8 +113,6 @@ except ImportError:  # pragma: no cover - direct script/module import path
     from aci_signals import (
         STRUCTURE_SIGNALS as _STRUCTURE_SIGNALS,
         SIGNAL_SIDE_PROGRAM_LEAK,
-        LOW_INFO_SCATTERED_LITERALS,
-        LOW_INFO_SCATTERED_LITERAL_SUFFIXES,
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
