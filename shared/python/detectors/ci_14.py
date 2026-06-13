@@ -172,8 +172,7 @@ def scan_plaintext_secrets(path: Path, text: str, target_root: Path, next_id: in
 
 def _http_match_is_noise(line_text: str, col: int) -> bool:
     """Skip http:// occurrences that are not live transport: in a comment, or
-    in a doctest example line (>>> / ...). These dominate the false positives
-    (doc links, docstring examples) on real codebases."""
+    in a doctest example line (>>> / ...)."""
     before = line_text[:col]
     if "#" in before:
         return True
@@ -181,13 +180,40 @@ def _http_match_is_noise(line_text: str, col: int) -> bool:
     return stripped.startswith(">>>") or stripped.startswith("...")
 
 
+def _docstring_line_set(tree: ast.AST) -> set[int]:
+    """Line numbers covered by module/class/function docstrings. URLs in
+    docstrings (markdown links, usage examples) are documentation, not live
+    plaintext transport — the dominant insecure-HTTP false positive."""
+    covered: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        body = getattr(node, "body", None)
+        if not body:
+            continue
+        first = body[0]
+        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
+            start = first.value.lineno
+            end = getattr(first.value, "end_lineno", start) or start
+            covered.update(range(start, end + 1))
+    return covered
+
+
 def scan_insecure_http(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
     if path.suffix.lower() not in {".py", ".json", ".yml", ".yaml", ".toml", ".txt", ".md"}:
         return findings
+    docstring_lines: set[int] = set()
+    if path.suffix.lower() == ".py":
+        try:
+            docstring_lines = _docstring_line_set(ast.parse(text))
+        except SyntaxError:
+            docstring_lines = set()
     lines = text.splitlines()
     for match in _INSECURE_HTTP_PATTERN.finditer(text):
         line = _line_number_from_index(text, match.start())
+        if line in docstring_lines:
+            continue
         line_text = lines[line - 1] if 0 <= line - 1 < len(lines) else ""
         col = match.start() - (text.rfind("\n", 0, match.start()) + 1)
         if _http_match_is_noise(line_text, col):
