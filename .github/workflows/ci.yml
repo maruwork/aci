@@ -33,7 +33,7 @@ jobs:
         run: pytest shared/tests/ -v
 
       - name: Lint (ruff)
-        run: ruff check shared/python/
+        run: ruff check shared/python/ shared/tests/ shared/tools/
 
       - name: Type check (mypy)
         # Gating. Config in pyproject.toml ([tool.mypy]) disables the [no-redef]

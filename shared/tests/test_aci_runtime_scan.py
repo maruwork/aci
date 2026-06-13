@@ -79,7 +79,20 @@ def test_scan_skipped_targets_are_reported(tmp_path: Path) -> None:
     assert skipped["artifact.bin"] == "unsupported-suffix"
 
 
-def test_gate_can_fail_on_analyzer_errors(tmp_path: Path) -> None:
+def test_gate_can_fail_on_analyzer_errors(tmp_path: Path, monkeypatch) -> None:
+    # Force every analyzer to report not-installed so the scan deterministically
+    # produces analyzer failures, regardless of which binaries the environment
+    # has (CI installs them; local dev may not).
+    import aci.aci_analyzer_execution as execmod
+
+    monkeypatch.setattr(execmod, "_readiness_for", lambda analyzer_id: execmod.AnalyzerReadiness(
+        analyzer_id=analyzer_id,
+        executable_path=None,
+        availability_state="not-installed",
+        version_text=None,
+        version_ok=False,
+        minimum_version=None,
+    ))
     _write(tmp_path / "clean.py", "print('ok')\n")
     report = scan_target(
         tmp_path,
@@ -259,7 +272,7 @@ def test_diff_from_limits_scan_to_changed_files(tmp_path: Path) -> None:
 
     file_targets = {item["target_file"] for item in report["findings"]}
     assert all("changed" in t for t in file_targets), f"unexpected targets: {file_targets}"
-    assert not any("unchanged" in t for t in file_targets), f"unchanged.py leaked into findings"
+    assert not any("unchanged" in t for t in file_targets), "unchanged.py leaked into findings"
 
 
 def test_diff_from_recorded_in_scope_rules(tmp_path: Path) -> None:

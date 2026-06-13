@@ -30,7 +30,18 @@ def test_pytest_no_tests_collected_is_treated_as_nonfatal(monkeypatch, tmp_path:
     assert result.findings == ()
 
 
-def test_missing_analyzer_returns_not_installed(tmp_path: Path) -> None:
+def test_missing_analyzer_returns_not_installed(tmp_path: Path, monkeypatch) -> None:
+    # Force not-installed readiness so the test is deterministic regardless of
+    # whether the analyzer binary happens to be installed in the environment
+    # (CI installs ruff/pyflakes/mypy/pytest; local dev envs may not).
+    monkeypatch.setattr(execmod, "_readiness_for", lambda analyzer_id: execmod.AnalyzerReadiness(
+        analyzer_id=analyzer_id,
+        executable_path=None,
+        availability_state="not-installed",
+        version_text=None,
+        version_ok=False,
+        minimum_version=None,
+    ))
     result = execmod.run_analyzer("pyflakes", tmp_path, 1)
     assert result.ok is False
     assert result.runtime_state == "not-installed"
