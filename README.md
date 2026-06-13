@@ -31,6 +31,19 @@ Does not hardcode project-specific import layouts or side-program names in the c
 | `shared/runtime/` | quickstart and runtime binding guidance |
 | `shared/report/` | report contract and public samples |
 
+## Language Support
+
+ACI is **Python-first**. Be aware of the scope before adopting:
+
+| Lane | Languages | Notes |
+|---|---|---|
+| Native static detectors | **Python** | All 15 native CI-ID detectors parse Python (AST). This is the only language with full native coverage. |
+| Language-agnostic text scans | any text file | A few detectors are text-based, not AST-based: plaintext-secret and insecure-HTTP (CI-14), and TODO/FIXME/HACK markers (CI-03). |
+| External analyzers (opt-in) | Python, JS/TS, Shell, SQL | ruff / pyflakes / mypy / pytest (Python); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL). Each runs only when installed and enabled; CI-23 TypeScript checks need a `tsconfig.json`. |
+
+Non-Python codebases get only the language-agnostic text scans plus whatever
+opt-in external analyzers are installed — not the native structure detectors.
+
 ## 3-Minute Evaluation
 
 For a first look on GitHub, start here:
