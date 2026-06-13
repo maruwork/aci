@@ -51,8 +51,9 @@ To scan a project right away, follow `docs/QUICKSTART.md`.
 For a first look on GitHub, start here:
 
 1. `docs/QUICKSTART.md`
-2. `docs/USER_EVALUATION_INDEX.md`
-3. `docs/ACI_SHELF_CLASSIFICATION.md`
+2. `docs/CI_REFERENCE.md`
+3. `docs/USER_EVALUATION_INDEX.md`
+4. `docs/ACI_SHELF_CLASSIFICATION.md`
 
 Minimum smoke check:
 
