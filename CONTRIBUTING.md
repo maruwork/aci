@@ -27,8 +27,27 @@ Thank you for considering a contribution to ACI.
 
 ## Verification
 
-- `python shared/python/aci_public_smoke.py`
-- `python -m py_compile shared/python/*.py domains/pier/python/*.py`
+Run the same gates CI runs, from the repository root, before opening a PR:
+
+```bash
+pip install -e .
+pip install pytest ruff mypy
+
+pytest shared/tests/          # test suite (gating)
+ruff check shared/python/     # lint (gating)
+mypy shared/python/           # type check (gating; config in pyproject.toml)
+aci automation-smoke          # bounded smoke surface
+```
+
+Optional deeper checks:
+
+```bash
+aci installed-package-check   # packaging/install proof
+python shared/tools/aci_corpus_harness.py <real-project-dir>   # per-CI-ID precision triage
+```
+
+A quick pre-push hook that runs the four gates keeps lint and types green between
+CI runs; wire it into your local `.git/hooks/pre-push` or a pre-commit tool.
 
 ## Review Notes
 
