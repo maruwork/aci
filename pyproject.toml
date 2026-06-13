@@ -35,5 +35,13 @@ aci = [
   "package_assets/report/examples/*.json"
 ]
 
+[tool.mypy]
+# The package uses an intentional try/except ImportError dual-import idiom so
+# modules work both as an installed package and as direct scripts. mypy reports
+# every dual import as [no-redef]; that is by design, so the code is disabled.
+# All other type errors are gating (see .github/workflows/ci.yml).
+ignore_missing_imports = true
+disable_error_code = ["no-redef"]
+
 [tool.pytest.ini_options]
 testpaths = ["shared/tests"]
