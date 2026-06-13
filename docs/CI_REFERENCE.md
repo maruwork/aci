@@ -24,7 +24,7 @@ discussion prompt, `high` as close to a confirmed defect.
 | CI-05 | Copy-Paste Programming | identical function bodies (>= 4 statements) duplicated across 2+ files | `CI05_COPY_PASTE_CODE` | medium |
 | CI-06 | Magic Number | numeric literal repeated across 3+ files (excludes small ints <= 16 and powers of two) | `CI06_MAGIC_NUMBER` | low |
 | CI-12 | Poltergeist | tiny class that wraps one dependency and only delegates | `CI12_POLTERGEIST` | medium |
-| CI-14 | Security Neglect | `eval`/`exec`; `subprocess(..., shell=True)`; plaintext secret literal; plain `http://` URL | `CI14_DYNAMIC_CODE_EXECUTION`, `CI14_SUBPROCESS_SHELL_TRUE`, `CI14_PLAINTEXT_SECRET`, `CI14_INSECURE_HTTP` | high (secret: medium) |
+| CI-14 | Security Neglect | `eval`/`exec`; `subprocess(..., shell=True)`; plaintext secret literal; plain `http://` URL (comment/doctest lines skipped) | `CI14_DYNAMIC_CODE_EXECUTION`, `CI14_SUBPROCESS_SHELL_TRUE`, `CI14_PLAINTEXT_SECRET`, `CI14_INSECURE_HTTP` | high (secret, http: medium) |
 | CI-18 | Data Clump | function/constructor with >= 6 positional parameters | `CI18_PARAMETER_CLUSTER` | medium |
 | CI-19 | Feature Envy | domain side-program term used on an authority line (domain-aware; needs a domain pack) | `SIDE_PROGRAM_LEAK` | medium |
 | CI-20 | Shotgun Surgery | string constant repeated across 3+ files (excludes `__all__` export names) | `CI20_SCATTERED_CONSTANT` | medium |

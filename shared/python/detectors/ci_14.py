@@ -112,12 +112,28 @@ def scan_plaintext_secrets(path: Path, text: str, target_root: Path, next_id: in
     return findings
 
 
+def _http_match_is_noise(line_text: str, col: int) -> bool:
+    """Skip http:// occurrences that are not live transport: in a comment, or
+    in a doctest example line (>>> / ...). These dominate the false positives
+    (doc links, docstring examples) on real codebases."""
+    before = line_text[:col]
+    if "#" in before:
+        return True
+    stripped = line_text.lstrip()
+    return stripped.startswith(">>>") or stripped.startswith("...")
+
+
 def scan_insecure_http(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
     if path.suffix.lower() not in {".py", ".json", ".yml", ".yaml", ".toml", ".txt", ".md"}:
         return findings
+    lines = text.splitlines()
     for match in _INSECURE_HTTP_PATTERN.finditer(text):
         line = _line_number_from_index(text, match.start())
+        line_text = lines[line - 1] if 0 <= line - 1 < len(lines) else ""
+        col = match.start() - (text.rfind("\n", 0, match.start()) + 1)
+        if _http_match_is_noise(line_text, col):
+            continue
         findings.append(
             build_finding(
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
@@ -130,7 +146,7 @@ def scan_insecure_http(path: Path, text: str, target_root: Path, next_id: int) -
                 reason="Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected.",
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                 recommended_action="Prefer HTTPS or document why plaintext transport is intentionally bounded and safe.",
-                confidence=CONFIDENCE_HIGH,
+                confidence=CONFIDENCE_MEDIUM,
                 priority="P2",
                 owner_lane=LANE_NATIVE_STATIC,
                 verification_status=VERIFICATION_EXECUTED,
