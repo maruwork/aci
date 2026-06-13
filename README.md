@@ -13,15 +13,6 @@ Does not hardcode project-specific import layouts or side-program names in the c
 - `Pier` and similar are added as optional domain packs
 - project-local triggers and current state are held by the downstream integration
 
-## Governance Route
-
-Project-local AI governance for this standalone repository starts here.
-
-1. `AGENTS.md`
-2. `common/README.md`
-3. `docs/governance/project-template-adoption-packet.md`
-4. `docs/AI_AGENT_RUNTIME_TOKEN_OPTIMIZATION.md`
-
 `ACI` provides a shared inspection catalog, normalized findings, optional domain packs, and a report contract.
 
 ## What this is not
@@ -105,13 +96,6 @@ This smoke check verifies only:
 
 - `docs/ACI_DOWNSTREAM_ADOPTION_PACKET.md`
 
-### 3. Supplementary docs for maintainers
-
-The following are maintainer documents needed after initial setup; not required for first use.
-
-- `archive/docs-release/RELEASE_PREP_INDEX.md`
-- `docs/release/MAINTAINER_HISTORY_INDEX.md`
-
 ## Shelves
 
 - `shared/python/`: shared code for generic signals, profiles, and wording; paths, side-program terms, and surfaces are placeholders to be substituted per project
@@ -133,13 +117,6 @@ The only surfaces a user needs to be aware of initially:
 - `shared/runtime/`
 - `shared/report/`
 - `domains/`
-
-Supplementary surfaces are accessible via the index:
-
-- release-prep:
-  - `archive/docs-release/RELEASE_PREP_INDEX.md`
-- maintainer history:
-  - `docs/release/MAINTAINER_HISTORY_INDEX.md`
 
 ## Generic vs. Non-Generic Boundary
 
@@ -169,26 +146,9 @@ Entry point for domain packs is `domains/README.md`.
 - current physical home is this repository root
 - public-facing commands and file paths in this shelf are written repo-relative
 - keep `README.md`, `shared/`, and `domains/` at the repo root
-- extraction notes are in `archive/docs-release/REPO_EXPORT_GUIDE.md`
 
-## Release Preparation Docs
+## Packaging and Install Proof
 
-Release-prep and private preparation documents: `archive/docs-release/RELEASE_PREP_INDEX.md`.
-Release discipline: `archive/docs-release/RELEASE_DISCIPLINE_PACKET.md`.
-Release notes gate: `archive/docs-release/RELEASE_NOTES_DISCIPLINE_CONTRACT.md`.
-Release candidate review packet: `archive/docs-release/RELEASE_CANDIDATE_PACKET.md`.
-Release evidence snapshot: `archive/docs-release/RELEASE_EVIDENCE_SNAPSHOT.md`.
-Release upload dry-run proof: `archive/docs-release/REGISTRY_UPLOAD_DRY_RUN_PROOF.md`.
-Release execution handoff: `archive/docs-release/RELEASE_EXECUTION_HANDOFF_PACKET.md`.
-Release rollback discipline: `archive/docs-release/RELEASE_ROLLBACK_DISCIPLINE_CONTRACT.md`.
-Post-release review: `archive/docs-release/POST_RELEASE_REVIEW_PACKET.md`.
-Post-release maintenance cadence: `archive/docs-release/POST_RELEASE_MAINTENANCE_CADENCE.md`.
-Support lifecycle: `archive/docs-release/SUPPORT_LIFECYCLE_CONTRACT.md`.
-Registry publish gate: `archive/docs-release/REGISTRY_PUBLISHING_DISCIPLINE_CONTRACT.md`.
-Registry publish artifact set: `archive/docs-release/REGISTRY_ARTIFACT_CHECKLIST.md`.
-Release tag gate: `archive/docs-release/RELEASE_TAG_DISCIPLINE_CONTRACT.md`.
-Registry upload runbook: `archive/docs-release/REGISTRY_UPLOAD_RUNBOOK.md`.
-Packaging blockers and target layout: `archive/docs-release/PACKAGING_BLOCKERS.md` and `archive/docs-release/PACKAGE_LAYOUT_TARGET.md`.
 Package metadata and packaged CLI entrypoint: `pyproject.toml`.
 Installed-package proof surface: `shared/runtime/aci-installed-package-verification-contract.md`.
 Editable install proof surface: `shared/runtime/aci-editable-install-proof-contract.md`.
@@ -205,10 +165,6 @@ Source distribution proof surface: `shared/runtime/aci-source-distribution-proof
 ## Downstream Adoption
 
 Carry/customize boundary for downstream maintainers: `docs/ACI_DOWNSTREAM_ADOPTION_PACKET.md`.
-
-## Maintainer History
-
-Maintenance history: `docs/release/MAINTAINER_HISTORY_INDEX.md`.
 
 ## Repository Community Files
 

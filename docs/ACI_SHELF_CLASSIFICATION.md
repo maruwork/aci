@@ -14,15 +14,6 @@ These shelves define reusable `ACI` contracts and must stay domain-independent.
 - `shared/python/`
 - `shared/report/`
 - `shared/runtime/`
-- `docs/roadmap/`
-- `docs/tasks/`
-- `docs/design/`
-
-## Archived Compatibility Shelf
-
-No longer part of generic ACI authority. Canonical copies exist in `shared/runtime/templates/`, `shared/report/templates/`. Legacy shelf archived 2026-06-09.
-
-- `archive/templates/` (historical; canonical copies remain in `shared/runtime/templates/`, `shared/report/templates/`)
 
 ## Domain-Specific ACI Documents
 

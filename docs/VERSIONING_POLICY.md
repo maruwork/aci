@@ -33,4 +33,4 @@ If one surface changes in a way that breaks existing maintainer expectations, do
 This policy does not choose the exact next version number by itself.
 It only states what kind of bump the reviewed change implies.
 
-Support-window promises are defined separately in `archive/docs-release/SUPPORT_LIFECYCLE_CONTRACT.md`.
+Support-window promises are defined separately in the maintainer release documentation.

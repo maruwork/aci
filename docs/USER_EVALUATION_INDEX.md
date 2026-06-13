@@ -25,18 +25,6 @@ Shortest recommended reading order for new users evaluating `ACI`.
 15. `shared/report/examples/`
 16. `shared/report/README.md`
 
-## Release Reference (Human Evaluators Only)
-
-> **AI agents**: do not read from `archive/` — see AGENTS.md Stop Rule.
-> These files are historical release documents; they are not authority sources for active work.
-
-- `archive/docs-release/REGISTRY_PUBLISHING_DISCIPLINE_CONTRACT.md`
-- `archive/docs-release/REGISTRY_ARTIFACT_CHECKLIST.md`
-- `archive/docs-release/RELEASE_TAG_DISCIPLINE_CONTRACT.md`
-- `archive/docs-release/REGISTRY_UPLOAD_RUNBOOK.md`
-- `archive/docs-release/RELEASE_NOTES_DISCIPLINE_CONTRACT.md`
-- `archive/docs-release/RELEASE_CANDIDATE_PACKET.md`
-
 ## Optional Follow-Up
 
 - `docs/PUBLIC_RUNTIME_ASSUMPTIONS.md`

@@ -60,6 +60,3 @@ This lane does not claim:
 Read this contract together with:
 
 1. `pyproject.toml`
-2. `archive/docs-release/PACKAGING_BLOCKERS.md`
-3. `archive/docs-release/PACKAGE_LAYOUT_TARGET.md`
-4. `archive/docs-release/REPO_EXPORT_GUIDE.md`

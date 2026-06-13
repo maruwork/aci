@@ -12,3 +12,18 @@ venv/
 env/
 
 workspace/
+
+# Internal-management shelves — not part of the public distribution
+/common/
+/archive/
+/docs/governance/
+/docs/roadmap/
+/docs/tasks/
+/docs/design/
+/docs/release/
+
+# Developer-only AI control files — not published (see REPO_CONTENT_CLASSIFICATION)
+/AGENTS.md
+/CLAUDE.md
+/.claudeignore
+/docs/AI_AGENT_RUNTIME_TOKEN_OPTIMIZATION.md
