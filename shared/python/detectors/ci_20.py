@@ -118,6 +118,23 @@ def _is_severity_literal_family(
     return len(refs) >= 3 and literal in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "WARN", "ERROR"}
 
 
+def _is_export_manifest_literal(node: ast.Constant, parent_map: dict[ast.AST, ast.AST]) -> bool:
+    """True when the string is an element of a list/tuple assigned to ``__all__``.
+
+    Symbol names re-exported through ``__all__`` repeat across a package's
+    modules by design; they are export declarations, not scattered constants.
+    """
+    container = parent_map.get(node)
+    if not isinstance(container, (ast.List, ast.Tuple)):
+        return False
+    parent = parent_map.get(container)
+    if isinstance(parent, ast.Assign):
+        return any(isinstance(t, ast.Name) and t.id == "__all__" for t in parent.targets)
+    if isinstance(parent, (ast.AnnAssign, ast.AugAssign)):
+        return isinstance(parent.target, ast.Name) and parent.target.id == "__all__"
+    return False
+
+
 def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
     occurrences: dict[str, list[tuple[Path, int, bool]]] = {}
     for path in [p for p in paths if p.suffix.lower() == ".py"]:
@@ -133,6 +150,8 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
             if len(text) < 8 or " " in text:
                 continue
             if _is_low_information_scattered_literal(text):
+                continue
+            if _is_export_manifest_literal(node, parent_map):
                 continue
             occurrences.setdefault(text, []).append(
                 (path, getattr(node, "lineno", 0), _is_contract_field_literal_context(node, parent_map))
