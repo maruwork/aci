@@ -102,6 +102,7 @@ This smoke check verifies only:
 
 ### 2. Next reading
 
+- `docs/CONFIGURATION.md`
 - `docs/USER_EVALUATION_INDEX.md`
 - `shared/runtime/aci-cli-and-config-contract.md`
 - `shared/runtime/aci-ci-and-automation-contract.md`

@@ -1,0 +1,111 @@
+# ACI Configuration & Profiles
+
+Reference for the config file, scan profiles, operations file, and the gate
+controls. For a task-oriented walkthrough see `docs/QUICKSTART.md`.
+
+## Config file (`aci.toml`)
+
+Optional. Pass with `--config aci.toml`. All keys live under the `[aci]` table
+and set defaults that CLI flags can still override. Inspect the live schema with
+`aci show-config-schema`.
+
+```toml
+[aci]
+output_format = "pretty-json"            # json | pretty-json
+severity_threshold = "high"              # critical | high | medium | low
+fail_on_new_findings = false             # fail when any new finding remains after baseline
+fail_on_analyzer_errors = false          # fail when a configured external analyzer is missing/erroring
+fail_on_unreviewed_review_required = false  # fail when a human-judgment finding is neither waived nor baselined
+```
+
+## Profiles (`--profile`)
+
+A profile selects which lanes and signals run. Lanes: native-static (N),
+external-analyzer (E), human-judgment (H).
+
+| Profile | Lanes | Use for |
+|---|---|---|
+| `startup` | N | fastest orientation pass on a fresh checkout |
+| `quick-gate` | N + E | fast pre-commit / PR gate |
+| `state-change` | N + E + H | mid-work change review |
+| `wrap-up` | N + E + H | end-of-task review |
+| `full` | N + E + H | complete scan (all detectors + analyzers + human lane) |
+| `build-preflight` | N + E + H | before a build; adds mypy to the external lane |
+| `build-review` | N + E + H | release review; adds mypy + pytest |
+
+External analyzers run only when installed and the lane is enabled; add
+`--no-external-analyzers` to force native-only. Check readiness with
+`aci show-analyzer-availability` and the per-profile plan with
+`aci show-profile-execution-plan`.
+
+## Scope controls
+
+```bash
+--target <dir>            # directory to scan (required)
+--include-path <rel>      # limit to a subpath; repeatable
+--exclude-path <rel>      # exclude a subpath; repeatable
+--diff-from <git-ref>     # only files changed since the ref (respects include/exclude)
+--ignore-file <path>      # defaults to .aciignore under the target root when present
+```
+
+Generated paths (`.git`, `.venv`, `build`, `__pycache__`, `.claude`,
+`workspace`, …) are always skipped.
+
+## Gate controls
+
+```bash
+--severity-threshold critical        # lowest severity that blocks the gate
+--fail-on-new-findings               # block when a new finding remains after baseline
+--fail-on-unreviewed-review-required # block on un-waived human-judgment findings
+--fail-on-analyzer-errors            # block when an external analyzer is missing/erroring
+```
+
+The `scan` command exits non-zero when the gate fails or any finding remains —
+ready to use directly as a CI gate.
+
+## Operations file (`--operations-file ops.toml`)
+
+Accept, excuse, or drop findings without code changes. Entries can match by
+`fingerprint` (stable) or by `ci_id` + `target_file` + `line`.
+
+```toml
+[baseline]
+# accept current occurrences; only NEW findings fail the gate
+entries = [
+  { fingerprint = "CI-21|src/legacy/error_handler.py|1", ci_id = "CI-21", reason = "known legacy — scheduled refactor", first_seen = "2026-06-01" }
+]
+
+[suppression]
+# drop matching findings from output entirely
+entries = [
+  { suppression_id = "SUP-001", match = "sample-text-only", reason = "non-live sample artifact", reviewer = "you" }
+]
+
+[waiver]
+# explicitly excuse a specific finding (kept visible, not gating)
+entries = [
+  { waiver_id = "WAV-001", fingerprint = "CI-21|src/legacy/error_handler.py|1", owner = "you", reason = "accepted residual", review_condition = "recheck after refactor" }
+]
+```
+
+See `aci.example-operations.toml` for a complete example.
+
+## Ratchet gate (`--ratchet`)
+
+Fail if any CI-ID's finding count increases versus the last passing run. On the
+first run it writes a baseline state file (default `.aci-ratchet` under
+`--target`; override with `--ratchet-file`). Use it to prevent regressions while
+you pay down existing findings over time.
+
+```bash
+aci scan --target . --profile full --ratchet
+```
+
+## Reporting outputs
+
+```bash
+aci scan --target . --profile full --output-format json > report.json
+aci emit-sarif --report report.json > aci.sarif    # SARIF 2.1.0 for code scanning
+aci emit-annotations --report report.json          # GitHub Actions annotations
+aci validate-report --report report.json           # check against the report contract
+```
