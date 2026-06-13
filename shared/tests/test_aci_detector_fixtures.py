@@ -75,13 +75,13 @@ def test_ci02_long_function_clean_on_short_function(tmp_path: Path) -> None:
 # ── CI-04 (God Class) ─────────────────────────────────────────────────────
 
 def test_ci04_god_class_triggers_on_many_methods(tmp_path: Path) -> None:
-    methods = "\n".join(f"    def method_{i}(self): pass" for i in range(16))
+    methods = "\n".join(f"    def method_{i}(self): pass" for i in range(21))
     _write(tmp_path / "god.py", f"class Mega:\n{methods}\n")
     assert "CI04_GOD_CLASS" in _signals(_scan(tmp_path))
 
 
 def test_ci04_god_class_triggers_on_many_attributes(tmp_path: Path) -> None:
-    attrs = "\n".join(f"        self.attr_{i} = {i}" for i in range(11))
+    attrs = "\n".join(f"        self.attr_{i} = {i}" for i in range(16))
     _write(tmp_path / "god.py", f"class Big:\n    def __init__(self):\n{attrs}\n")
     assert "CI04_GOD_CLASS" in _signals(_scan(tmp_path))
 

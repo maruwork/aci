@@ -19,8 +19,11 @@ except ImportError:  # pragma: no cover - direct script/module import path
 
 SIGNALS: frozenset[str] = frozenset({"CI04_GOD_CLASS"})
 
-_METHOD_COUNT_THRESHOLD = 15
-_ATTRIBUTE_COUNT_THRESHOLD = 10
+# Calibrated (P1-4): library classes commonly hold 16-19 cohesive methods or
+# 11-14 attributes without being god classes. Only 20+ methods or 15+ attributes
+# are reported as a god-class signal.
+_METHOD_COUNT_THRESHOLD = 19
+_ATTRIBUTE_COUNT_THRESHOLD = 14
 
 
 def _count_non_dunder_methods(class_node: ast.ClassDef) -> int:

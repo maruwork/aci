@@ -135,7 +135,9 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             arg_names = [a.arg for a in node.args.args if a.arg not in {"self", "cls"}]
-            if len(arg_names) < 5:
+            # Calibrated (P1-4): 5 positional args is widely accepted; only 6+
+            # is reported. Constructors with 5 params are common and not a smell.
+            if len(arg_names) < 6:
                 continue
             if _is_boundary_interface_function(node):
                 continue
@@ -151,7 +153,7 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                     severity="medium",
                     target_file=_relative_path(path, root),
                     line=node.lineno,
-                    excerpt=f"def {node.name}({', '.join(arg_names[:5])}{'...' if len(arg_names) > 5 else ''})",
+                    excerpt=f"def {node.name}({', '.join(arg_names[:6])}{'...' if len(arg_names) > 6 else ''})",
                     reason=f"Function takes {len(arg_names)} positional arguments; consider a named parameter object.",
                     evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                     recommended_action="Group related parameters into a named data structure or configuration object.",
