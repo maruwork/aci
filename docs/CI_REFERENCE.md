@@ -18,7 +18,7 @@ discussion prompt, `high` as close to a confirmed defect.
 
 | CI-ID | Name | Detects | Signal(s) | Confidence |
 |---|---|---|---|---|
-| CI-02 | Spaghetti Code | control-flow nesting depth >= 5; functions with >= 50 logical (code) lines | `CI02_SPAGHETTI_CODE`, `CI02_LONG_FUNCTION` | medium / high |
+| CI-02 | Spaghetti Code | control-flow nesting depth >= 5; functions with >= 50 logical (code) lines | `CI02_SPAGHETTI_CODE`, `CI02_LONG_FUNCTION` | medium |
 | CI-03 | Patchwork Code | leftover `TODO` / `FIXME` / `HACK` markers in comments | `CI03_TODO_HACK` | high |
 | CI-04 | God Class | class with >= 20 non-dunder methods or >= 15 instance attributes | `CI04_GOD_CLASS` | medium |
 | CI-05 | Copy-Paste Programming | identical function bodies (>= 4 statements) duplicated across 2+ files | `CI05_COPY_PASTE_CODE` | medium |
@@ -29,7 +29,7 @@ discussion prompt, `high` as close to a confirmed defect.
 | CI-19 | Feature Envy | domain side-program term used on an authority line (domain-aware; needs a domain pack) | `SIDE_PROGRAM_LEAK` | medium |
 | CI-20 | Shotgun Surgery | string constant repeated across 3+ files (excludes `__all__` export names) | `CI20_SCATTERED_CONSTANT` | medium |
 | CI-21 | Error Handling Rot | `except Exception:` that does not re-raise; handler that returns a silent sentinel | `CI21_BROAD_EXCEPTION_SWALLOW`, `CI21_SILENT_EXCEPTION_RETURN` | medium |
-| CI-22 | Resource Lifecycle Leak | `open`/`Popen`/`*TemporaryFile` not wrapped in a `with` | `CI22_RESOURCE_CLEANUP_GAP` | high |
+| CI-22 | Resource Lifecycle Leak | `open`/`Popen`/`*TemporaryFile` not wrapped in a `with` | `CI22_RESOURCE_CLEANUP_GAP` | low |
 | CI-23 | Interface / Contract Drift | function hiding 2+ implicit fields behind `**kwargs` | `CI23_CONTRACT_FIELD_DRIFT` | low |
 | CI-25 | Nondeterminism / Environment Drift | `datetime.now()`/`today()` without tz; `random.*` calls | `CI25_ENVIRONMENT_DRIFT` | high |
 | CI-26 | Concurrency / Race Hazard | function mutating module-level state via `global` | `CI26_RACE_HAZARD` | high |

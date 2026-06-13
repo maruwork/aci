@@ -7,13 +7,13 @@ from pathlib import Path
 try:
     from ..aci_findings import (
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM, CONFIDENCE_HIGH,
+        CONFIDENCE_MEDIUM,
     )
     from ._helpers import _relative_path
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM, CONFIDENCE_HIGH,
+        CONFIDENCE_MEDIUM,
     )
     from detectors._helpers import _relative_path  # type: ignore[no-redef]
 
@@ -151,7 +151,9 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
                 ),
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                 recommended_action="Extract cohesive sub-operations into named helper functions.",
-                confidence=CONFIDENCE_HIGH,
+                # medium, not high: a long function is a design-review prompt, not
+                # a confirmed defect (precision audit 2026-06-13).
+                confidence=CONFIDENCE_MEDIUM,
                 priority="P2",
                 owner_lane=LANE_NATIVE_STATIC,
                 verification_status=VERIFICATION_EXECUTED,

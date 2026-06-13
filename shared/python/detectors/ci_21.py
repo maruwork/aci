@@ -86,7 +86,10 @@ def scan_broad(path: Path, text: str, target_root: Path, next_id: int) -> list[A
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
                 ci_id="CI-21",
                 signal="CI21_BROAD_EXCEPTION_SWALLOW",
-                severity="high",
+                # medium, not high: the precision audit (2026-06-13) found most
+                # broad excepts on real code are idiomatic bounded fallbacks, so
+                # this should surface for review, not block the default gate.
+                severity="medium",
                 target_file=_relative_path(path, target_root),
                 line=line,
                 excerpt=_line_excerpt(text, line),
@@ -127,7 +130,9 @@ def scan_silent(path: Path, text: str, target_root: Path, next_id: int) -> list[
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
                 ci_id="CI-21",
                 signal="CI21_SILENT_EXCEPTION_RETURN",
-                severity="high",
+                # medium, not high (see precision audit 2026-06-13): advisory,
+                # not a default-gate blocker.
+                severity="medium",
                 target_file=_relative_path(path, target_root),
                 line=line,
                 excerpt=_line_excerpt(text, line),

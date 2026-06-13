@@ -7,13 +7,13 @@ from pathlib import Path
 try:
     from ..aci_findings import (
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_HIGH,
+        CONFIDENCE_LOW,
     )
     from ._helpers import _relative_path, _line_excerpt
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_HIGH,
+        CONFIDENCE_LOW,
     )
     from detectors._helpers import _relative_path, _line_excerpt  # type: ignore[no-redef]
 
@@ -78,7 +78,10 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
                     "Wrap resource-opening calls in a 'with' statement to ensure "
                     "deterministic cleanup."
                 ),
-                confidence=CONFIDENCE_HIGH,
+                # low confidence: precision audit (2026-06-13) found most matches
+                # are managed via wrappers/context managers or exit paths — the
+                # "no with-statement" heuristic cannot see that without dataflow.
+                confidence=CONFIDENCE_LOW,
                 priority="P2",
                 owner_lane=LANE_NATIVE_STATIC,
                 verification_status=VERIFICATION_EXECUTED,
