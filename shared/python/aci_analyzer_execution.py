@@ -234,12 +234,28 @@ _RUFF_PREFIX_TO_CI: dict[str, str] = {
     "PL":  "CI-02",  # pylint
     "B":   "CI-21",  # flake8-bugbear — e.g. B904 broken exception chain (raise without `from e`)
     "TRY": "CI-21",  # flake8-tryceratops — e.g. TRY400 missing logging.exception
+    "BLE": "CI-21",  # flake8-blind-except — BLE001 broad except (same as native CI-21)
+    "TD":  "CI-03",  # flake8-todos — TODO markers (same as native CI-03)
+    "FIX": "CI-03",  # flake8-fixme — FIXME/HACK markers
+    "PLR": "CI-02",  # pylint refactor (complexity-ish) — default bucket
+    "PLW": "CI-02",  # pylint warning — default bucket
+    "PLC": "CI-02",
+}
+
+# Specific ruff codes whose category is a different native CI-ID than their
+# prefix bucket. Checked before the prefix lookup so native/external dedup lines
+# up (see _deduplicate_findings in aci_scan).
+_RUFF_CODE_TO_CI: dict[str, str] = {
+    "PLR0913": "CI-18",  # too-many-arguments -> data clump
+    "PLW0603": "CI-26",  # global-statement -> race hazard
 }
 
 _RUFF_PREFIX_PATTERN = re.compile(r"^([A-Z]+)")
 
 
 def _ruff_ci_id(code: str) -> str:
+    if code in _RUFF_CODE_TO_CI:
+        return _RUFF_CODE_TO_CI[code]
     m = _RUFF_PREFIX_PATTERN.match(code or "")
     if not m:
         return "CI-21"

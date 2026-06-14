@@ -556,10 +556,34 @@ def _build_residuals(findings: list[AciFinding]) -> list[dict[str, object]]:
 
 
 def _deduplicate_findings(findings: list[AciFinding]) -> list[AciFinding]:
+    # 1. exact fingerprint dedup
     deduplicated: dict[str, AciFinding] = {}
     for finding in findings:
         deduplicated.setdefault(finding.fingerprint, finding)
-    return list(deduplicated.values())
+    unique = list(deduplicated.values())
+
+    # 2. cross-lane dedup: when the external-analyzer lane (ruff/etc.) already
+    #    reports a CI-ID at a location, drop the native-static finding for the
+    #    same (ci_id, file, line). ACI complements the external linter rather than
+    #    re-reporting what it already covers. Native findings are kept untouched
+    #    when no external finding overlaps (e.g. the external lane is disabled).
+    external_locs = {
+        (f.ci_id, f.target_file, f.line)
+        for f in unique
+        if f.owner_lane == LANE_EXTERNAL_ANALYZER and f.line is not None
+    }
+    if not external_locs:
+        return unique
+    result: list[AciFinding] = []
+    for finding in unique:
+        if (
+            finding.owner_lane == LANE_NATIVE_STATIC
+            and finding.line is not None
+            and any((finding.ci_id, finding.target_file, finding.line + dl) in external_locs for dl in (0, -1, 1))
+        ):
+            continue
+        result.append(finding)
+    return result
 
 
 def _apply_operations(
