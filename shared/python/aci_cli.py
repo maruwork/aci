@@ -73,6 +73,20 @@ def _print_json(data: object, output_format: str) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=indent))
 
 
+def _write_report_file(data: dict, path: Path, output_format: str) -> None:
+    """Write the report JSON to `path` (creating parent dirs) and print a
+    one-line summary to stdout, so the report lives at a known location instead
+    of being mixed into piped stdout."""
+    indent = 2 if output_format == "pretty-json" else None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=indent), encoding="utf-8")
+    summary = data.get("summary") if isinstance(data, dict) else None
+    gate = data.get("gate") if isinstance(data, dict) else None
+    total = summary.get("total_findings", "?") if isinstance(summary, dict) else "?"
+    decision = gate.get("decision", "?") if isinstance(gate, dict) else "?"
+    print(f"ACI report written to {path} ({total} findings, gate: {decision})")
+
+
 def _read_json_file(path: Path) -> object:
     raw = path.read_bytes()
     for encoding in ("utf-8", "utf-8-sig", "utf-16"):
@@ -260,6 +274,18 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output-format",
         choices=["json", "pretty-json"],
         help="Override output format for this invocation",
+    )
+    scan.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help=(
+            "Write the report to PATH instead of stdout (parent dirs are created). "
+            "Overrides the [aci] report_output config default. When set, stdout gets a "
+            "one-line summary so the JSON does not mix with logs."
+        ),
     )
     scan.add_argument(
         "--ratchet",
@@ -458,7 +484,11 @@ def main() -> int:
                 ratchet_result = check_ratchet(findings, state_path=ratchet_path)
                 result["ratchet"] = ratchet_result
 
-            _print_json(result, output_format)
+            report_output = args.output or (Path(cfg.report_output) if cfg.report_output else None)
+            if report_output is not None:
+                _write_report_file(result, report_output, output_format)
+            else:
+                _print_json(result, output_format)
             gate = result.get("gate")
             summary = result.get("summary")
             if not isinstance(gate, dict) or not isinstance(summary, dict):

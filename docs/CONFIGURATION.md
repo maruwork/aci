@@ -16,6 +16,19 @@ severity_threshold = "high"              # critical | high | medium | low
 fail_on_new_findings = false             # fail when any new finding remains after baseline
 fail_on_analyzer_errors = false          # fail when a configured external analyzer is missing/erroring
 fail_on_unreviewed_review_required = false  # fail when a human-judgment finding is neither waived nor baselined
+report_output = ""                       # fixed path to write the report to; empty = stdout. Overridden by --output
+```
+
+## Report destination
+
+By default `aci scan` prints the report to **stdout**. To write it to a fixed
+file instead, set `report_output` in config or pass `--output PATH` (the latter
+wins). Parent directories are created; stdout then shows a one-line summary so
+the JSON does not mix into logs.
+
+```bash
+aci scan --target . --output .aci/report.json     # write to a known location
+# or, project-wide, set report_output = ".aci/report.json" in [aci]
 ```
 
 ## Profiles (`--profile`)

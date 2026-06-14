@@ -25,6 +25,7 @@ class AciCliConfig:
     fail_on_new_findings: bool = False
     fail_on_analyzer_errors: bool = False
     fail_on_unreviewed_review_required: bool = False
+    report_output: str = ""
 
     def as_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -62,6 +63,11 @@ def config_schema() -> dict[str, object]:
                 "default": False,
                 "purpose": "whether scans should fail when any human-judgment-lane finding has not been explicitly waived or added to baseline",
             },
+            "report_output": {
+                "type": "string",
+                "default": "",
+                "purpose": "fixed path to write the scan report to (relative paths resolve against the working directory); empty means print to stdout. Overridden by --output.",
+            },
         },
     }
 
@@ -79,6 +85,7 @@ def load_cli_config(config_path: Path | None) -> AciCliConfig:
     fail_on_new_findings = aci.get("fail_on_new_findings", False)
     fail_on_analyzer_errors = aci.get("fail_on_analyzer_errors", False)
     fail_on_unreviewed_review_required = aci.get("fail_on_unreviewed_review_required", False)
+    report_output = aci.get("report_output", "")
 
     if output_format not in VALID_OUTPUT_FORMATS:
         raise ValueError(f"Invalid output_format: {output_format}")
@@ -90,6 +97,8 @@ def load_cli_config(config_path: Path | None) -> AciCliConfig:
         raise ValueError("fail_on_analyzer_errors must be true or false")
     if not isinstance(fail_on_unreviewed_review_required, bool):
         raise ValueError("fail_on_unreviewed_review_required must be true or false")
+    if not isinstance(report_output, str):
+        raise ValueError("report_output must be a string path")
 
     return AciCliConfig(
         output_format=output_format,
@@ -97,4 +106,5 @@ def load_cli_config(config_path: Path | None) -> AciCliConfig:
         fail_on_new_findings=fail_on_new_findings,
         fail_on_analyzer_errors=fail_on_analyzer_errors,
         fail_on_unreviewed_review_required=fail_on_unreviewed_review_required,
+        report_output=report_output,
     )
