@@ -1,0 +1,27 @@
+{
+  "description": "Ground-truth validation suite for ACI detectors. 'planted' files each contain a known smell that MUST be detected (recall); 'clean' files are correct counterparts that MUST NOT raise the paired signal (precision). Labels are fixed here, not decided per run, so the scorecard is reproducible and does not depend on a reviewer's live judgment.",
+  "planted_expected_signals": [
+    "CI02_LONG_FUNCTION",
+    "CI04_GOD_CLASS",
+    "CI05_COPY_PASTE_CODE",
+    "CI06_MAGIC_NUMBER",
+    "CI07_UNUSED_PRIVATE_SYMBOL",
+    "CI13_CIRCULAR_IMPORT",
+    "CI14_DYNAMIC_CODE_EXECUTION",
+    "CI14_PLAINTEXT_SECRET",
+    "CI20_SCATTERED_CONSTANT",
+    "CI22_RESOURCE_CLEANUP_GAP",
+    "CI23_CONTRACT_FIELD_DRIFT",
+    "CI25_ENVIRONMENT_DRIFT",
+    "CI26_RACE_HAZARD"
+  ],
+  "clean_forbidden_signals": [
+    "CI02_LONG_FUNCTION",
+    "CI04_GOD_CLASS",
+    "CI05_COPY_PASTE_CODE",
+    "CI06_MAGIC_NUMBER",
+    "CI20_SCATTERED_CONSTANT",
+    "CI22_RESOURCE_CLEANUP_GAP",
+    "CI25_ENVIRONMENT_DRIFT"
+  ]
+}
