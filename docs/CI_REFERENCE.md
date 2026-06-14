@@ -16,23 +16,27 @@ discussion prompt, `high` as close to a confirmed defect.
 
 ## Native static detectors (Python)
 
-| CI-ID | Name | Detects | Signal(s) | Confidence |
+`vs ruff`: **unique** = a cross-file/structural check ruff cannot do (ACI's core
+value); **overlaps** = ruff already covers this (prefer ruff; ACI auto-dedupes
+its native finding when the ruff lane runs — see README "Relationship to ruff").
+
+| CI-ID | Name | Detects | Confidence | vs ruff |
 |---|---|---|---|---|
-| CI-02 | Spaghetti Code | control-flow nesting depth >= 5; functions with >= 50 logical (code) lines | `CI02_SPAGHETTI_CODE`, `CI02_LONG_FUNCTION` | medium |
-| CI-03 | Patchwork Code | leftover `TODO` / `FIXME` / `HACK` markers in comments | `CI03_TODO_HACK` | high |
-| CI-04 | God Class | class with >= 20 non-dunder methods or >= 15 instance attributes | `CI04_GOD_CLASS` | medium |
-| CI-05 | Copy-Paste Programming | identical function bodies (>= 4 statements) duplicated across 2+ files | `CI05_COPY_PASTE_CODE` | medium |
-| CI-06 | Magic Number | numeric literal repeated across 3+ files (excludes small ints <= 16 and powers of two) | `CI06_MAGIC_NUMBER` | low |
-| CI-12 | Poltergeist | tiny class that wraps one dependency and only delegates | `CI12_POLTERGEIST` | medium |
-| CI-14 | Security Neglect | `eval`/`exec`; `subprocess(..., shell=True)`; plaintext secret literal; plain `http://` URL (comment/doctest lines skipped) | `CI14_DYNAMIC_CODE_EXECUTION`, `CI14_SUBPROCESS_SHELL_TRUE`, `CI14_PLAINTEXT_SECRET`, `CI14_INSECURE_HTTP` | high (secret, http: medium) |
-| CI-18 | Data Clump | function/constructor with >= 6 positional parameters | `CI18_PARAMETER_CLUSTER` | medium |
-| CI-19 | Feature Envy | domain side-program term used on an authority line (domain-aware; needs a domain pack) | `SIDE_PROGRAM_LEAK` | medium |
-| CI-20 | Shotgun Surgery | string constant repeated across 3+ files (excludes `__all__` export names) | `CI20_SCATTERED_CONSTANT` | medium |
-| CI-21 | Error Handling Rot | `except Exception:` that does not re-raise; handler that returns a silent sentinel | `CI21_BROAD_EXCEPTION_SWALLOW`, `CI21_SILENT_EXCEPTION_RETURN` | medium |
-| CI-22 | Resource Lifecycle Leak | `open`/`Popen`/`*TemporaryFile` not wrapped in a `with` | `CI22_RESOURCE_CLEANUP_GAP` | low |
-| CI-23 | Interface / Contract Drift | function hiding 2+ implicit fields behind `**kwargs` | `CI23_CONTRACT_FIELD_DRIFT` | low |
-| CI-25 | Nondeterminism / Environment Drift | `datetime.now()`/`today()` without tz; `random.*` calls | `CI25_ENVIRONMENT_DRIFT` | high |
-| CI-26 | Concurrency / Race Hazard | function mutating module-level state via `global` | `CI26_RACE_HAZARD` | high |
+| CI-02 | Spaghetti Code | nesting depth >= 5 **and** cyclomatic complexity >= 8; or >= 50 logical lines | medium | overlaps (C901/PLR) |
+| CI-03 | Patchwork Code | leftover `TODO` / `FIXME` / `HACK` markers | high | overlaps (TD/FIX) |
+| CI-04 | God Class | large class (>= 15 methods) split into >= 2 substantial responsibility clusters (low LCOM cohesion) | medium | **unique** |
+| CI-05 | Copy-Paste Programming | rename-invariant structural near-duplicate function bodies (>= 18 nodes) across 2+ files | medium | **unique** |
+| CI-06 | Magic Number | numeric literal repeated across 3+ files (cross-file; excludes data-collection members, sub-byte ints, powers of two) | low | **unique** (cross-file) |
+| CI-12 | Poltergeist | tiny class that wraps one dependency and only delegates | medium | unique |
+| CI-14 | Security Neglect | `eval`/`exec`; `subprocess(shell=True)`; plaintext secret (AST); plain `http://` (docstrings/comments skipped) | high (secret/http: medium) | partial (bandit S); ACI finds more |
+| CI-18 | Data Clump | function with >= 6 **required** positional params (optional kwargs / framework signatures excluded) | medium | overlaps (PLR0913) |
+| CI-19 | Feature Envy | domain side-program term on an authority line (domain-aware; needs a domain pack) | medium | unique |
+| CI-20 | Shotgun Surgery | string constant repeated across 3+ files (cross-file; excludes symbol/export names, collection members) | medium | **unique** (cross-file) |
+| CI-21 | Error Handling Rot | `except Exception:` that does not re-raise (excl. module-level fallbacks); silent-sentinel return | medium | overlaps (BLE) |
+| CI-22 | Resource Lifecycle Leak | opener (`open`/`Popen`/`*TemporaryFile`) whose handle is not returned/stored/wrapped/closed/`with` (dataflow) | medium | partial (SIM115); ACI dataflow-aware |
+| CI-23 | Interface / Contract Drift | function hiding 2+ implicit fields behind `**kwargs` | low | **unique** |
+| CI-25 | Nondeterminism / Environment Drift | `datetime.now()`/`today()` without tz; `random.*` | high | partial (DTZ/S311) |
+| CI-26 | Concurrency / Race Hazard | function mutating module-level state via `global` | high | overlaps (PLW0603) |
 
 ## External-analyzer lane (opt-in, no native detector)
 

@@ -44,6 +44,26 @@ ACI is **Python-first**. Be aware of the scope before adopting:
 Non-Python codebases get only the language-agnostic text scans plus whatever
 opt-in external analyzers are installed — not the native structure detectors.
 
+## Relationship to ruff and other single-file linters
+
+ACI **complements** a fast single-file linter like ruff; it is not a replacement.
+A measured comparison against `ruff --select ALL` (see
+`docs/roadmap/PRECISION_AUDIT_2026-06-13.md`) shows where each adds value:
+
+- **ACI's unique value is cross-file and structural analysis a single-file
+  linter cannot do:** duplicate / near-duplicate code across files (CI-05),
+  low-cohesion god classes via LCOM (CI-04), constants/numbers scattered across
+  files (CI-20, CI-06), interface/contract drift (CI-23), and the
+  dataflow/cross-file parts of CI-14/CI-22/CI-25.
+- **For single-file lint signals, prefer ruff** — it already covers broad-except
+  (CI-21 ≈ ruff BLE), TODO markers (CI-03 ≈ TD/FIX), too-many-arguments
+  (CI-18 ≈ PLR0913), `global` mutation (CI-26 ≈ PLW0603), and most complexity
+  (CI-02 ≈ C901). When ACI's external lane runs ruff, ACI automatically drops the
+  duplicate native finding so you are not double-reported.
+
+Recommended setup: run ruff for fast single-file lint, and ACI for the cross-file
+/ structural layer on top.
+
 ## 3-Minute Evaluation
 
 To scan a project right away, follow `docs/QUICKSTART.md`.
