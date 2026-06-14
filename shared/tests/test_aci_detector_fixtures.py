@@ -84,13 +84,26 @@ def test_ci02_clean_on_shallow_nesting(tmp_path: Path) -> None:
 # ── CI-02 (Long Function) ─────────────────────────────────────────────────
 
 def test_ci02_long_function_triggers(tmp_path: Path) -> None:
-    lines = ["def process():"] + ["    x = 1" for _ in range(51)]
+    # Long AND branch-complex (15 guards -> complexity 16): a "does too much" smell.
+    lines = ["def process(n):"]
+    for i in range(15):
+        lines.append(f"    if n == {i}:")
+        lines.append(f"        x = {i}")
+    lines += ["    y = 1" for _ in range(25)]
     _write(tmp_path / "long.py", "\n".join(lines))
     assert "CI02_LONG_FUNCTION" in _signals(_scan(tmp_path))
 
 
 def test_ci02_long_function_clean_on_short_function(tmp_path: Path) -> None:
     _write(tmp_path / "short.py", "def process():\n    return 1\n")
+    assert "CI02_LONG_FUNCTION" not in _signals(_scan(tmp_path))
+
+
+def test_ci02_long_function_clean_on_long_but_flat(tmp_path: Path) -> None:
+    # A long but flat function (e.g. a big __init__ of attribute assignments):
+    # length without branching is not a refactor target, so it must not fire.
+    lines = ["def setup():"] + ["    x = 1" for _ in range(60)]
+    _write(tmp_path / "flat.py", "\n".join(lines))
     assert "CI02_LONG_FUNCTION" not in _signals(_scan(tmp_path))
 
 

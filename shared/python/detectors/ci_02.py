@@ -27,6 +27,14 @@ SIGNALS_LONG: frozenset[str] = frozenset({"CI02_LONG_FUNCTION"})
 _NESTING_THRESHOLD = 5
 _COMPLEXITY_THRESHOLD = 8  # McCabe cyclomatic complexity
 _LONG_FUNCTION_THRESHOLD = 50
+# A long function is a "does too much" smell only when it is also branch-complex.
+# A long-but-flat function -- a big __init__ of attribute assignments, a config
+# builder, a data table -- is not a refactor target, so length in the mid band
+# must be paired with cyclomatic complexity. Past a hard ceiling, sheer length is
+# unwieldy on its own. (This is what separates CI-02 from ruff's PLR0915, which
+# counts statements with no complexity dimension.)
+_LONG_FUNCTION_COMPLEXITY = 10
+_LONG_FUNCTION_HARD = 120
 
 
 def _cyclomatic_complexity(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
@@ -36,17 +44,20 @@ def _cyclomatic_complexity(func_node: ast.FunctionDef | ast.AsyncFunctionDef) ->
 
     def _visit(node: ast.AST) -> None:
         nonlocal complexity
+        # Count the node itself when it is a decision point, then descend. Counting
+        # the node (not its children) is what lets top-level body statements —
+        # a flat chain of `if`s with no nesting — contribute to complexity.
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            return  # separate scope; not part of this function's complexity
+        if isinstance(node, (ast.If, ast.For, ast.AsyncFor, ast.While, ast.ExceptHandler, ast.IfExp)):
+            complexity += 1
+        elif isinstance(node, ast.BoolOp):
+            complexity += len(node.values) - 1
+        elif isinstance(node, ast.comprehension):
+            complexity += len(node.ifs)
+        elif type(node).__name__ == "match_case":
+            complexity += 1
         for child in ast.iter_child_nodes(node):
-            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                continue  # separate scope; not part of this function's complexity
-            if isinstance(child, (ast.If, ast.For, ast.AsyncFor, ast.While, ast.ExceptHandler, ast.IfExp)):
-                complexity += 1
-            elif isinstance(child, ast.BoolOp):
-                complexity += len(child.values) - 1
-            elif isinstance(child, ast.comprehension):
-                complexity += len(child.ifs)
-            elif type(child).__name__ == "match_case":
-                complexity += 1
             _visit(child)
 
     for stmt in func_node.body:
@@ -165,6 +176,11 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
         body_lines = _logical_line_count(node, source_lines)
         if body_lines < _LONG_FUNCTION_THRESHOLD:
             continue
+        complexity = _cyclomatic_complexity(node)
+        if body_lines < _LONG_FUNCTION_HARD and complexity < _LONG_FUNCTION_COMPLEXITY:
+            # Long but flat (e.g. a big __init__ / config builder / data table):
+            # length without branching is not a "does too much" smell.
+            continue
         findings.append(
             build_finding(
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
@@ -173,10 +189,11 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
                 severity="medium",
                 target_file=_relative_path(path, target_root),
                 line=node.lineno,
-                excerpt=f"def {node.name}(...)",
+                excerpt=f"def {node.name}(...) [{body_lines} lines, complexity {complexity}]",
                 reason=(
-                    f"Function body contains {body_lines} code lines (excluding docstring/blank/comment), "
-                    f"exceeding the {_LONG_FUNCTION_THRESHOLD}-line threshold."
+                    f"Function '{node.name}' has {body_lines} code lines and cyclomatic "
+                    f"complexity {complexity}: long enough and branch-heavy enough that it "
+                    "likely bundles several responsibilities."
                 ),
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                 recommended_action="Extract cohesive sub-operations into named helper functions.",

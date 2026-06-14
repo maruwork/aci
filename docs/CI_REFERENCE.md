@@ -22,7 +22,7 @@ its native finding when the ruff lane runs — see README "Relationship to ruff"
 
 | CI-ID | Name | Detects | Confidence | vs ruff |
 |---|---|---|---|---|
-| CI-02 | Spaghetti Code | nesting depth >= 5 **and** cyclomatic complexity >= 8; or >= 50 logical lines | medium | overlaps (C901/PLR) |
+| CI-02 | Spaghetti Code | nesting depth >= 5 **and** cyclomatic complexity >= 8; or a long function (>= 50 logical lines **and** complexity >= 10, or >= 120 lines regardless of complexity — a flat long `__init__`/config builder is spared) | medium | overlaps (C901/PLR0915) |
 | CI-03 | Patchwork Code | leftover `TODO` / `FIXME` / `HACK` markers | high | overlaps (TD/FIX) |
 | CI-04 | God Class | large class (>= 15 methods) split into >= 2 substantial responsibility clusters (low LCOM cohesion) | medium | **unique** |
 | CI-05 | Copy-Paste Programming | rename-invariant structural near-duplicate function bodies (>= 18 nodes) across 2+ files | medium | **unique** |
