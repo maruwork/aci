@@ -72,12 +72,14 @@ def _is_managed_open(call_node: ast.Call, parent_map: dict[ast.AST, ast.AST]) ->
         return True  # returned to the caller, which owns cleanup
     if isinstance(parent, ast.Call):
         return True  # passed into a wrapper that takes ownership
+    if isinstance(parent, ast.Lambda):
+        return True  # a `lambda: open(...)` factory; ownership passes to whoever runs it
     if isinstance(parent, ast.withitem):
         return True
     if isinstance(parent, ast.Assign):
         for target in parent.targets:
-            if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "self":
-                return True  # stored on the instance, closed elsewhere
+            if isinstance(target, ast.Attribute):
+                return True  # stored on an object (self.fp, sys.stdin, ...); lifecycle delegated
             if isinstance(target, ast.Name):
                 func = _enclosing_function(call_node, parent_map)
                 if func is not None and _name_is_managed(func, target.id):
