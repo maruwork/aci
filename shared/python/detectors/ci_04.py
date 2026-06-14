@@ -19,11 +19,11 @@ except ImportError:  # pragma: no cover - direct script/module import path
 
 SIGNALS: frozenset[str] = frozenset({"CI04_GOD_CLASS"})
 
-# Calibrated (P1-4): library classes commonly hold 16-19 cohesive methods or
-# 11-14 attributes without being god classes. Only 20+ methods or 15+ attributes
-# are reported as a god-class signal.
-_METHOD_COUNT_THRESHOLD = 19
-_ATTRIBUTE_COUNT_THRESHOLD = 14
+# A god class is LARGE *and* LOW-COHESION. Size alone flags cohesive facades
+# (BaseModel, Console). We require both: many methods AND the methods split into
+# 2+ unrelated responsibility groups (LCOM4 >= 2) — i.e. the class is genuinely
+# splittable.
+_METHOD_COUNT_THRESHOLD = 15
 
 
 def _count_non_dunder_methods(class_node: ast.ClassDef) -> int:
@@ -34,28 +34,51 @@ def _count_non_dunder_methods(class_node: ast.ClassDef) -> int:
     )
 
 
-def _count_instance_attributes(class_node: ast.ClassDef) -> int:
-    attrs: set[str] = set()
-    for node in ast.walk(class_node):
-        if not isinstance(node, ast.FunctionDef) or node.name != "__init__":
-            continue
-        for stmt in ast.walk(node):
-            if isinstance(stmt, ast.Assign):
-                for target in stmt.targets:
-                    if (
-                        isinstance(target, ast.Attribute)
-                        and isinstance(target.value, ast.Name)
-                        and target.value.id == "self"
-                    ):
-                        attrs.add(target.attr)
-            elif isinstance(stmt, ast.AnnAssign):
-                if (
-                    isinstance(stmt.target, ast.Attribute)
-                    and isinstance(stmt.target.value, ast.Name)
-                    and stmt.target.value.id == "self"
-                ):
-                    attrs.add(stmt.target.attr)
-    return len(attrs)
+def _self_members(method: ast.AST) -> set[str]:
+    """Instance members (attributes and self-method names) a method touches."""
+    members: set[str] = set()
+    for node in ast.walk(method):
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "self":
+            members.add(node.attr)
+    return members
+
+
+def _cohesion_component_sizes(class_node: ast.ClassDef) -> list[int]:
+    """Sizes of the connected components when non-dunder methods are linked by
+    shared instance members (LCOM4 component structure). Each component is one
+    responsibility cluster. Constructors/dunders are excluded (they touch
+    everything and would mask the split); methods touching no member are skipped."""
+    methods = [
+        m for m in class_node.body
+        if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and not (m.name.startswith("__") and m.name.endswith("__"))
+    ]
+    member_sets = {m.name: _self_members(m) for m in methods}
+    active = [name for name, members in member_sets.items() if members]
+    if len(active) < 2:
+        return [len(active)] if active else []
+
+    parent = {name: name for name in active}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: str, b: str) -> None:
+        parent[find(a)] = find(b)
+
+    for i in range(len(active)):
+        for j in range(i + 1, len(active)):
+            if member_sets[active[i]] & member_sets[active[j]]:
+                union(active[i], active[j])
+
+    sizes: dict[str, int] = {}
+    for name in active:
+        root = find(name)
+        sizes[root] = sizes.get(root, 0) + 1
+    return sorted(sizes.values(), reverse=True)
 
 
 def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
@@ -70,18 +93,14 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
         if not isinstance(node, ast.ClassDef):
             continue
         method_count = _count_non_dunder_methods(node)
-        attr_count = _count_instance_attributes(node)
-        if method_count <= _METHOD_COUNT_THRESHOLD and attr_count <= _ATTRIBUTE_COUNT_THRESHOLD:
+        if method_count < _METHOD_COUNT_THRESHOLD:
             continue
-        reason_parts = []
-        if method_count > _METHOD_COUNT_THRESHOLD:
-            reason_parts.append(
-                f"{method_count} non-dunder methods (threshold: {_METHOD_COUNT_THRESHOLD})"
-            )
-        if attr_count > _ATTRIBUTE_COUNT_THRESHOLD:
-            reason_parts.append(
-                f"{attr_count} instance attributes (threshold: {_ATTRIBUTE_COUNT_THRESHOLD})"
-            )
+        component_sizes = _cohesion_component_sizes(node)
+        substantial = [s for s in component_sizes if s >= 2]
+        if len(substantial) < 2:
+            # cohesive, or only one real responsibility cluster (+ stray helpers)
+            continue
+        lcom = len(component_sizes)
         findings.append(
             build_finding(
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
@@ -91,11 +110,14 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
                 target_file=_relative_path(path, target_root),
                 line=node.lineno,
                 excerpt=f"class {node.name}",
-                reason=f"Class {node.name!r} shows God Class indicators: {'; '.join(reason_parts)}.",
+                reason=(
+                    f"Class {node.name!r} has {method_count} methods split into {lcom} "
+                    "unrelated responsibility groups (low cohesion / LCOM4)."
+                ),
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                 recommended_action=(
-                    "Split responsibilities into focused classes or extract cohesive groups "
-                    "of methods and attributes into separate units."
+                    "Split the class along its cohesion groups: methods that share no "
+                    "instance state belong in separate, focused classes."
                 ),
                 confidence=CONFIDENCE_MEDIUM,
                 priority="P2",

@@ -74,16 +74,19 @@ def test_ci02_long_function_clean_on_short_function(tmp_path: Path) -> None:
 
 # ── CI-04 (God Class) ─────────────────────────────────────────────────────
 
-def test_ci04_god_class_triggers_on_many_methods(tmp_path: Path) -> None:
-    methods = "\n".join(f"    def method_{i}(self): pass" for i in range(21))
-    _write(tmp_path / "god.py", f"class Mega:\n{methods}\n")
+def test_ci04_god_class_triggers_on_large_low_cohesion(tmp_path: Path) -> None:
+    # 16 methods in two disjoint groups (alpha vs beta) -> LCOM4 = 2.
+    group_a = "\n".join(f"    def a_{i}(self):\n        return self.alpha" for i in range(8))
+    group_b = "\n".join(f"    def b_{i}(self):\n        return self.beta" for i in range(8))
+    _write(tmp_path / "god.py", f"class Mega:\n{group_a}\n{group_b}\n")
     assert "CI04_GOD_CLASS" in _signals(_scan(tmp_path))
 
 
-def test_ci04_god_class_triggers_on_many_attributes(tmp_path: Path) -> None:
-    attrs = "\n".join(f"        self.attr_{i} = {i}" for i in range(16))
-    _write(tmp_path / "god.py", f"class Big:\n    def __init__(self):\n{attrs}\n")
-    assert "CI04_GOD_CLASS" in _signals(_scan(tmp_path))
+def test_ci04_clean_on_large_cohesive_class(tmp_path: Path) -> None:
+    # 16 methods that all share self.state -> cohesive (LCOM4 = 1), not a god class.
+    methods = "\n".join(f"    def m_{i}(self):\n        return self.state" for i in range(16))
+    _write(tmp_path / "cohesive.py", f"class Big:\n{methods}\n")
+    assert "CI04_GOD_CLASS" not in _signals(_scan(tmp_path))
 
 
 def test_ci04_god_class_clean_on_small_class(tmp_path: Path) -> None:
