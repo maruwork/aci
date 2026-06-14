@@ -20,6 +20,23 @@ except ImportError:  # pragma: no cover - direct script/module import path
 SIGNALS: frozenset[str] = frozenset({"CI26_RACE_HAZARD"})
 
 
+def _lazy_init_guarded_names(body_mod: ast.Module) -> set[str]:
+    """Global names whose mutation is gated by an ``is None`` / ``not name``
+    check -- the lazy-initialization / memoization idiom (`global _cache; if
+    _cache is None: _cache = build()`). This is GIL-safe, intentional, single-
+    assignment state, not a shared-mutable race, so it is the dominant CI-26
+    false positive in real code."""
+    guarded: set[str] = set()
+    for n in ast.walk(body_mod):
+        if isinstance(n, ast.Compare) and isinstance(n.left, ast.Name):
+            for op, comp in zip(n.ops, n.comparators):
+                if isinstance(op, (ast.Is, ast.IsNot)) and isinstance(comp, ast.Constant) and comp.value is None:
+                    guarded.add(n.left.id)
+        elif isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not) and isinstance(n.operand, ast.Name):
+            guarded.add(n.operand.id)
+    return guarded
+
+
 def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     if path.suffix.lower() != ".py":
         return []
@@ -33,10 +50,13 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         body_mod = ast.Module(body=node.body, type_ignores=[])
+        lazy_init = _lazy_init_guarded_names(body_mod)
         for child in ast.walk(body_mod):
             if not isinstance(child, ast.Global):
                 continue
             for name in child.names:
+                if name in lazy_init:
+                    continue  # lazy-init / memoization guard, not a race
                 findings.append(
                     build_finding(
                         finding_id=f"F-SCAN-{next_id + len(findings):04d}",

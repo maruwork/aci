@@ -330,7 +330,7 @@ def test_ci14_secret_clean_on_env_var_reference(tmp_path: Path) -> None:
 def test_ci14_http_triggers_on_plain_http_url(tmp_path: Path) -> None:
     _write(
         tmp_path / "http.py",
-        'ENDPOINT = "http://internal.example.local/api"\n',
+        'ENDPOINT = "http://api.acme-corp.com/v1/charge"\n',
     )
     assert "CI14_INSECURE_HTTP" in _signals(_scan(tmp_path))
 

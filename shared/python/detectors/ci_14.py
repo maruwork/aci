@@ -36,9 +36,40 @@ _PLAINTEXT_SECRET_PATTERN = re.compile(
 )
 _INSECURE_HTTP_PATTERN = re.compile(r"(?i)http://[A-Za-z0-9._:/\-]+")
 
+# Env-var / constant NAMES (UPPER_SNAKE with an underscore) assigned to a
+# secret-named target are labels, not secret material: `SECRET_KEY =
+# 'AWS_SECRET_ACCESS_KEY'`. A real credential is not shaped like a screaming-
+# snake identifier, so excluding this shape kills the dominant secret FP
+# without dropping mixed-case/opaque keys.
+_ENV_VAR_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$")
+
+# http:// hosts that are identifiers, not live transport: XML/schema namespace
+# URIs (xmlns=...) and reserved documentation/example domains. These are never
+# fetched, so flagging them as insecure transport is noise.
+_NON_ENDPOINT_HTTP_HOSTS: frozenset[str] = frozenset({
+    "example.com", "example.org", "example.net", "example.edu",
+    "localhost", "127.0.0.1", "0.0.0.0",
+    "www.w3.org", "w3.org", "schemas.xmlsoap.org", "purl.org",
+    "www.iana.org", "ns.adobe.com", "tempuri.org", "dublincore.org",
+    "schemas.openxmlformats.org", "schemas.microsoft.com", "docbook.org",
+})
+_NON_ENDPOINT_HTTP_SUFFIXES: tuple[str, ...] = (
+    ".w3.org", ".xmlsoap.org", ".local", ".test", ".invalid", ".example", ".localhost",
+)
+
+
+def _http_host_is_non_endpoint(url: str) -> bool:
+    rest = url[len("http://"):]
+    host = re.split(r"[/:?#]", rest, maxsplit=1)[0].lower()
+    return host in _NON_ENDPOINT_HTTP_HOSTS or host.endswith(_NON_ENDPOINT_HTTP_SUFFIXES)
+
 
 def _is_secret_string_value(value: object) -> bool:
-    return isinstance(value, str) and bool(_SECRET_VALUE_PATTERN.match(value))
+    return (
+        isinstance(value, str)
+        and bool(_SECRET_VALUE_PATTERN.match(value))
+        and not _ENV_VAR_NAME_PATTERN.match(value)
+    )
 
 
 def _ast_secret_lines(tree: ast.AST) -> list[int]:
@@ -217,6 +248,8 @@ def scan_insecure_http(path: Path, text: str, target_root: Path, next_id: int) -
         line_text = lines[line - 1] if 0 <= line - 1 < len(lines) else ""
         col = match.start() - (text.rfind("\n", 0, match.start()) + 1)
         if _http_match_is_noise(line_text, col):
+            continue
+        if _http_host_is_non_endpoint(match.group(0)):
             continue
         findings.append(
             build_finding(

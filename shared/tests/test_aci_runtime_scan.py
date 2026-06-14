@@ -144,7 +144,7 @@ def test_ignore_file_excludes_targets(tmp_path: Path) -> None:
 def test_secrets_and_http_detectors_emit_findings(tmp_path: Path) -> None:
     _write(
         tmp_path / "secrets.py",
-        'API_KEY = "SECRET12345"\nENDPOINT = "http://internal.example.local/api"\n',
+        'API_KEY = "SECRET12345"\nENDPOINT = "http://api.acme-corp.com/v1/charge"\n',
     )
 
     report = scan_target(
