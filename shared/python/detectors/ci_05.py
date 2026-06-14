@@ -71,13 +71,38 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                 continue
             body_map.setdefault(content, []).append((path, node.lineno, node.name))
 
-    findings: list[AciFinding] = []
+    # Aggregate clone signatures by the set of files they span. Two parallel
+    # implementations that share N duplicated function bodies (e.g. uvicorn's
+    # h11 vs httptools HTTP protocols, or a v1/v2 compat namespace) otherwise
+    # produce N separate findings for what is really one fact: "these files are
+    # structural near-duplicates." One finding per file-set, listing the shared
+    # functions, is the actionable unit.
+    groups: dict[frozenset[str], list[tuple[Path, int, str]]] = {}
     for content, locs in body_map.items():
         distinct = {_relative_path(p, root) for p, _, _ in locs}
         if len(distinct) < 2:
             continue
-        first_path, first_line, first_name = locs[0]
-        files_sample = ", ".join(sorted(distinct)[:3])
+        # one representative occurrence (first) per duplicated signature
+        groups.setdefault(frozenset(distinct), []).append(locs[0])
+
+    findings: list[AciFinding] = []
+    for fileset, funcs in groups.items():
+        funcs_sorted = sorted(funcs, key=lambda t: (_relative_path(t[0], root), t[1]))
+        first_path, first_line, _first_name = funcs_sorted[0]
+        files_sample = ", ".join(sorted(fileset)[:3])
+        names = list(dict.fromkeys(nm for _, _, nm in funcs_sorted))  # dedupe, keep order
+        name_sample = ", ".join(names[:6]) + ("..." if len(names) > 6 else "")
+        if len(funcs_sorted) == 1:
+            reason = (
+                f"Function body is structurally duplicated (rename-invariant near-duplicate) "
+                f"across {len(fileset)} files without a shared abstraction: {files_sample}"
+            )
+        else:
+            reason = (
+                f"{len(funcs_sorted)} function bodies are structurally duplicated "
+                f"(rename-invariant near-duplicates) across {len(fileset)} files without a "
+                f"shared abstraction ({files_sample}): {name_sample}"
+            )
         findings.append(
             build_finding(
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
@@ -86,11 +111,8 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                 severity="medium",
                 target_file=_relative_path(first_path, root),
                 line=first_line,
-                excerpt=f"def {first_name}(...)",
-                reason=(
-                    f"Function body is structurally duplicated (rename-invariant near-duplicate) "
-                    f"across {len(distinct)} files without a shared abstraction: {files_sample}"
-                ),
+                excerpt=f"def {_first_name}(...)",
+                reason=reason,
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                 recommended_action="Extract the shared logic into a single named function and call it from each site.",
                 confidence=CONFIDENCE_MEDIUM,
