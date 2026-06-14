@@ -48,6 +48,21 @@ def _handler_reraises(handler: ast.ExceptHandler) -> bool:
     return any(isinstance(stmt, ast.Raise) for stmt in handler.body)
 
 
+def _is_module_level_fallback(handler: ast.ExceptHandler, parent_map: dict[ast.AST, ast.AST]) -> bool:
+    """True for a module-scope `try: X = probe() except Exception: X = default`.
+
+    Setting a fallback value at module scope is idiomatic feature/environment
+    detection (e.g. `try: FD = sys.stdin.fileno() except Exception: FD = 0`), not
+    error-handling rot. Requires the handler body to be only assignments (a pure
+    `except: pass` still swallows and is kept)."""
+    if not handler.body or not all(isinstance(s, (ast.Assign, ast.AnnAssign)) for s in handler.body):
+        return False
+    try_node = parent_map.get(handler)
+    if not isinstance(try_node, ast.Try):
+        return False
+    return isinstance(parent_map.get(try_node), ast.Module)
+
+
 def _is_silent_return_value(node: ast.expr | None) -> bool:
     if node is None:
         return True
@@ -79,6 +94,8 @@ def scan_broad(path: Path, text: str, target_root: Path, next_id: int) -> list[A
         if _is_bounded_retry_handler(handler, parent_map):
             continue
         if _handler_reraises(handler):
+            continue
+        if _is_module_level_fallback(handler, parent_map):
             continue
         line = handler.lineno
         findings.append(
