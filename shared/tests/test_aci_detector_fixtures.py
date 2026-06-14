@@ -30,9 +30,31 @@ def _scan(tmp_path: Path) -> dict:
 
 # ── CI-02 (Spaghetti Code) ─────────────────────────────────────────────────
 
-def test_ci02_triggers_on_deep_nesting(tmp_path: Path) -> None:
+def test_ci02_triggers_on_deep_and_complex(tmp_path: Path) -> None:
+    # deep nesting (>=5) AND high branching (cyclomatic complexity >=8) = tangled
     _write(
         tmp_path / "spaghetti.py",
+        "\n".join([
+            "def f(a, b):",
+            "    if a:",
+            "        if a > 1:",
+            "            if a > 2:",
+            "                for x in b:",
+            "                    if x and a:",
+            "                        if x > 3 or b:",
+            "                            return x",
+            "                        elif x > 4:",
+            "                            return 0",
+            "    return -1",
+        ]),
+    )
+    assert "CI02_SPAGHETTI_CODE" in _signals(_scan(tmp_path))
+
+
+def test_ci02_clean_on_deep_but_linear_nesting(tmp_path: Path) -> None:
+    # deeply nested but a single linear path (low complexity) -> not spaghetti
+    _write(
+        tmp_path / "linear.py",
         "\n".join([
             "def f(a):",
             "    if a:",
@@ -43,7 +65,7 @@ def test_ci02_triggers_on_deep_nesting(tmp_path: Path) -> None:
             "                        return a",
         ]),
     )
-    assert "CI02_SPAGHETTI_CODE" in _signals(_scan(tmp_path))
+    assert "CI02_SPAGHETTI_CODE" not in _signals(_scan(tmp_path))
 
 
 def test_ci02_clean_on_shallow_nesting(tmp_path: Path) -> None:

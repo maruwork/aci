@@ -20,12 +20,38 @@ except ImportError:  # pragma: no cover - direct script/module import path
 SIGNALS_SPAGHETTI: frozenset[str] = frozenset({"CI02_SPAGHETTI_CODE"})
 SIGNALS_LONG: frozenset[str] = frozenset({"CI02_LONG_FUNCTION"})
 
-# Calibrated against a mature-corpus baseline (P1-4): depth 4 is common and
-# acceptable in real code, so only depth >= 5 is reported. Long-function size is
-# measured in logical lines (code only — docstrings, blanks, and comments are
-# excluded) so documentation does not inflate the count.
+# Spaghetti = deeply nested AND branch-complex. Deep nesting alone (a linear
+# chain of ifs) or high branching alone (a flat dispatch) is not the smell;
+# requiring both targets genuinely tangled control flow. Long-function size is
+# measured in logical lines (code only) so documentation does not inflate it.
 _NESTING_THRESHOLD = 5
+_COMPLEXITY_THRESHOLD = 8  # McCabe cyclomatic complexity
 _LONG_FUNCTION_THRESHOLD = 50
+
+
+def _cyclomatic_complexity(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    """McCabe cyclomatic complexity of the function body (decision points + 1).
+    Nested function/class bodies are not descended into."""
+    complexity = 1
+
+    def _visit(node: ast.AST) -> None:
+        nonlocal complexity
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue  # separate scope; not part of this function's complexity
+            if isinstance(child, (ast.If, ast.For, ast.AsyncFor, ast.While, ast.ExceptHandler, ast.IfExp)):
+                complexity += 1
+            elif isinstance(child, ast.BoolOp):
+                complexity += len(child.values) - 1
+            elif isinstance(child, ast.comprehension):
+                complexity += len(child.ifs)
+            elif type(child).__name__ == "match_case":
+                complexity += 1
+            _visit(child)
+
+    for stmt in func_node.body:
+        _visit(stmt)
+    return complexity
 
 
 def _max_control_flow_depth(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
@@ -95,6 +121,9 @@ def scan_spaghetti(path: Path, text: str, target_root: Path, next_id: int) -> li
         depth = _max_control_flow_depth(node)
         if depth < _NESTING_THRESHOLD:
             continue
+        complexity = _cyclomatic_complexity(node)
+        if complexity < _COMPLEXITY_THRESHOLD:
+            continue  # deeply nested but not branch-complex — a linear chain, not spaghetti
         findings.append(
             build_finding(
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
@@ -103,10 +132,10 @@ def scan_spaghetti(path: Path, text: str, target_root: Path, next_id: int) -> li
                 severity="medium",
                 target_file=_relative_path(path, target_root),
                 line=node.lineno,
-                excerpt=f"def {node.name}(...) [nesting depth {depth}]",
+                excerpt=f"def {node.name}(...) [nesting {depth}, complexity {complexity}]",
                 reason=(
-                    f"Function '{node.name}' has control-flow nesting depth {depth}; "
-                    "tangled branching obscures state movement and makes the function hard to follow."
+                    f"Function '{node.name}' is tangled: nesting depth {depth} and cyclomatic "
+                    f"complexity {complexity}. Deep nesting plus heavy branching obscures state movement."
                 ),
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                 recommended_action="Extract inner blocks into named helper functions to flatten the control flow.",
