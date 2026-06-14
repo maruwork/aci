@@ -190,6 +190,32 @@ def test_ci06_clean_on_named_constant_definition(tmp_path: Path) -> None:
     assert "CI06_MAGIC_NUMBER" not in _signals(_scan(tmp_path))
 
 
+# ── CI-07 (Cross-file dead private symbol) ────────────────────────────────
+
+def test_ci07_triggers_on_unused_private_function(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "def _dead():\n    return 1\n")
+    _write(tmp_path / "b.py", "x = 1\n")
+    assert "CI07_UNUSED_PRIVATE_SYMBOL" in _signals(_scan(tmp_path))
+
+
+def test_ci07_clean_on_private_used_in_another_file(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "def _used():\n    return 2\n")
+    _write(tmp_path / "b.py", "from a import _used\nx = _used()\n")
+    assert "CI07_UNUSED_PRIVATE_SYMBOL" not in _signals(_scan(tmp_path))
+
+
+def test_ci07_clean_on_public_unused(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "def public_unused():\n    return 3\n")
+    assert "CI07_UNUSED_PRIVATE_SYMBOL" not in _signals(_scan(tmp_path))
+
+
+def test_ci07_spares_private_named_in_string(tmp_path: Path) -> None:
+    # a string equal to the name could be a getattr/registry target
+    _write(tmp_path / "a.py", "def _maybe():\n    return 1\n")
+    _write(tmp_path / "b.py", "name = '_maybe'\n")
+    assert "CI07_UNUSED_PRIVATE_SYMBOL" not in _signals(_scan(tmp_path))
+
+
 # ── CI-12 (Poltergeist) ───────────────────────────────────────────────────
 
 def test_ci12_triggers_on_pure_delegation_class(tmp_path: Path) -> None:

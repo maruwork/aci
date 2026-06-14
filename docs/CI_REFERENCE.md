@@ -27,6 +27,7 @@ its native finding when the ruff lane runs — see README "Relationship to ruff"
 | CI-04 | God Class | large class (>= 15 methods) split into >= 2 substantial responsibility clusters (low LCOM cohesion) | medium | **unique** |
 | CI-05 | Copy-Paste Programming | rename-invariant structural near-duplicate function bodies (>= 18 nodes) across 2+ files | medium | **unique** |
 | CI-06 | Magic Number | numeric literal repeated across 3+ files (cross-file; excludes data-collection members, sub-byte ints, powers of two) | low | **unique** (cross-file) |
+| CI-07 | Lava Flow (dead private symbol) | module-level private `_name` function/class referenced nowhere in the whole project (cross-file; excludes decorated, `__all__`, string-referenced) | medium | **unique** (cross-file) |
 | CI-12 | Poltergeist | tiny class that wraps one dependency and only delegates | medium | unique |
 | CI-13 | Dependency Rot (circular import) | cross-file import cycles (strongly-connected import graph; stdlib-shadowing-safe, TYPE_CHECKING/deferred imports excluded) | high | **unique** (cross-file) |
 | CI-14 | Security Neglect | `eval`/`exec`; `subprocess(shell=True)`; plaintext secret (AST); plain `http://` (docstrings/comments skipped) | high (secret/http: medium) | partial (bandit S); ACI finds more |
@@ -46,7 +47,7 @@ installed and the profile enables the external lane.
 
 | CI-ID | Name | Produced by |
 |---|---|---|
-| CI-07 | Lava Flow (dead/unreachable code) | ruff, pyflakes |
+| CI-07 | Lava Flow (single-file unused) | ruff, pyflakes — complements ACI's native cross-file dead-private-symbol detector above |
 | CI-09 | Test Rot | pytest |
 | CI-13 | Dependency Rot (unused/outdated imports) | ruff, pyflakes — complements ACI's native circular-import detector above |
 | CI-15 | Documentation Rot | ruff, mypy |
