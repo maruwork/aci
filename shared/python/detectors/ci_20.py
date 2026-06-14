@@ -141,6 +141,44 @@ def _is_export_manifest_literal(node: ast.Constant, parent_map: dict[ast.AST, as
 
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+_URI_SCHEME_PATTERN = re.compile(r"^[a-z][a-z0-9+.\-]*://", re.IGNORECASE)
+_WINDOWS_DRIVE_PATTERN = re.compile(r"^[A-Za-z]:[\\/]")
+_PATH_WITH_EXTENSION_PATTERN = re.compile(r"/[^/\s]*\.[A-Za-z0-9]{1,6}(?:/|$)")
+_PRINTF_FORMAT_PATTERN = re.compile(r"%[-+ #0]?\d*\.?\d*[sdrfgeixXoc%]")
+
+
+def _is_extractable_value_literal(text: str) -> bool:
+    """Allowlist gate: only literals whose *shape* implies a single canonical
+    owner are extractable scattered constants.
+
+    A string repeated across files is far more often shared vocabulary — schema
+    tags, header names, enum/style words, type names, region/event codes — than
+    a config value worth a constant. Those carry no structure pointing to one
+    definition, so a frequency heuristic over them is noise. We therefore fire
+    only on literals that are structurally value-shaped:
+
+    - URI / connection strings (contain a ``scheme://``)
+    - filesystem-or-route paths (leading separator, ``./``/``../`` prefix,
+      a Windows drive prefix, a backslash path, or a ``/dir/file.ext`` shape)
+    - printf / brace format templates (``%s``, ``{name}``)
+
+    Bare identifier / word / tag literals are never extractable constants by
+    shape, regardless of how many files repeat them.
+    """
+    if _URI_SCHEME_PATTERN.search(text):
+        return True
+    if text.startswith(("/", "./", "../")):
+        return True
+    if "\\" in text or _WINDOWS_DRIVE_PATTERN.match(text):
+        return True
+    if _PATH_WITH_EXTENSION_PATTERN.search(text):
+        return True
+    if "{" in text and "}" in text:
+        return True
+    if _PRINTF_FORMAT_PATTERN.search(text):
+        return True
+    return False
+
 
 def _collect_symbol_names(tree: ast.AST) -> set[str]:
     """Names defined or imported in a module: class/function names and import
@@ -204,6 +242,10 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
             )
     findings: list[AciFinding] = []
     for literal, refs in occurrences.items():
+        if not _is_extractable_value_literal(literal):
+            # Not value-shaped (URI / path / format template) — a repeated bare
+            # word or tag is shared vocabulary, not an extractable constant.
+            continue
         if _is_contract_field_literal_family(literal, refs):
             continue
         if _is_date_format_literal_family(literal, refs):
