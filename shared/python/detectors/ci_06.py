@@ -41,8 +41,10 @@ def _is_low_value_number(val: int | float) -> bool:
         n = abs(val)
         if n < 256:
             return True
-        if n & (n - 1) == 0:  # exact power of two
+        if n & (n - 1) == 0:  # exact power of two (buffer/window sizes, single-bit flags)
             return True
+        if n & (n + 1) == 0:  # all-ones bitmask 2**k - 1 (0xFFFF, 0xFFFFFFFF): a
+            return True       # universally-recognized mask, not a config constant
     return False
 
 
