@@ -20,7 +20,7 @@ Use this file as a compact catalog.
 
 | Lane | Use When | Typical CI IDs |
 |---|---|---|
-| native-static | AST / text / structure can detect the issue directly | CI-02, CI-03, CI-04, CI-05, CI-06, CI-12, CI-14, CI-18, CI-19, CI-20, CI-21, CI-22, CI-23, CI-25, CI-26 |
+| native-static | AST / text / structure can detect the issue directly | CI-02, CI-03, CI-04, CI-05, CI-06, CI-07, CI-12, CI-13, CI-14, CI-18, CI-19, CI-20, CI-21, CI-22, CI-23, CI-25, CI-26 |
 | external analyzer | lint / type / test / dependency tooling gives stronger proof | CI-07, CI-09, CI-13, CI-14, CI-15, CI-21, CI-23, CI-25 |
 | human judgment | design intent, ownership, or domain meaning is required | CI-04, CI-08, CI-11, CI-19, CI-24 |
 
@@ -67,12 +67,12 @@ Severity should reflect blast radius, not how easy the issue was to spot.
 | CI-04 | God Class / God Object | one module/class owning too many unrelated responsibilities | native-static / human judgment |
 | CI-05 | Copy-Paste Programming | repeated logic, repeated try/except, duplicated query or validation patterns | native-static |
 | CI-06 | Magic Number / String | scattered literal status, role, path, timeout, policy, or error values | native-static |
-| CI-07 | Lava Flow | unused, unreachable, or obsolete code kept without live caller or reason | external analyzer |
+| CI-07 | Lava Flow | unused, unreachable, or obsolete code kept without live caller or reason | native-static (cross-file dead private symbols) / external analyzer |
 | CI-08 | Configuration Hell | config split across files/env/defaults without clear precedence | human judgment |
 | CI-09 | Test Rot | stale tests, skipped tests, brittle fixtures, or tests no longer covering behavior | external analyzer |
 | CI-11 | Golden Hammer | one mechanism forced onto problems that need a different control point | human judgment |
 | CI-12 | Poltergeist | tiny pass-through classes/functions adding indirection without ownership | native-static |
-| CI-13 | Dependency Rot | outdated, unused, unsafe, or mismatched dependency / import surface | external analyzer |
+| CI-13 | Dependency Rot | outdated, unused, unsafe, or mismatched dependency / import surface | native-static (cross-file circular imports) / external analyzer |
 | CI-14 | Security Neglect | secrets, unsafe input handling, weak auth, unsafe file or shell behavior | native-static / external analyzer |
 | CI-15 | Documentation Rot | docs contradict code, generated snapshots, task state, or canonical rules | external analyzer |
 | CI-18 | Data Clump | repeated parameter groups or record shapes without an explicit contract | native-static |
