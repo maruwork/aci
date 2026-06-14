@@ -9,13 +9,13 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_HIGH,
     )
-    from ._helpers import _relative_path, _line_excerpt
+    from ._helpers import _relative_path, _line_excerpt, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_HIGH,
     )
-    from detectors._helpers import _relative_path, _line_excerpt  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _line_excerpt, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS: frozenset[str] = frozenset({"CI26_RACE_HAZARD"})
 
@@ -24,7 +24,7 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
     if path.suffix.lower() != ".py":
         return []
     try:
-        tree = ast.parse(text)
+        tree = _cached_parse(text)
     except SyntaxError:
         return []
 

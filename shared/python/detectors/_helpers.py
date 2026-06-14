@@ -2,7 +2,20 @@
 from __future__ import annotations
 
 import ast
+import functools
 from pathlib import Path
+
+
+@functools.lru_cache(maxsize=1024)
+def _cached_parse(text: str) -> ast.Module:
+    """Parse source text, memoized by the text itself.
+
+    During one scan every per-file detector and every cross-file detector parses
+    the same files; without caching that is ~18 ast.parse calls per file. The key
+    is the source text (identical text always yields the same AST), so the cache
+    is correctness-safe and self-invalidating. Callers treat the returned tree as
+    read-only (detectors only walk it / build separate parent maps)."""
+    return ast.parse(text)
 
 
 def _relative_path(path: Path, root: Path) -> str:

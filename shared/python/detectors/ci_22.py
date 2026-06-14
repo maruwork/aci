@@ -9,13 +9,13 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_MEDIUM,
     )
-    from ._helpers import _relative_path, _line_excerpt, _build_parent_map
+    from ._helpers import _relative_path, _line_excerpt, _build_parent_map, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_MEDIUM,
     )
-    from detectors._helpers import _relative_path, _line_excerpt, _build_parent_map  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _line_excerpt, _build_parent_map, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS: frozenset[str] = frozenset({"CI22_RESOURCE_CLEANUP_GAP"})
 
@@ -89,7 +89,7 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
     if path.suffix.lower() != ".py":
         return []
     try:
-        tree = ast.parse(text)
+        tree = _cached_parse(text)
     except SyntaxError:
         return []
 

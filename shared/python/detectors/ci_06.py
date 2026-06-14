@@ -9,13 +9,13 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_LOW,
     )
-    from ._helpers import _relative_path, _build_parent_map
+    from ._helpers import _relative_path, _build_parent_map, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_LOW,
     )
-    from detectors._helpers import _relative_path, _build_parent_map  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _build_parent_map, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS: frozenset[str] = frozenset({"CI06_MAGIC_NUMBER"})
 
@@ -51,7 +51,7 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
     for path in [p for p in paths if p.suffix.lower() == ".py"]:
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
-            tree = ast.parse(text)
+            tree = _cached_parse(text)
         except SyntaxError:
             continue
         parent_map = _build_parent_map(tree)

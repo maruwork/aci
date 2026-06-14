@@ -23,13 +23,13 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_HIGH,
     )
-    from ._helpers import _relative_path
+    from ._helpers import _relative_path, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_HIGH,
     )
-    from detectors._helpers import _relative_path  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS: frozenset[str] = frozenset({"CI13_CIRCULAR_IMPORT"})
 
@@ -140,7 +140,7 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
     trees: dict[str, tuple[ast.Module, bool]] = {}
     for path in [p for p in paths if p.suffix.lower() == ".py"]:
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+            tree = _cached_parse(path.read_text(encoding="utf-8", errors="ignore"))
         except SyntaxError:
             continue
         name, is_init = _module_name(path, root)

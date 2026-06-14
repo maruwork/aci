@@ -10,13 +10,13 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         SEVERITY_CRITICAL, CONFIDENCE_HIGH, CONFIDENCE_MEDIUM,
     )
-    from ._helpers import _relative_path, _line_excerpt, _line_number_from_index
+    from ._helpers import _relative_path, _line_excerpt, _line_number_from_index, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         SEVERITY_CRITICAL, CONFIDENCE_HIGH, CONFIDENCE_MEDIUM,
     )
-    from detectors._helpers import _relative_path, _line_excerpt, _line_number_from_index  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _line_excerpt, _line_number_from_index, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS_EVAL_EXEC: frozenset[str] = frozenset({"CI14_DYNAMIC_CODE_EXECUTION"})
 SIGNALS_SUBPROCESS: frozenset[str] = frozenset({"CI14_SUBPROCESS_SHELL_TRUE"})
@@ -74,7 +74,7 @@ def scan_eval_exec(path: Path, text: str, target_root: Path, next_id: int) -> li
     if path.suffix.lower() != ".py":
         return findings
     try:
-        tree = ast.parse(text)
+        tree = _cached_parse(text)
     except SyntaxError:
         return findings
     # AST-based: only a real call to bare `eval(...)` / `exec(...)` counts.
@@ -140,7 +140,7 @@ def scan_plaintext_secrets(path: Path, text: str, target_root: Path, next_id: in
         # AST path: only real assignments/keywords with a secret-named target and
         # a token-like string value. Skips docstring examples and comments.
         try:
-            tree = ast.parse(text)
+            tree = _cached_parse(text)
         except SyntaxError:
             return findings
         secret_lines = _ast_secret_lines(tree)
@@ -206,7 +206,7 @@ def scan_insecure_http(path: Path, text: str, target_root: Path, next_id: int) -
     docstring_lines: set[int] = set()
     if path.suffix.lower() == ".py":
         try:
-            docstring_lines = _docstring_line_set(ast.parse(text))
+            docstring_lines = _docstring_line_set(_cached_parse(text))
         except SyntaxError:
             docstring_lines = set()
     lines = text.splitlines()

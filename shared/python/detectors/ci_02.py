@@ -9,13 +9,13 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_MEDIUM,
     )
-    from ._helpers import _relative_path
+    from ._helpers import _relative_path, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_MEDIUM,
     )
-    from detectors._helpers import _relative_path  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS_SPAGHETTI: frozenset[str] = frozenset({"CI02_SPAGHETTI_CODE"})
 SIGNALS_LONG: frozenset[str] = frozenset({"CI02_LONG_FUNCTION"})
@@ -111,7 +111,7 @@ def scan_spaghetti(path: Path, text: str, target_root: Path, next_id: int) -> li
     if path.suffix.lower() != ".py":
         return []
     try:
-        tree = ast.parse(text)
+        tree = _cached_parse(text)
     except SyntaxError:
         return []
     findings: list[AciFinding] = []
@@ -152,7 +152,7 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
     if path.suffix.lower() != ".py":
         return []
     try:
-        tree = ast.parse(text)
+        tree = _cached_parse(text)
     except SyntaxError:
         return []
     source_lines = text.splitlines()

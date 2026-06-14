@@ -11,14 +11,14 @@ try:
         CONFIDENCE_MEDIUM,
     )
     from ..aci_signals import LOW_INFO_SCATTERED_LITERALS, LOW_INFO_SCATTERED_LITERAL_SUFFIXES
-    from ._helpers import _relative_path, _build_parent_map
+    from ._helpers import _relative_path, _build_parent_map, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_MEDIUM,
     )
     from aci_signals import LOW_INFO_SCATTERED_LITERALS, LOW_INFO_SCATTERED_LITERAL_SUFFIXES  # type: ignore[no-redef]
-    from detectors._helpers import _relative_path, _build_parent_map  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _build_parent_map, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS: frozenset[str] = frozenset({"CI20_SCATTERED_CONSTANT"})
 
@@ -165,7 +165,7 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
     symbol_names: set[str] = set()
     for path in py_paths:
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+            tree = _cached_parse(path.read_text(encoding="utf-8", errors="ignore"))
         except SyntaxError:
             continue
         trees.append((path, tree))
