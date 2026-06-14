@@ -30,27 +30,31 @@ def _is_dunder(name: str) -> bool:
     return name.startswith("__") and name.endswith("__")
 
 
-def _structural_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[str, ...] | None:
-    """A rename/literal-invariant signature of the function body: the sequence of
-    AST node TYPES (identifiers and literal values abstracted away). Two functions
-    that are copy-pasted and then renamed produce the same signature, so this
-    catches near-duplicates a text/token match would miss."""
+def _node_shape(node: ast.AST) -> tuple:
+    """Nesting-preserving shape of a node: (type, child-shapes...). Identifiers
+    and literal values are abstracted to their node type, so renamed/re-literalled
+    copies share a shape; the recursive form keeps tree structure, so A(B(C)) and
+    A(B, C) do NOT collide (a flat node-type list would)."""
+    return (type(node).__name__, tuple(_node_shape(c) for c in ast.iter_child_nodes(node)))
+
+
+def _structural_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple | None:
+    """Rename/literal-invariant, structure-preserving signature of the function
+    body. Copy-paste-then-rename produces the same signature (caught), while
+    structurally-different functions do not collide."""
     body = node.body
     if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
         body = body[1:]  # drop docstring
     if not body:
         return None
-    types: list[str] = []
-    for stmt in body:
-        for sub in ast.walk(stmt):
-            types.append(type(sub).__name__)
-    if len(types) < _MIN_SIGNATURE_NODES:
+    node_count = sum(1 for stmt in body for _ in ast.walk(stmt))
+    if node_count < _MIN_SIGNATURE_NODES:
         return None
-    return tuple(types)
+    return tuple(_node_shape(stmt) for stmt in body)
 
 
 def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
-    body_map: dict[tuple[str, ...], list[tuple[Path, int, str]]] = {}
+    body_map: dict[tuple, list[tuple[Path, int, str]]] = {}
     for path in [p for p in paths if p.suffix.lower() == ".py"]:
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
