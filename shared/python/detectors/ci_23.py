@@ -19,6 +19,14 @@ except ImportError:  # pragma: no cover - direct script/module import path
 
 SIGNALS: frozenset[str] = frozenset({"CI23_CONTRACT_FIELD_DRIFT"})
 
+# A cross-file call-arity detector was prototyped and reverted (T12): without
+# full import resolution it produced only false positives on real code (names
+# rebound by local assignment, e.g. rich `_cell_len = cell_len`, or imported from
+# a different module than the same-named project def, e.g. typing_extensions
+# `assert_never` vs a v1 shim). Correct call/arity checking needs a resolver +
+# types — that is mypy's job (external-analyzer lane), and mature code has ~0 real
+# arity bugs to find. Not viable at acceptable precision as a native heuristic.
+
 
 def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     if path.suffix.lower() != ".py":
