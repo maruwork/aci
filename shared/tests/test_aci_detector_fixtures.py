@@ -220,6 +220,30 @@ def test_ci12_clean_on_class_with_real_logic(tmp_path: Path) -> None:
     assert "CI12_POLTERGEIST" not in _signals(_scan(tmp_path))
 
 
+# ── CI-13 (Circular Import, cross-file) ───────────────────────────────────
+
+def test_ci13_triggers_on_two_file_cycle(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "import b\nx = 1\n")
+    _write(tmp_path / "b.py", "import a\ny = 2\n")
+    assert "CI13_CIRCULAR_IMPORT" in _signals(_scan(tmp_path))
+
+
+def test_ci13_clean_on_acyclic_imports(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "import b\nx = 1\n")
+    _write(tmp_path / "b.py", "y = 2\n")
+    assert "CI13_CIRCULAR_IMPORT" not in _signals(_scan(tmp_path))
+
+
+def test_ci13_ignores_type_checking_imports(tmp_path: Path) -> None:
+    # a TYPE_CHECKING-guarded back-import is not a runtime cycle
+    _write(tmp_path / "a.py", "import b\nx = 1\n")
+    _write(
+        tmp_path / "b.py",
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    import a\ny = 2\n",
+    )
+    assert "CI13_CIRCULAR_IMPORT" not in _signals(_scan(tmp_path))
+
+
 # ── CI-14 (Dynamic Code Execution) ────────────────────────────────────────
 
 def test_ci14_dynamic_code_triggers_on_eval(tmp_path: Path) -> None:
