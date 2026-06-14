@@ -25,7 +25,7 @@ its native finding when the ruff lane runs — see README "Relationship to ruff"
 | CI-02 | Spaghetti Code | nesting depth >= 5 **and** cyclomatic complexity >= 8; or a long function (>= 50 logical lines **and** complexity >= 10, or >= 120 lines regardless of complexity — a flat long `__init__`/config builder is spared) | medium | overlaps (C901/PLR0915) |
 | CI-03 | Patchwork Code | leftover `TODO` / `FIXME` / `HACK` markers | high | overlaps (TD/FIX) |
 | CI-04 | God Class | large class (>= 15 methods) split into >= 2 substantial responsibility clusters (low LCOM cohesion) | medium | **unique** |
-| CI-05 | Copy-Paste Programming | rename-invariant structural near-duplicate function bodies (>= 18 nodes) across 2+ files | medium | **unique** |
+| CI-05 | Copy-Paste Programming | rename-invariant structural near-duplicate function bodies (>= 18 nodes) across 2+ files; one finding per file-set. Recall limit: the signature is structure-exact, so a clone with an inserted/removed/reordered statement is missed (favors precision over fuzzy matching). | medium | **unique** |
 | CI-06 | Magic Number | numeric literal repeated across 3+ files (cross-file; excludes data-collection members, sub-byte ints, powers of two) | low | **unique** (cross-file) |
 | CI-07 | Lava Flow (dead private symbol) | module-level private `_name` function/class referenced nowhere in the whole project (cross-file; excludes decorated, `__all__`, string-referenced). Blind spot: cannot see references from compiled extensions (`.pyd`/`.so`) — a Rust/C callback target looks unused. | medium | **unique** (cross-file) |
 | CI-12 | Poltergeist | tiny class that wraps one dependency and only delegates | medium | unique |
@@ -35,7 +35,7 @@ its native finding when the ruff lane runs — see README "Relationship to ruff"
 | CI-19 | Feature Envy | domain side-program term on an authority line (domain-aware; needs a domain pack) | medium | unique |
 | CI-20 | Shotgun Surgery | value-shaped string literal (URI/connection string, filesystem/route path, or format template) repeated across 3+ files (cross-file; bare words, tags, header and symbol names excluded by a shape allowlist) | medium | **unique** (cross-file) |
 | CI-21 | Error Handling Rot | `except Exception:` that does not re-raise (excl. module-level fallbacks); silent-sentinel return | medium | overlaps (BLE) |
-| CI-22 | Resource Lifecycle Leak | opener (`open`/`Popen`/`*TemporaryFile`) whose handle is not returned / stored on an attribute / wrapped / deferred via a `lambda` factory / closed / used in `with` (dataflow) | medium | partial (SIM115); ACI dataflow-aware |
+| CI-22 | Resource Lifecycle Leak | opener (`open`/`Popen`/`*TemporaryFile`) whose handle is not returned / stored on an attribute / wrapped / deferred via a `lambda` factory / closed / used in `with` (dataflow). Recall limit: a handle closed only on the success path (a bare `.close()` with no `try/finally`) is treated as managed; exception-path leaks are not traced. | medium | partial (SIM115); ACI dataflow-aware |
 | CI-23 | Interface / Contract Drift | function hiding 2+ implicit fields behind `**kwargs` | low | **unique** |
 | CI-25 | Nondeterminism / Environment Drift | naive `datetime.now()`/`today()` (no tz); `random.*` draw | datetime: medium; random: low | partial (DTZ/S311) |
 | CI-26 | Concurrency / Race Hazard | function mutating module-level state via `global` | high | overlaps (PLW0603) |
