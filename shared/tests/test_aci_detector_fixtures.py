@@ -147,6 +147,20 @@ def test_ci05_triggers_on_duplicate_function_across_files(tmp_path: Path) -> Non
     assert "CI05_COPY_PASTE_CODE" in _signals(_scan(tmp_path))
 
 
+def test_ci05_triggers_on_renamed_near_duplicate(tmp_path: Path) -> None:
+    # Same structure, different names/literals (a copy-paste that was renamed).
+    # A text/token match would miss this; the structural signature catches it.
+    _write(
+        tmp_path / "module_a.py",
+        "def compute(x, y):\n    result = x * y\n    result += x\n    result -= y\n    return result\n",
+    )
+    _write(
+        tmp_path / "module_c.py",
+        "def tally(a, b):\n    total = a * b\n    total += a\n    total -= b\n    return total\n",
+    )
+    assert "CI05_COPY_PASTE_CODE" in _signals(_scan(tmp_path))
+
+
 def test_ci05_clean_on_unique_function_bodies(tmp_path: Path) -> None:
     _write(tmp_path / "module_a.py", "def add(x, y):\n    return x + y\n")
     _write(tmp_path / "module_b.py", "def mul(x, y):\n    return x * y\n")
