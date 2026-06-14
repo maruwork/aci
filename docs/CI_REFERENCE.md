@@ -27,17 +27,17 @@ its native finding when the ruff lane runs — see README "Relationship to ruff"
 | CI-04 | God Class | large class (>= 15 methods) split into >= 2 substantial responsibility clusters (low LCOM cohesion) | medium | **unique** |
 | CI-05 | Copy-Paste Programming | rename-invariant structural near-duplicate function bodies (>= 18 nodes) across 2+ files | medium | **unique** |
 | CI-06 | Magic Number | numeric literal repeated across 3+ files (cross-file; excludes data-collection members, sub-byte ints, powers of two) | low | **unique** (cross-file) |
-| CI-07 | Lava Flow (dead private symbol) | module-level private `_name` function/class referenced nowhere in the whole project (cross-file; excludes decorated, `__all__`, string-referenced) | medium | **unique** (cross-file) |
+| CI-07 | Lava Flow (dead private symbol) | module-level private `_name` function/class referenced nowhere in the whole project (cross-file; excludes decorated, `__all__`, string-referenced). Blind spot: cannot see references from compiled extensions (`.pyd`/`.so`) — a Rust/C callback target looks unused. | medium | **unique** (cross-file) |
 | CI-12 | Poltergeist | tiny class that wraps one dependency and only delegates | medium | unique |
 | CI-13 | Dependency Rot (circular import) | cross-file import cycles (strongly-connected import graph; stdlib-shadowing-safe, TYPE_CHECKING/deferred imports excluded) | high | **unique** (cross-file) |
 | CI-14 | Security Neglect | `eval`/`exec`; `subprocess(shell=True)`; plaintext secret (AST); plain `http://` (docstrings/comments skipped) | high (secret/http: medium) | partial (bandit S); ACI finds more |
 | CI-18 | Data Clump | function with >= 6 **required** positional params (optional kwargs / framework signatures excluded) | medium | overlaps (PLR0913) |
 | CI-19 | Feature Envy | domain side-program term on an authority line (domain-aware; needs a domain pack) | medium | unique |
-| CI-20 | Shotgun Surgery | string constant repeated across 3+ files (cross-file; excludes symbol/export names, collection members) | medium | **unique** (cross-file) |
+| CI-20 | Shotgun Surgery | value-shaped string literal (URI/connection string, filesystem/route path, or format template) repeated across 3+ files (cross-file; bare words, tags, header and symbol names excluded by a shape allowlist) | medium | **unique** (cross-file) |
 | CI-21 | Error Handling Rot | `except Exception:` that does not re-raise (excl. module-level fallbacks); silent-sentinel return | medium | overlaps (BLE) |
-| CI-22 | Resource Lifecycle Leak | opener (`open`/`Popen`/`*TemporaryFile`) whose handle is not returned/stored/wrapped/closed/`with` (dataflow) | medium | partial (SIM115); ACI dataflow-aware |
+| CI-22 | Resource Lifecycle Leak | opener (`open`/`Popen`/`*TemporaryFile`) whose handle is not returned / stored on an attribute / wrapped / deferred via a `lambda` factory / closed / used in `with` (dataflow) | medium | partial (SIM115); ACI dataflow-aware |
 | CI-23 | Interface / Contract Drift | function hiding 2+ implicit fields behind `**kwargs` | low | **unique** |
-| CI-25 | Nondeterminism / Environment Drift | `datetime.now()`/`today()` without tz; `random.*` | high | partial (DTZ/S311) |
+| CI-25 | Nondeterminism / Environment Drift | naive `datetime.now()`/`today()` (no tz); `random.*` draw | datetime: medium; random: low | partial (DTZ/S311) |
 | CI-26 | Concurrency / Race Hazard | function mutating module-level state via `global` | high | overlaps (PLW0603) |
 
 ## External-analyzer lane (opt-in, no native detector)
