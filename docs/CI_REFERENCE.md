@@ -82,20 +82,16 @@ fixture — detector precision is tuned against a real-corpus baseline (see
 
 ## Language scope
 
-ACI is a **Python-primary** tool. Coverage per file type:
+ACI is a **Python-only** tool. Every native-static detector checks `path.suffix == ".py"`
+and returns early for all other file types.
 
-| File type | Coverage | Notes |
-|---|---|---|
-| `.py` | Full — all 22 CI-IDs via Python AST | Primary language |
-| `.sh` / `.bash` | Partial — CI-02 (long function), CI-21 (broad exception swallow) via text scan | No AST; structural signals only |
-| `.ts` / `.tsx` | Partial — CI-23 (call-arity mismatch) opt-in via `tsconfig.json` discovery | Requires tsconfig in target root |
-| All other types | Not scanned | Binary, generated, and other-language files are skipped |
+| File type | Coverage |
+|---|---|
+| `.py` | Full — all active CI-IDs via Python AST |
+| All other types | Not scanned by native-static lane |
 
-Signals that span multiple file types (CI-02, CI-21) use text-based heuristics on non-`.py`
-files; confidence is lower than the AST-backed Python path. Cross-file detectors
-(CI-05, CI-07, CI-13, CI-23) operate only on `.py` files unless noted above.
+The external-analyzer lane (ruff / pyflakes / mypy) inherits whatever language support
+those tools provide, but ACI itself makes no attempt to scan non-Python files.
 
-ACI does **not** claim to be a general-purpose polyglot scanner. If your codebase
-is primarily non-Python, the native lane will have limited coverage — use the
-external-analyzer lane (ruff/mypy) for Python portions and dedicated tools for
-other languages.
+If your codebase is primarily non-Python, the native lane will have no coverage — use
+dedicated tools for other languages.
