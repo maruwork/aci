@@ -79,3 +79,23 @@ instead of editing code (see `docs/QUICKSTART.md` §6):
 For systematic false positives in a detector itself, open an issue with the
 fixture — detector precision is tuned against a real-corpus baseline (see
 `shared/tools/aci_corpus_harness.py`).
+
+## Language scope
+
+ACI is a **Python-primary** tool. Coverage per file type:
+
+| File type | Coverage | Notes |
+|---|---|---|
+| `.py` | Full — all 22 CI-IDs via Python AST | Primary language |
+| `.sh` / `.bash` | Partial — CI-02 (long function), CI-21 (broad exception swallow) via text scan | No AST; structural signals only |
+| `.ts` / `.tsx` | Partial — CI-23 (call-arity mismatch) opt-in via `tsconfig.json` discovery | Requires tsconfig in target root |
+| All other types | Not scanned | Binary, generated, and other-language files are skipped |
+
+Signals that span multiple file types (CI-02, CI-21) use text-based heuristics on non-`.py`
+files; confidence is lower than the AST-backed Python path. Cross-file detectors
+(CI-05, CI-07, CI-13, CI-23) operate only on `.py` files unless noted above.
+
+ACI does **not** claim to be a general-purpose polyglot scanner. If your codebase
+is primarily non-Python, the native lane will have limited coverage — use the
+external-analyzer lane (ruff/mypy) for Python portions and dedicated tools for
+other languages.
