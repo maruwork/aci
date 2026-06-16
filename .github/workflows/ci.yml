@@ -44,6 +44,16 @@ jobs:
       - name: ACI automation smoke
         run: aci automation-smoke
 
+      - name: Build wheel and verify in clean venv
+        run: |
+          pip install build
+          python -m build --wheel --outdir dist-ci/
+          python -m venv .venv-wheel-check
+          .venv-wheel-check/bin/pip install dist-ci/aci-*.whl
+          .venv-wheel-check/bin/aci automation-smoke
+          .venv-wheel-check/bin/aci installed-package-check
+          .venv-wheel-check/bin/aci fixture-check
+
       - name: ACI self-scan (informational)
         run: |
           aci scan \

@@ -1,19 +1,19 @@
 # ACI
 
-**Purpose**: Common canonical shelf for a general-purpose code and file inspection tool.
+**Python-first static structure inspector.**
 
-Contains shared code, templates, and examples for ACI.
-Does not hold the current state or operational results of any specific project.
-Does not hardcode project-specific import layouts or side-program names in the common canonical shelf.
+Finds cross-file and structural code quality issues that single-file linters miss.
+Install with `pip install aci`; scan any Python project in one command.
 
 ## What is this
 
-- `ACI` is the common canonical shelf for a general-purpose code inspection tool
-- core is domain-independent
-- optional domain packs can be added for project-specific vocabulary and bridge rules
-- project-local triggers and current state are held by the downstream integration
+ACI is a Python code inspection tool focused on cross-file structure:
 
-`ACI` provides a shared inspection catalog, normalized findings, optional domain packs, and a report contract.
+- **Native static detectors** — 17 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
+- **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest when installed
+- **Optional domain packs** — add project-specific vocabulary and exclusion rules without touching core
+
+`ACI` provides a normalized finding format, configurable severity gate, suppression/baseline/waiver contract, SARIF and annotation output, and a machine-readable report schema.
 
 ## What this is not
 
@@ -47,8 +47,6 @@ opt-in external analyzers are installed — not the native structure detectors.
 ## Relationship to ruff and other single-file linters
 
 ACI **complements** a fast single-file linter like ruff; it is not a replacement.
-A measured comparison against `ruff --select ALL` (see
-`docs/roadmap/PRECISION_AUDIT_2026-06-13.md`) shows where each adds value:
 
 - **ACI's unique value is cross-file and structural analysis a single-file
   linter cannot do:** duplicate / near-duplicate code across files (CI-05),

@@ -68,7 +68,7 @@ def build_sarif_report(report: dict[str, object]) -> dict[str, object]:
                 "tool": {
                     "driver": {
                         "name": "ACI",
-                        "informationUri": "https://github.com/fumimaruwork/aci",
+                        "informationUri": "https://github.com/maruwork/aci",
                         "rules": list(rules.values()),
                     }
                 },

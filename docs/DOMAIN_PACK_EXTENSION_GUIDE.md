@@ -55,6 +55,24 @@ domains/<domain>/
 - project-local trigger/runtime rules stay out of the domain pack
 - reviewed persistence records stay outside core/domain semantics
 
+## Distribution Model
+
+Domain packs are **not bundled** in the `aci` core wheel. The correct connection depends on how the pack is distributed:
+
+| Context | How to connect |
+|---|---|
+| Repository checkout (source) | `--domain <id>` — loader auto-discovers `domains/<id>/python/<id>_domain_rules.py` relative to the repo root |
+| `pip install aci` (wheel) | `--domain-file <path>` pointing to the domain rules file; auto-discovery does not apply outside a repo checkout |
+| Separate package (future, e.g. `aci-pier`) | `pip install aci-pier`; the package registers via the loader convention and `--domain <id>` works again |
+
+**If you are a `pip install aci` user wanting to use a domain pack:**
+
+```bash
+aci scan --target . --domain-file path/to/<domain>_domain_rules.py
+```
+
+Clone the domain pack source (e.g. `domains/pier/python/pier_domain_rules.py` from this repo) and point `--domain-file` at it, or wait for a published separate package.
+
 ## Minimal Verification
 
 - `load_domain_rules('<domain>')` returns the expected `domain_id`
