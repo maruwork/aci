@@ -54,6 +54,26 @@ jobs:
           .venv-wheel-check/bin/aci installed-package-check
           .venv-wheel-check/bin/aci fixture-check
 
+      - name: Verify sample report assets are in sync
+        run: |
+          python - <<'EOF'
+          import hashlib, sys
+          from pathlib import Path
+          src = Path("shared/report/examples")
+          pkg = Path("shared/python/package_assets/report/examples")
+          def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          errors = []
+          for f in src.iterdir():
+              mirror = pkg / f.name
+              if not mirror.exists():
+                  errors.append(f"missing in package_assets: {f.name}")
+              elif sha(f) != sha(mirror):
+                  errors.append(f"content differs: {f.name}")
+          if errors:
+              print("Sample report sync errors:"); [print(f"  {e}") for e in errors]; sys.exit(1)
+          print(f"OK: {len(list(src.iterdir()))} sample report(s) in sync")
+          EOF
+
       - name: ACI self-scan (informational)
         run: |
           aci scan \

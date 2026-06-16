@@ -28,6 +28,15 @@ Files here are bridge documents for `aci + pier domain`.
 - report rendering rules
 - persistence backend implementation
 
+## Placeholder Status
+
+`python/pier_domain_rules.py` contains `{project_*}` placeholder values in
+`RISK_SURFACES` and `SIDE_PROGRAM_TERMS`.  These are filled in by the Pier
+project when the pack is deployed — they represent project-local file paths and
+service names that belong in the Pier integration layer, not in the generic ACI
+repository.  Until filled in, `SIDE_PROGRAM_LEAK` detection for Pier will
+produce no findings.
+
 ## Load Position
 
 `ACI core` loads first.

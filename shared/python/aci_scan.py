@@ -272,29 +272,53 @@ def _is_generated_path(relative_path: str) -> bool:
     return any(part in DEFAULT_GENERATED_PATH_SEGMENTS for part in parts)
 
 
-def _git_changed_files(repo_root: Path, ref: str) -> frozenset[str]:
-    """Return POSIX-relative paths of files changed since *ref* in *repo_root*.
+def _git_changed_files(target_root: Path, ref: str) -> frozenset[str]:
+    """Return target-root-relative POSIX paths of files changed since *ref*.
 
-    Runs ``git diff --name-only <ref> --`` so that only tracked-file changes are
-    returned.  Raises ValueError with a descriptive message when git is not
-    available, the repository is not found, or the ref is invalid.
+    Runs ``git diff --name-only <ref> --`` from *target_root* and normalizes
+    the output (git-root-relative) to be relative to *target_root*.  Files
+    outside *target_root* are silently skipped.  Raises ValueError when git is
+    not available, the repository is not found, or the ref is invalid.
     """
     try:
-        result = subprocess.run(
+        diff_result = subprocess.run(
             ["git", "diff", "--name-only", ref, "--"],
-            cwd=repo_root,
+            cwd=target_root,
             capture_output=True,
             text=True,
             timeout=30,
         )
+        toplevel_result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=target_root,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
     except FileNotFoundError as exc:
         raise ValueError("git is not available on PATH; --diff-from requires a git installation") from exc
     except subprocess.TimeoutExpired as exc:
-        raise ValueError(f"git diff timed out for ref {ref!r} in {repo_root}") from exc
-    if result.returncode != 0:
-        detail = result.stderr.strip() or "no stderr"
-        raise ValueError(f"git diff --name-only {ref!r} failed in {repo_root}: {detail}")
-    return frozenset(line.strip() for line in result.stdout.splitlines() if line.strip())
+        raise ValueError(f"git diff timed out for ref {ref!r} in {target_root}") from exc
+    if diff_result.returncode != 0:
+        detail = diff_result.stderr.strip() or "no stderr"
+        raise ValueError(f"git diff --name-only {ref!r} failed in {target_root}: {detail}")
+    git_root = (
+        Path(toplevel_result.stdout.strip()).resolve()
+        if toplevel_result.returncode == 0
+        else target_root.resolve()
+    )
+    target_abs = target_root.resolve()
+    changed: set[str] = set()
+    for line in diff_result.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        abs_path = git_root / line
+        try:
+            changed.add(abs_path.relative_to(target_abs).as_posix())
+        except ValueError:
+            pass  # changed file is outside target_root; skip
+    return frozenset(changed)
 
 
 def _iter_target_files(
@@ -727,6 +751,9 @@ def scan_target(
         and LANE_EXTERNAL_ANALYZER in enabled_lanes
         and session.profile_id in {PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL}
     ):
+        # Scope external analyzer findings to the same file set as the native lane so
+        # that --diff-from and --include-paths restrictions apply consistently.
+        scoped_rel_paths = frozenset(_relative_path(f, session.target_root) for f in target_files)
         analyzer_ids = {
             PROFILE_QUICK_GATE: ("ruff", "pyflakes"),
             PROFILE_BUILD_PREFLIGHT: ("ruff", "pyflakes", "mypy"),
@@ -735,9 +762,10 @@ def scan_target(
         }[session.profile_id]
         for analyzer_id in analyzer_ids:
             run_result = run_analyzer(analyzer_id, session.target_root, next_id)
+            scoped = [f for f in run_result.findings if f.target_file in scoped_rel_paths]
             analyzer_runs.append(run_result.as_dict())
-            next_id += len(run_result.findings)
-            findings.extend(run_result.findings)
+            next_id += len(scoped)
+            findings.extend(scoped)
 
     findings = _deduplicate_findings(findings)
     # Compute resolved baseline entries before suppression (suppressed findings are still detected)

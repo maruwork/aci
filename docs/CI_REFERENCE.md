@@ -80,6 +80,25 @@ For systematic false positives in a detector itself, open an issue with the
 fixture — detector precision is tuned against a real-corpus baseline (see
 `shared/tools/aci_corpus_harness.py`).
 
+## Profile and signal scope
+
+Profiles control which signals (and therefore which detectors) are active per run.
+
+**Generic ACI (no domain pack)**: use `quick-gate` or `full`. These profiles activate
+all native CI-xx detectors via the `native_hygiene_signals` group.
+
+**Workflow profiles** (`startup`, `wrap-up`, `state-change`, `build-preflight`,
+`build-review`) reference structure signals (`RESPONSIBILITY_SPROUT`,
+`OPERATOR_VIEW_GAP`, `STATE_DUPLICATION`, `SIDE_PROGRAM_LEAK`). These are domain-pack
+vocabulary signals with no native detector in generic ACI core.
+Running a workflow profile without a domain pack produces findings only when:
+- `state-change` / `build-*` also include some native CI-xx signals (e.g. CI-21, CI-22)
+- A domain pack with `side_program_terms` is loaded (enables the SIDE_PROGRAM_LEAK detector)
+
+The human-judgment lane (`_HUMAN_JUDGMENT_SIGNALS = ()`) is intentionally empty:
+CI-08, CI-11, and CI-24 are classified as human-judgment only — no reliable static
+rule exists for them (see the `Human-judgment lane` table above).
+
 ## Language scope
 
 ACI is a **Python-only** tool. Every native-static detector checks `path.suffix == ".py"`
