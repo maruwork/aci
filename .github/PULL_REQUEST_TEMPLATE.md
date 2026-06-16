@@ -6,7 +6,7 @@
 ## Verification
 
 - [ ] `python shared/python/aci_public_smoke.py`
-- [ ] `python -m py_compile shared/python/*.py domains/pier/python/*.py`
+- [ ] `python -m py_compile shared/python/*.py domains/*/python/*.py`
 
 ## Boundary Check
 

@@ -22,7 +22,7 @@ python shared/python/aci_cli.py fixture-check
 
 ## What It Verifies
 
-- domain-pack loading for `core-only` and optional domain packs (such as `pier` when installed)
+- domain-pack loading for `core-only` and optional domain packs (such as `<domain>` when installed)
 - normalized finding emission
 - machine-readable sample report structure
 

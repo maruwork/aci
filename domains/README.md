@@ -30,6 +30,6 @@ Entry point for `ACI` optional domain packs.
 ## Available Packs
 
 - `pier/`
-  - optional Pier investigation vocabulary and bridge docs
+  - optional pier domain vocabulary and bridge documents
 - `custom-template/`
   - future domain pack template

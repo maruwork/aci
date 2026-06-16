@@ -20,14 +20,14 @@ These shelves define reusable `ACI` contracts and must stay domain-independent.
 These files belong to a selected domain pack or its reviewed persistence bridge.
 They are not generic `ACI` authority.
 
-### Pier Domain Pack Bridge
+### Domain Pack Bridge Documents (`pier/`)
 
 - `domains/pier/aci-pier-integration-spec.md`
 - `domains/pier/aci-trigger-read-spec.md`
 - `domains/pier/aci-trigger-routing-spec.md`
 - `domains/pier/python/pier_domain_rules.py`
 
-### Pier Persistence Bridge
+### Domain Pack Validation Register (`pier/`)
 
 - `domains/pier/aci-pier-validation-decision-register.md`
 

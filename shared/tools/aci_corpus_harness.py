@@ -9,8 +9,7 @@ precision signal (likely false positives) that should be triaged.
 
 This does NOT compute true precision/recall — that needs human-labeled ground
 truth. It produces the per-CI-ID density + sampled findings that a human triages
-to label TP/FP, the same workflow recorded in
-domains/pier/aci-pier-validation-decision-register.md.
+to label TP/FP, the same workflow as a domain validation decision register.
 
 Usage:
     python shared/tools/aci_corpus_harness.py <path> [<path> ...] \

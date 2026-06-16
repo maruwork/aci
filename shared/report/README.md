@@ -42,8 +42,7 @@ Use these before reading downstream project reports if you only want to evaluate
 
 Domain-specific samples live in their respective domain pack:
 
-- `domains/pier/examples/aci-pier-sample-report.md`
-- `domains/pier/examples/aci-pier-sample-report.json`
+- `domains/<domain>/examples/` — domain-pack-specific sample reports (when a domain pack is installed)
 
 ## Triage Surface
 
