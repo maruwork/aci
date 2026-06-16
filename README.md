@@ -10,14 +10,14 @@ Does not hardcode project-specific import layouts or side-program names in the c
 
 - `ACI` is the common canonical shelf for a general-purpose code inspection tool
 - core is domain-independent
-- `Pier` and similar are added as optional domain packs
+- optional domain packs can be added for project-specific vocabulary and bridge rules
 - project-local triggers and current state are held by the downstream integration
 
 `ACI` provides a shared inspection catalog, normalized findings, optional domain packs, and a report contract.
 
 ## What this is not
 
-- Not a `Pier`-only repository
+- Not a single-project-only repository
 - Not the project-local runtime gate itself
 - Not the final owner of DB writeback or operator workflow
 
@@ -37,9 +37,9 @@ ACI is **Python-first**. Be aware of the scope before adopting:
 
 | Lane | Languages | Notes |
 |---|---|---|
-| Native static detectors | **Python** | All 15 native CI-ID detectors parse Python (AST). This is the only language with full native coverage. |
+| Native static detectors | **Python** | All 17 native CI-ID detectors parse Python (AST). This is the only language with full native coverage. |
 | Language-agnostic text scans | any text file | A few detectors are text-based, not AST-based: plaintext-secret and insecure-HTTP (CI-14), and TODO/FIXME/HACK markers (CI-03). |
-| External analyzers (opt-in) | Python, JS/TS, Shell, SQL | ruff / pyflakes / mypy / pytest (Python); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL). Each runs only when installed and enabled; CI-23 TypeScript checks need a `tsconfig.json`. |
+| External analyzers (opt-in) | Python, JS/TS, Shell, SQL | ruff / pyflakes / mypy / pytest (Python); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL). Each runs only when installed and enabled. TypeScript type checking via `tsc` requires a `tsconfig.json` in the target root. |
 
 Non-Python codebases get only the language-agnostic text scans plus whatever
 opt-in external analyzers are installed — not the native structure detectors.
@@ -141,7 +141,7 @@ This smoke check verifies only:
   - external analyzer catalog: `shared/python/aci_analyzers.py`
   - profile catalog: `shared/python/aci_profile_catalog.py`
 - `shared/core/`: domain-independent core inspection catalog and contracts
-- `domains/`: location for domain packs such as `Pier`
+- `domains/`: location for optional domain packs
 - `shared/runtime/`: responsible shelf for project-local runtime binding; also holds runtime/operator-facing boundary constants
 - `shared/report/`: responsible shelf for owner-facing report contracts
 
@@ -172,10 +172,8 @@ The only surfaces a user needs to be aware of initially:
 
 - `aci core only`
   - generic core only
-- `aci + pier domain`
-  - optional Pier investigation vocabulary and bridge docs
-- future `aci + <domain>`
-  - added in the same pack shape
+- `aci + <domain>`
+  - optional domain-specific vocabulary and bridge docs; added in the same pack shape
 
 Entry point for domain packs is `domains/README.md`.
 
@@ -228,11 +226,8 @@ Carry/customize boundary for downstream maintainers: `docs/ACI_DOWNSTREAM_ADOPTI
 - To return to the entry point of this shelf: `README.md`
 - When reading as a standalone repo, start from this `README.md`
 
-## Pier Integration Documents
+## Domain Pack Bridge Documents
 
-The following are not part of the generic `ACI` canonical shelf; they are `Pier`-specific bridge documents.
-
-- `domains/pier/aci-pier-integration-spec.md`
-- `domains/pier/aci-trigger-read-spec.md`
-- `domains/pier/aci-trigger-routing-spec.md`
-- `domains/pier/aci-pier-validation-decision-register.md`
+Bridge documents under `domains/<domain>/` are not part of the generic `ACI` canonical shelf.
+They contain domain-specific vocabulary and integration rules and are maintained by the domain pack owner.
+See `domains/README.md` for the list of available domain packs.
