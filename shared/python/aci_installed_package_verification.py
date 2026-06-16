@@ -55,19 +55,13 @@ def _editable_install_checks(repo_root: Path) -> list[dict[str, object]]:
     )
 
     domain_loader = importlib.import_module("aci.aci_domain_loader")
-    try:
-        pier_rules = domain_loader.load_domain_rules("pier")
-        pier_ok = pier_rules.domain_id == "pier"
-        pier_actual: str = pier_rules.domain_id
-    except (ValueError, ImportError):
-        pier_ok = True
-        pier_actual = "not-installed (optional)"
+    core_rules = domain_loader.load_domain_rules(None)
     checks.append(
         {
-            "check": "editable_import.pier_domain",
-            "ok": pier_ok,
-            "expected": "pier (optional)",
-            "actual": pier_actual,
+            "check": "editable_import.core_domain_loader",
+            "ok": core_rules.domain_id == "core-only",
+            "expected": "core-only",
+            "actual": core_rules.domain_id,
         }
     )
 

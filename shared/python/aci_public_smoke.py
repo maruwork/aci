@@ -16,11 +16,6 @@ except ImportError:  # pragma: no cover - direct script/module import path
 
 def build_public_smoke_result(repo_root: Path) -> dict[str, object]:
     core = load_domain_rules(None)
-    try:
-        pier = load_domain_rules("pier")
-        pier_domain_id: str | None = pier.domain_id
-    except (ValueError, ImportError):
-        pier_domain_id = None
     finding = build_structure_finding(
         finding_id="F-SMOKE-001",
         signal="RESPONSIBILITY_SPROUT",
@@ -31,8 +26,6 @@ def build_public_smoke_result(repo_root: Path) -> dict[str, object]:
         evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
     )
     mode_checks: dict[str, object] = {"core_only_domain": core.domain_id}
-    if pier_domain_id is not None:
-        mode_checks["pier_domain"] = pier_domain_id
     return {
         "tool": "ACI",
         "ok": True,

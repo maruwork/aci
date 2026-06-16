@@ -16,7 +16,7 @@ Use one of these mental modes first:
 
 - `aci core only`
   - confirm generic catalog, finding normalization, and report contract
-- `aci + pier domain`
+- `aci + <domain>`
   - confirm optional domain-pack loading and bridge separation
 
 Reusable shelves:
@@ -37,7 +37,6 @@ python shared/python/aci_cli.py smoke
 Expected result:
 
 - `core_only_domain=core-only`
-- `pier_domain=pier` — only present when the pier domain pack is installed
 - one normalized finding (active CI pattern, e.g. `ci_id=CI-04`)
 - repository layout marker
   - monorepo layout includes `mirror_sync`
@@ -78,8 +77,7 @@ See:
 
 - `shared/report/examples/aci-core-sample-report.md`
 - `shared/report/examples/aci-core-sample-report.json`
-- `domains/pier/examples/aci-pier-sample-report.md` (pier domain pack)
-- `domains/pier/examples/aci-pier-sample-report.json` (pier domain pack)
+- `domains/<domain>/examples/` — domain-pack-specific sample reports (when a domain pack is installed)
 
 ## Local Integration Boundary
 
