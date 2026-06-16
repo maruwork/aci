@@ -11,11 +11,13 @@ try:
         SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW,
         VERIFICATION_DETECTED, VERIFICATION_EXECUTED,
     )
+    from .aci_package_assets import read_text_asset
 except ImportError:  # pragma: no cover - direct script/module import path
-    from aci_findings import (
+    from aci_findings import (  # type: ignore[no-redef]
         SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW,
         VERIFICATION_DETECTED, VERIFICATION_EXECUTED,
     )
+    from aci_package_assets import read_text_asset  # type: ignore[no-redef]
 
 ALLOWED_SEVERITIES = {SEVERITY_LOW, SEVERITY_MEDIUM, SEVERITY_HIGH, SEVERITY_CRITICAL}
 ALLOWED_BASELINE_STATES = {"new", "existing-baseline"}
@@ -74,9 +76,7 @@ SUMMARY_COUNT_FIELDS = (
 )
 
 
-def _sample_paths() -> tuple[Path, ...]:
-    root = Path(__file__).resolve().parent.parent.parent
-    return (root / "shared" / "report" / "examples" / "aci-core-sample-report.json",)
+_SAMPLE_REPORT_ASSETS = ("report/examples/aci-core-sample-report.json",)
 
 
 def _is_non_negative_int(value: object) -> bool:
@@ -219,11 +219,14 @@ def validate_report_payload(
 
 
 def validate_sample_reports() -> dict[str, object]:
+    fallback_root = Path(__file__).resolve().parent / "package_assets"
     checks: list[dict[str, object]] = []
     ok = True
-    for sample_path in _sample_paths():
-        data = json.loads(sample_path.read_text(encoding="utf-8"))
-        check = validate_report_payload(sample_path.name, data, require_findings=True)
+    for asset_path in _SAMPLE_REPORT_ASSETS:
+        text = read_text_asset(asset_path, fallback_root)
+        name = asset_path.rsplit("/", 1)[-1]
+        data = json.loads(text)
+        check = validate_report_payload(name, data, require_findings=True)
         ok = ok and bool(check["ok"])
         checks.append(check)
     return {"ok": ok, "checks": checks}

@@ -118,7 +118,8 @@ This smoke check verifies only:
 
 - `aci core only` (domain packs are optional — load with `--domain <id>`)
 - normalized finding emission
-- mirror sync helper
+
+For full install verification (automation-smoke, fixture-check, installed-package-check), see `shared/runtime/aci-ci-and-automation-contract.md`.
 
 ### 2. Next reading
 

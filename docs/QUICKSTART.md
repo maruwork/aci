@@ -9,11 +9,13 @@ ACI is Python-first (see the Language Support section in `README.md`).
 pip install aci
 ```
 
-This installs the `aci` CLI. Verify:
+This installs the `aci` CLI. Verify the shelf and sample report contract:
 
 ```bash
-aci smoke
+aci automation-smoke
 ```
+
+(`aci smoke` is a lightweight common-shelf check only; use `aci automation-smoke` to verify the installed package.)
 
 ## 2. Scan your project
 
@@ -29,8 +31,9 @@ aci scan --target . --profile full --domain core-only --output-format pretty-jso
   `--domain <id> --domain-file <path>`.
 - `--no-external-analyzers` — skip ruff/pyflakes/mypy/pytest (native lane only).
 
-The exit code is non-zero when findings are present or the gate fails, so the
-command is CI-ready as-is.
+The exit code is non-zero when findings are present (including waived ones) or the
+gate fails. If you want to rely only on the gate decision, check
+`gate.decision` in the JSON output rather than the exit code.
 
 ## 3. Read the report
 
