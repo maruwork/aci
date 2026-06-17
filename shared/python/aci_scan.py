@@ -1012,6 +1012,17 @@ def _run_domain_structure_detectors(
     return findings, next_id + len(findings)
 
 
+def _external_target_files_for_session(session: ScanSession, target_files: list[Path]) -> list[Path]:
+    if session.scope_mode != SCOPE_MODE_FULL_REPO:
+        return target_files
+    allowed_scope_classes = {SCOPE_CLASS_RUNTIME_SOURCE, SCOPE_CLASS_TESTS}
+    return [
+        path
+        for path in target_files
+        if _classify_relative_path(_relative_path(path, session.target_root)) in allowed_scope_classes
+    ]
+
+
 def _run_external_analyzers_for_session(
     session: ScanSession,
     target_files: list[Path],
@@ -1027,8 +1038,9 @@ def _run_external_analyzers_for_session(
         return [], analyzer_runs, next_id
 
     findings: list[AciFinding] = []
-    scoped_rel_paths = frozenset(_relative_path(path, session.target_root) for path in target_files)
-    analyzer_ids = _select_external_analyzers(session.profile_id, target_files, session.target_root)
+    external_target_files = _external_target_files_for_session(session, target_files)
+    scoped_rel_paths = frozenset(_relative_path(path, session.target_root) for path in external_target_files)
+    analyzer_ids = _select_external_analyzers(session.profile_id, external_target_files, session.target_root)
     for analyzer_id in analyzer_ids:
         run_result = run_analyzer(analyzer_id, session.target_root, next_id)
         scoped = [finding for finding in run_result.findings if finding.target_file in scoped_rel_paths]

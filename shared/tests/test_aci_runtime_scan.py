@@ -10,6 +10,7 @@ import aci.aci_scan as scanmod
 from aci.aci_automation import validate_report_payload
 from aci.aci_config import load_cli_config
 from aci.aci_domain_contract import CORE_ONLY_DOMAIN_ID
+from aci.aci_findings import build_finding, LANE_EXTERNAL_ANALYZER, VERIFICATION_EXECUTED
 from aci.aci_profiles import PROFILE_QUICK_GATE
 from aci.aci_sarif import build_sarif_report, validate_sarif_report
 from aci.aci_scan import scan_target
@@ -250,6 +251,60 @@ def test_full_repo_reports_fixture_findings_without_blocking_gate(tmp_path: Path
     assert report["gate"]["decision"] == "pass"
     assert report["blockers"] == []
     assert report["summary"]["blocker_count"] == 0
+
+
+def test_full_repo_external_lane_ignores_fixture_only_findings(tmp_path: Path, monkeypatch) -> None:
+    _write(tmp_path / "src" / "main.py", "x = 1\n")
+    _write(tmp_path / "examples" / "fixture.py", "y = 2\n")
+
+    def _fake_run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> execmod.AnalyzerRunResult:
+        runtime = build_finding(
+            finding_id=f"F-EXT-{next_id:04d}",
+            ci_id="CI-07",
+            signal="EXT_RUFF",
+            severity="medium",
+            target_file="src/main.py",
+            reason="runtime finding",
+            evidence_ref="ruff",
+            line=1,
+            owner_lane=LANE_EXTERNAL_ANALYZER,
+            verification_status=VERIFICATION_EXECUTED,
+        )
+        fixture = build_finding(
+            finding_id=f"F-EXT-{next_id + 1:04d}",
+            ci_id="CI-07",
+            signal="EXT_RUFF",
+            severity="medium",
+            target_file="examples/fixture.py",
+            reason="fixture finding",
+            evidence_ref="ruff",
+            line=1,
+            owner_lane=LANE_EXTERNAL_ANALYZER,
+            verification_status=VERIFICATION_EXECUTED,
+        )
+        return execmod.AnalyzerRunResult(
+            analyzer_id=analyzer_id,
+            ok=True,
+            exit_code=0,
+            runtime_state="executed",
+            stdout="",
+            stderr="",
+            findings=(runtime, fixture),
+        )
+
+    monkeypatch.setattr(scanmod, "run_analyzer", _fake_run_analyzer)
+
+    report = scan_target(
+        tmp_path,
+        "quick-gate",
+        "core-only",
+        include_external_analyzers=True,
+        scope_mode="full-repo",
+    )
+
+    findings = {(item["target_file"], item["owner_lane"]) for item in report["findings"]}
+    assert ("src/main.py", LANE_EXTERNAL_ANALYZER) in findings
+    assert ("examples/fixture.py", LANE_EXTERNAL_ANALYZER) not in findings
 
 
 def test_dogfood_scope_focuses_common_source_and_tests(tmp_path: Path) -> None:
