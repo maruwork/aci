@@ -34,7 +34,7 @@ aci scan --target . --profile full --domain core-only --output-format pretty-jso
 - `--scope-mode source-only` - default preset; excludes common non-runtime shelves such as `docs/` and `examples/`.
 - `--scope-mode dogfood` - focuses on common source + test shelves for self-audit.
 - `--scope-mode full-repo` - scans the full tree but only `runtime-source` findings can block the gate.
-- `--no-external-analyzers` — skip ruff/pyflakes/mypy/pytest/eslint/tsc/shellcheck/sqlfluff (native lane only).
+- `--no-external-analyzers` — skip ruff/pyflakes/mypy/pytest/semgrep/eslint/tsc/shellcheck/sqlfluff (native lane only).
 
 The exit code is non-zero when findings are present (including waived ones) or the
 gate fails. If you want to rely only on the gate decision, check
@@ -103,6 +103,7 @@ entries = [{ waiver_id = "W1", ci_id = "CI-21", target_file = "app/io.py", line 
 aci scan --target . --profile full --output-format json > report.json
 aci emit-sarif --report report.json > aci.sarif        # upload to code scanning
 aci emit-annotations --report report.json              # GitHub Actions annotations
+aci emit-github-summary --report report.json           # Markdown summary for PRs / step summary
 ```
 
 ## Where next

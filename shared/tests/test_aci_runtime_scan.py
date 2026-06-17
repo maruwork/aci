@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import aci.aci_analyzer_execution as execmod
+from aci.aci_github_summary import build_github_summary_markdown
 import aci.aci_scan as scanmod
 from aci.aci_automation import validate_report_payload
 from aci.aci_config import load_cli_config
@@ -315,12 +316,25 @@ def test_report_contains_tool_version(tmp_path: Path) -> None:
     assert report["tool_version"] == "0.1.0"
 
 
+def test_report_includes_review_brief_and_github_summary(tmp_path: Path) -> None:
+    _write(tmp_path / "danger.py", "eval('1+1')\n")
+    report = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)
+    brief = report["review_brief"]
+    assert brief["gate_decision"] == report["gate"]["decision"]
+    assert brief["top_files"]
+    summary = build_github_summary_markdown(report)
+    assert "ACI Review Summary" in summary
+    assert "Hottest Files" in summary
+
+
 def test_full_profile_runs_applicable_polyglot_analyzers(tmp_path: Path, monkeypatch) -> None:
     _write(tmp_path / "index.js", "var x = 1;\n")
     _write(tmp_path / "types.ts", "const y: any = 1;\n")
     _write(tmp_path / "tsconfig.json", '{"compilerOptions": {"noEmit": true}}\n')
     _write(tmp_path / "run.sh", 'echo "$HOME"\n')
     _write(tmp_path / "query.sql", "select  *  from t;\n")
+    _write(tmp_path / "Dockerfile", "FROM python:3.12\nRUN chmod 777 /tmp\n")
+    _write(tmp_path / "main.tf", 'resource "null_resource" "x" {}\n')
 
     calls: list[str] = []
 
@@ -345,12 +359,14 @@ def test_full_profile_runs_applicable_polyglot_analyzers(tmp_path: Path, monkeyp
         include_external_analyzers=True,
     )
 
-    assert calls == ["eslint", "tsc", "shellcheck", "sqlfluff"]
+    assert calls == ["semgrep", "eslint", "tsc", "shellcheck", "sqlfluff"]
     skipped = {item["path"]: item["reason"] for item in report["skipped_targets"]}
     assert "index.js" not in skipped
     assert "types.ts" not in skipped
     assert "run.sh" not in skipped
     assert "query.sql" not in skipped
+    assert "Dockerfile" not in skipped
+    assert "main.tf" not in skipped
 
 
 # ── diff-from tests ────────────────────────────────────────────────────────

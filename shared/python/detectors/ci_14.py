@@ -22,6 +22,9 @@ SIGNALS_EVAL_EXEC: frozenset[str] = frozenset({"CI14_DYNAMIC_CODE_EXECUTION"})
 SIGNALS_SUBPROCESS: frozenset[str] = frozenset({"CI14_SUBPROCESS_SHELL_TRUE"})
 SIGNALS_SECRET: frozenset[str] = frozenset({"CI14_PLAINTEXT_SECRET"})
 SIGNALS_HTTP: frozenset[str] = frozenset({"CI14_INSECURE_HTTP"})
+SIGNALS_DESERIALIZATION: frozenset[str] = frozenset({"CI14_UNSAFE_DESERIALIZATION"})
+SIGNALS_UNSAFE_YAML: frozenset[str] = frozenset({"CI14_UNSAFE_YAML_LOAD"})
+SIGNALS_SUPPLY_CHAIN: frozenset[str] = frozenset({"CI14_SUPPLY_CHAIN_DRIFT"})
 
 _SUBPROCESS_SHELL_TRUE_PATTERN = re.compile(
     r"\bsubprocess\.(run|Popen|call|check_call|check_output)\s*\([^)]*shell\s*=\s*True",
@@ -35,6 +38,9 @@ _PLAINTEXT_SECRET_PATTERN = re.compile(
     r"(?i)\b(api[_-]?key|secret|token|password)\b\s*[:=]\s*['\"][A-Za-z0-9_\-]{8,}['\"]"
 )
 _INSECURE_HTTP_PATTERN = re.compile(r"(?i)http://[A-Za-z0-9._:/\-]+")
+_UNPINNED_REQUIREMENT_PATTERN = re.compile(r"^[A-Za-z0-9_.\-]+(\[[A-Za-z0-9_,.\-]+\])?\s*(?!==)(?:[><~^!*]=?|@).+")
+_DOCKER_LATEST_PATTERN = re.compile(r"^\s*FROM\s+\S+:latest(?:\s|$)", re.IGNORECASE)
+_GITHUB_ACTION_USES_PATTERN = re.compile(r"^\s*uses:\s*([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)@([^\s#]+)", re.IGNORECASE)
 
 # Env-var / constant NAMES (UPPER_SNAKE with an underscore) assigned to a
 # secret-named target are labels, not secret material: `SECRET_KEY =
@@ -201,6 +207,98 @@ def scan_plaintext_secrets(path: Path, text: str, target_root: Path, next_id: in
     return findings
 
 
+def _attribute_call_name(node: ast.Call) -> tuple[str | None, str | None]:
+    if not isinstance(node.func, ast.Attribute):
+        return None, None
+    owner = node.func.value.id if isinstance(node.func.value, ast.Name) else None
+    return owner, node.func.attr
+
+
+def scan_unsafe_deserialization(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    if path.suffix.lower() != ".py":
+        return findings
+    try:
+        tree = _cached_parse(text)
+    except SyntaxError:
+        return findings
+    dangerous_owners = {"pickle", "dill", "marshal", "shelve"}
+    dangerous_methods = {"load", "loads", "open"}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        owner, attr = _attribute_call_name(node)
+        if owner not in dangerous_owners or attr not in dangerous_methods:
+            continue
+        line = node.lineno
+        findings.append(
+            build_finding(
+                finding_id=f"F-SCAN-{next_id + len(findings):04d}",
+                ci_id="CI-14",
+                signal="CI14_UNSAFE_DESERIALIZATION",
+                severity="high",
+                target_file=_relative_path(path, target_root),
+                line=line,
+                excerpt=_line_excerpt(text, line),
+                reason=(
+                    f"{owner}.{attr} can deserialize attacker-controlled data and trigger unsafe code paths."
+                ),
+                evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
+                recommended_action="Prefer schema-checked formats such as JSON, or strictly bound trusted deserialization inputs.",
+                confidence=CONFIDENCE_HIGH,
+                priority="P1",
+                owner_lane=LANE_NATIVE_STATIC,
+                verification_status=VERIFICATION_EXECUTED,
+            )
+        )
+    return findings
+
+
+def _is_safe_yaml_loader(node: ast.AST) -> bool:
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "yaml":
+        return node.attr in {"SafeLoader", "CSafeLoader"}
+    return False
+
+
+def scan_unsafe_yaml_load(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    if path.suffix.lower() != ".py":
+        return findings
+    try:
+        tree = _cached_parse(text)
+    except SyntaxError:
+        return findings
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        owner, attr = _attribute_call_name(node)
+        if owner != "yaml" or attr != "load":
+            continue
+        loader_kw = next((kw.value for kw in node.keywords if kw.arg == "Loader"), None)
+        if loader_kw is not None and _is_safe_yaml_loader(loader_kw):
+            continue
+        line = node.lineno
+        findings.append(
+            build_finding(
+                finding_id=f"F-SCAN-{next_id + len(findings):04d}",
+                ci_id="CI-14",
+                signal="CI14_UNSAFE_YAML_LOAD",
+                severity="high",
+                target_file=_relative_path(path, target_root),
+                line=line,
+                excerpt=_line_excerpt(text, line),
+                reason="yaml.load without SafeLoader can construct unsafe objects from untrusted input.",
+                evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
+                recommended_action="Use yaml.safe_load or pass yaml.SafeLoader explicitly for untrusted YAML.",
+                confidence=CONFIDENCE_HIGH,
+                priority="P1",
+                owner_lane=LANE_NATIVE_STATIC,
+                verification_status=VERIFICATION_EXECUTED,
+            )
+        )
+    return findings
+
+
 def _http_match_is_noise(line_text: str, col: int) -> bool:
     """Skip http:// occurrences that are not live transport: in a comment, or
     in a doctest example line (>>> / ...)."""
@@ -228,6 +326,141 @@ def _docstring_line_set(tree: ast.AST) -> set[int]:
             end = getattr(first.value, "end_lineno", start) or start
             covered.update(range(start, end + 1))
     return covered
+
+
+def _build_security_finding(
+    *,
+    finding_id: str,
+    signal: str,
+    severity: str,
+    path: Path,
+    target_root: Path,
+    line: int,
+    excerpt_text: str,
+    reason: str,
+    recommended_action: str,
+) -> AciFinding:
+    return build_finding(
+        finding_id=finding_id,
+        ci_id="CI-14",
+        signal=signal,
+        severity=severity,
+        target_file=_relative_path(path, target_root),
+        line=line,
+        excerpt=excerpt_text,
+        reason=reason,
+        evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
+        recommended_action=recommended_action,
+        confidence=CONFIDENCE_MEDIUM if severity == "medium" else CONFIDENCE_HIGH,
+        priority="P2" if severity == "medium" else "P1",
+        owner_lane=LANE_NATIVE_STATIC,
+        verification_status=VERIFICATION_EXECUTED,
+    )
+
+
+def _package_json_supply_chain_findings(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    try:
+        import json as _json
+        payload = _json.loads(text)
+    except _json.JSONDecodeError:
+        return findings
+    if not isinstance(payload, dict):
+        return findings
+    lines = text.splitlines()
+    for section in ("dependencies", "devDependencies", "optionalDependencies"):
+        deps = payload.get(section)
+        if not isinstance(deps, dict):
+            continue
+        for name, spec in deps.items():
+            if not isinstance(name, str) or not isinstance(spec, str):
+                continue
+            if not spec.startswith(("^", "~", "*", ">", "<")):
+                continue
+            line = next((i for i, raw in enumerate(lines, start=1) if f'"{name}"' in raw), 1)
+            findings.append(
+                _build_security_finding(
+                    finding_id=f"F-SCAN-{next_id + len(findings):04d}",
+                    signal="CI14_SUPPLY_CHAIN_DRIFT",
+                    severity="medium",
+                    path=path,
+                    target_root=target_root,
+                    line=line,
+                    excerpt_text=_line_excerpt(text, line),
+                    reason=f"Dependency '{name}' is not pinned to an exact version, which widens supply-chain drift.",
+                    recommended_action="Pin dependencies to reviewed versions and update them through an explicit upgrade path.",
+                )
+            )
+    return findings
+
+
+def scan_supply_chain_drift(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    suffix = path.suffix.lower()
+    name = path.name
+    lines = text.splitlines()
+    if name == "package.json":
+        return _package_json_supply_chain_findings(path, text, target_root, next_id)
+    if name.startswith("requirements") and suffix == ".txt":
+        for lineno, raw in enumerate(lines, start=1):
+            stripped = raw.strip()
+            if not stripped or stripped.startswith(("#", "-r", "--", "-e", "git+", "http://", "https://")):
+                continue
+            if _UNPINNED_REQUIREMENT_PATTERN.match(stripped):
+                findings.append(
+                    _build_security_finding(
+                        finding_id=f"F-SCAN-{next_id + len(findings):04d}",
+                        signal="CI14_SUPPLY_CHAIN_DRIFT",
+                        severity="medium",
+                        path=path,
+                        target_root=target_root,
+                        line=lineno,
+                        excerpt_text=raw.strip(),
+                        reason="A Python requirement is not pinned to an exact version, which weakens reproducibility and review boundaries.",
+                        recommended_action="Pin third-party requirements with exact versions or route intentionally floating dependencies through a reviewed exceptions file.",
+                    )
+                )
+        return findings
+    if name in {"Dockerfile", "Containerfile"}:
+        for lineno, raw in enumerate(lines, start=1):
+            if _DOCKER_LATEST_PATTERN.match(raw):
+                findings.append(
+                    _build_security_finding(
+                        finding_id=f"F-SCAN-{next_id + len(findings):04d}",
+                        signal="CI14_SUPPLY_CHAIN_DRIFT",
+                        severity="medium",
+                        path=path,
+                        target_root=target_root,
+                        line=lineno,
+                        excerpt_text=raw.strip(),
+                        reason="Container base image uses the floating ':latest' tag, which makes rebuilds drift silently.",
+                        recommended_action="Pin the base image to a reviewed immutable tag or digest.",
+                    )
+                )
+        return findings
+    normalized = path.as_posix().replace("\\", "/")
+    if normalized.endswith(".github/workflows/ci.yml") or "/.github/workflows/" in normalized:
+        for lineno, raw in enumerate(lines, start=1):
+            match = _GITHUB_ACTION_USES_PATTERN.match(raw)
+            if not match:
+                continue
+            ref = match.group(2)
+            if re.fullmatch(r"[0-9a-fA-F]{40}", ref):
+                continue
+            findings.append(
+                _build_security_finding(
+                    finding_id=f"F-SCAN-{next_id + len(findings):04d}",
+                    signal="CI14_SUPPLY_CHAIN_DRIFT",
+                    severity="medium",
+                    path=path,
+                    target_root=target_root,
+                    line=lineno,
+                    excerpt_text=raw.strip(),
+                    reason="GitHub Action is referenced by a mutable tag instead of a commit SHA, which widens supply-chain drift.",
+                    recommended_action="Pin GitHub Actions to immutable commit SHAs and rotate them through reviewed updates.",
+                )
+            )
+    return findings
 
 
 def scan_insecure_http(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:

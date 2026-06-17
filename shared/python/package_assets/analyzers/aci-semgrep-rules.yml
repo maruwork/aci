@@ -1,0 +1,46 @@
+rules:
+  - id: aci.ci14.unsafe-yaml-load
+    languages: [python]
+    severity: ERROR
+    message: Untrusted YAML should not be loaded with yaml.load without SafeLoader.
+    patterns:
+      - pattern: yaml.load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+      - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+  - id: aci.ci14.pickle-load
+    languages: [python]
+    severity: ERROR
+    message: Pickle-style deserialization can execute attacker-controlled payloads.
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: dill.load(...)
+      - pattern: dill.loads(...)
+      - pattern: marshal.load(...)
+      - pattern: marshal.loads(...)
+  - id: aci.ci22.fire-and-forget-task
+    languages: [python]
+    severity: WARNING
+    message: Fire-and-forget asyncio.create_task can leak work beyond the owning boundary.
+    pattern-either:
+      - pattern: asyncio.create_task(...)
+      - pattern: $LOOP.create_task(...)
+  - id: aci.ci23.js-eval
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Dynamic code execution weakens auditability and expands the attack surface.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+  - id: aci.ci21.silent-shell-continue
+    languages: [bash]
+    severity: WARNING
+    message: Shell commands should not silently swallow failures through unconditional fallback.
+    pattern: $CMD || true
+  - id: aci.ci26.world-writeable-container
+    languages: [dockerfile]
+    severity: WARNING
+    message: World-writable container paths expand mutation and race surfaces.
+    pattern-either:
+      - pattern: RUN chmod 777 ...
+      - pattern: RUN chmod -R 777 ...

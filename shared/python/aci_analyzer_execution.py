@@ -22,6 +22,7 @@ from typing import cast
 import json
 import re
 import subprocess
+import sys
 from shutil import which
 
 try:
@@ -39,6 +40,10 @@ ANALYZER_EXECUTION_SUPPORT_LEVELS: dict[str, str] = {
         "The common shelf can check executable visibility, attempt a version probe, and run a bounded invocation "
         "against a target directory for supported analyzers."
     ),
+    "project-local-setup-required": (
+        "The common shelf can recognize the analyzer and report readiness, but repository-local setup is still "
+        "required before execution becomes valid."
+    ),
 }
 
 VERSION_PROBE_TIMEOUT_SECONDS: int = 10
@@ -46,6 +51,10 @@ ANALYZER_TIMEOUT_SECONDS: int = 30
 ANALYZER_MAX_OUTPUT_CHARS: int = 10 * 1024 * 1024  # 10 M chars per stream (≈10 MB for ASCII output)
 
 MINIMUM_ANALYZER_VERSIONS: dict[str, tuple[int, ...]] = {
+    "gitleaks": (8, 0, 0),
+    "osv-scanner": (1, 0, 0),
+    "trivy": (0, 40, 0),
+    "semgrep": (1, 0, 0),
     "ruff": (0, 1, 0),
     "pyflakes": (3, 0, 0),
     "mypy": (1, 0, 0),
@@ -121,6 +130,10 @@ def _parse_version(version_text: str | None) -> tuple[int, ...] | None:
 
 
 def _version_probe_command(analyzer_id: str) -> list[str]:
+    if analyzer_id == "codeql":
+        return [analyzer_id, "version"]
+    if analyzer_id == "gitleaks":
+        return [analyzer_id, "version"]
     return [analyzer_id, "--version"]
 
 
@@ -157,7 +170,12 @@ def _readiness_for(entry_analyzer_id: str) -> AnalyzerReadiness:
             minimum_version=_minimum_version_text(entry_analyzer_id),
         )
     version_text, version_ok = _probe_version(entry_analyzer_id, executable_path)
-    availability_state = "ready" if version_ok else "version-or-runtime-problem"
+    if entry_analyzer_id in {"codeql", "gitleaks", "osv-scanner", "trivy"}:
+        availability_state = "project-local-setup-required" if version_ok else "version-or-runtime-problem"
+        support_level = "project-local-setup-required"
+    else:
+        availability_state = "ready" if version_ok else "version-or-runtime-problem"
+        support_level = "execution-ready"
     return AnalyzerReadiness(
         analyzer_id=entry_analyzer_id,
         executable_path=executable_path,
@@ -165,6 +183,7 @@ def _readiness_for(entry_analyzer_id: str) -> AnalyzerReadiness:
         version_text=version_text,
         version_ok=version_ok,
         minimum_version=_minimum_version_text(entry_analyzer_id),
+        execution_support_level=support_level,
     )
 
 
@@ -289,19 +308,29 @@ _PYTHON_ANALYZER_SKIP_SEGMENTS: frozenset[str] = frozenset({
     ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
     ".claude", "archive", "common", "workspace",
 })
+_PYTEST_CANDIDATE_PATHS: tuple[str, ...] = ("shared/tests", "tests", "test", "spec", "specs")
+
+
+def _relative_parts(path: Path, target_root: Path) -> tuple[str, ...]:
+    try:
+        return path.relative_to(target_root).parts
+    except ValueError:
+        return path.parts
 
 
 def _find_python_files(target_root: Path) -> list[str]:
     return sorted(
         str(p)
         for p in target_root.rglob("*.py")
-        if p.is_file() and not any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in p.parts)
+        if p.is_file() and not any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
     )
 
 
 def _mypy_command(target_root: Path, python_files: list[str]) -> list[str]:
     command = [
         "mypy",
+        "--namespace-packages",
+        "--explicit-package-bases",
         "--hide-error-context",
         "--no-color-output",
         "--show-column-numbers",
@@ -314,12 +343,18 @@ def _mypy_command(target_root: Path, python_files: list[str]) -> list[str]:
     return command
 
 
+def _pytest_targets(target_root: Path) -> list[str]:
+    targets = [str(target_root / candidate) for candidate in _PYTEST_CANDIDATE_PATHS if (target_root / candidate).exists()]
+    return targets or [str(target_root)]
+
+
 def _pytest_command(target_root: Path) -> list[str]:
-    command = ["pytest", "-q", "-p", "no:cacheprovider"]
+    command = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"]
     workspace_dir = target_root / "workspace"
     if workspace_dir.is_dir():
+        command.extend(["--ignore", str(workspace_dir)])
         command.extend(["--basetemp", str(workspace_dir / ".aci-pytest-tmp")])
-    command.append(str(target_root))
+    command.extend(_pytest_targets(target_root))
     return command
 
 
@@ -335,6 +370,17 @@ _ESLINT_RULE_PREFIX_MAP: tuple[tuple[str, str], ...] = (
     ("no-implied-eval",    "CI-14"),
 )
 
+_SEMGREP_SUPPORTED_SUFFIXES: frozenset[str] = frozenset({
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".cs", ".kt", ".kts",
+    ".sh", ".bash", ".yaml", ".yml", ".json", ".toml", ".tf", ".hcl",
+})
+_SEMGREP_SUPPORTED_NAMES: frozenset[str] = frozenset({"Dockerfile", "Containerfile"})
+_SEMGREP_SKIP_SEGMENTS: frozenset[str] = frozenset({
+    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
+    ".claude", "archive", "common", "workspace",
+})
+
 
 def _eslint_ci_id(rule_id: str | None) -> str:
     if not rule_id:
@@ -347,6 +393,38 @@ def _eslint_ci_id(rule_id: str | None) -> str:
 
 def _eslint_command(target_root: Path) -> list[str]:
     return ["eslint", "--format", "json", str(target_root)]
+
+
+def _semgrep_rule_path() -> Path:
+    return Path(__file__).resolve().parent / "package_assets" / "analyzers" / "aci-semgrep-rules.yml"
+
+
+def _has_semgrep_source(target_root: Path, ignored_paths: tuple[Path, ...] = ()) -> bool:
+    ignored = {path.resolve() for path in ignored_paths}
+    return any(
+        path.is_file()
+        and path.resolve() not in ignored
+        and path.name not in {".semgrepignore"}
+        and not any(seg in _SEMGREP_SKIP_SEGMENTS for seg in _relative_parts(path, target_root))
+        and (path.suffix.lower() in _SEMGREP_SUPPORTED_SUFFIXES or path.name in _SEMGREP_SUPPORTED_NAMES)
+        for path in target_root.rglob("*")
+    )
+
+
+def _semgrep_command(target_root: Path) -> list[str] | None:
+    rule_path = _semgrep_rule_path()
+    if not rule_path.is_file() or not _has_semgrep_source(target_root, ignored_paths=(rule_path,)):
+        return None
+    return [
+        "semgrep",
+        "scan",
+        "--config",
+        str(rule_path),
+        "--json",
+        "--quiet",
+        "--disable-version-check",
+        str(target_root),
+    ]
 
 
 _TSC_LINE_PATTERN = re.compile(r"(.+?)\((\d+),(\d+)\):\s*(?:error|warning)\s*(TS\d+):\s*(.+)")
@@ -376,7 +454,7 @@ def _find_shell_files(target_root: Path) -> list[str]:
         for p in target_root.rglob("*")
         if p.suffix in (".sh", ".bash")
         and p.is_file()
-        and not any(seg in _SHELLCHECK_SKIP_SEGMENTS for seg in p.parts)
+        and not any(seg in _SHELLCHECK_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
     )
 
 
@@ -400,6 +478,8 @@ def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
         return _pyflakes_command(target_root)
     if analyzer_id == "pytest":
         return _pytest_command(target_root)
+    if analyzer_id == "semgrep":
+        return _semgrep_command(target_root)
     if analyzer_id == "eslint":
         return _eslint_command(target_root)
     if analyzer_id == "sqlfluff":
@@ -627,6 +707,71 @@ def _eslint_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFi
     return findings
 
 
+def _semgrep_ci_id(check_id: str) -> str:
+    lowered = check_id.lower()
+    if ".ci22." in lowered:
+        return "CI-22"
+    if ".ci23." in lowered:
+        return "CI-23"
+    if ".ci26." in lowered:
+        return "CI-26"
+    if ".ci21." in lowered:
+        return "CI-21"
+    return "CI-14"
+
+
+def _semgrep_severity(value: str) -> str:
+    severity = value.upper()
+    if severity == "ERROR":
+        return "high"
+    if severity == "INFO":
+        return "low"
+    return "medium"
+
+
+def _semgrep_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    payload = json.loads(stdout or "{}")
+    for item in payload.get("results", []):
+        raw_path = item.get("path", "")
+        if not raw_path:
+            continue
+        path = Path(raw_path)
+        try:
+            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
+        except ValueError:
+            relative = path.as_posix()
+        extra = item.get("extra", {})
+        check_id = str(item.get("check_id", "semgrep.unknown"))
+        message = str(extra.get("message", "semgrep reported a finding"))
+        line = ((item.get("start") or {}) if isinstance(item.get("start"), dict) else {}).get("line")
+        findings.append(
+            build_finding(
+                finding_id=f"F-EXT-{next_id + len(findings):04d}",
+                ci_id=_semgrep_ci_id(check_id),
+                signal="EXT_SEMGREP",
+                severity=_semgrep_severity(str(extra.get("severity", "WARNING"))),
+                confidence="medium",
+                actor_label=LANE_EXTERNAL_ANALYZER,
+                triage_state="review-first",
+                priority="P1" if _semgrep_severity(str(extra.get("severity", "WARNING"))) == "high" else "P2",
+                fixability="owner-decision",
+                baseline_status="new",
+                waiver_status="none",
+                lifecycle_state="open",
+                owner_lane=LANE_EXTERNAL_ANALYZER,
+                target_file=relative,
+                line=line if isinstance(line, int) else None,
+                excerpt=message,
+                reason=message,
+                evidence_ref=f"semgrep:{check_id}",
+                recommended_action="Review the Semgrep finding and either harden the code path or narrow the rule scope.",
+                verification_status=VERIFICATION_EXECUTED,
+            )
+        )
+    return findings
+
+
 def _tsc_findings(stdout: str, stderr: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
     for raw_line in (stdout + "\n" + stderr).splitlines():
@@ -761,6 +906,10 @@ def _resolve_analyzer_command(analyzer_id: str, target_root: Path) -> tuple[list
         shell_files = _find_shell_files(target_root)
         skipped_source_count = max(0, len(shell_files) - 200)
         return (_shellcheck_command(shell_files) if shell_files else None, skipped_source_count, True)
+    if analyzer_id == "semgrep":
+        return _semgrep_command(target_root), skipped_source_count, True
+    if analyzer_id == "codeql":
+        return None, skipped_source_count, False
     return _analyzer_command(analyzer_id, target_root), skipped_source_count, False
 
 
@@ -780,7 +929,12 @@ def _no_source_result(analyzer_id: str, no_source: bool) -> AnalyzerRunResult:
     )
 
 
-def _execute_analyzer_command(analyzer_id: str, command: list[str]) -> tuple[subprocess.CompletedProcess[str] | None, AnalyzerRunResult | None]:
+def _execute_analyzer_command(
+    analyzer_id: str,
+    command: list[str],
+    *,
+    cwd: Path,
+) -> tuple[subprocess.CompletedProcess[str] | None, AnalyzerRunResult | None]:
     try:
         completed = subprocess.run(
             command,
@@ -790,6 +944,7 @@ def _execute_analyzer_command(analyzer_id: str, command: list[str]) -> tuple[sub
             errors="replace",
             timeout=ANALYZER_TIMEOUT_SECONDS,
             check=False,
+            cwd=str(cwd),
         )
     except subprocess.TimeoutExpired as exc:
         return None, AnalyzerRunResult(
@@ -830,6 +985,8 @@ def _parse_analyzer_findings(
             return _mypy_findings(stdout, stderr, target_root, next_id), True
         if analyzer_id == "pytest":
             return _pytest_findings(stdout, stderr, next_id), True
+        if analyzer_id == "semgrep":
+            return _semgrep_findings(stdout, target_root, next_id), True
         if analyzer_id == "eslint":
             return _eslint_findings(stdout, target_root, next_id), True
         if analyzer_id == "tsc":
@@ -872,7 +1029,7 @@ def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerR
 
     if command is None:
         return _no_source_result(analyzer_id, no_source)
-    completed, error_result = _execute_analyzer_command(analyzer_id, command)
+    completed, error_result = _execute_analyzer_command(analyzer_id, command, cwd=target_root)
     if error_result is not None or completed is None:
         return cast(AnalyzerRunResult, error_result)
 

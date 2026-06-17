@@ -66,6 +66,7 @@ def test_external_lane_records_per_analyzer_runtime_state(tmp_path: Path) -> Non
         "not-installed",
         "no-tests-collected",
         "no-applicable-source",
+        "project-local-setup-required",
         "runtime-failure",
         "parse-failure",
         "spawn-failure",

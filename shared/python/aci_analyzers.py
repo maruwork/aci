@@ -21,6 +21,13 @@ ANALYZER_SUPPORT_LEVELS: dict[str, str] = {
         "as a default evidence source. Installation, invocation, and version pinning remain "
         "downstream responsibilities."
     ),
+    "execution-ready": (
+        "The common shelf can invoke this analyzer with bounded default wiring and normalize its findings."
+    ),
+    "project-local-setup-required": (
+        "The common shelf recognizes this analyzer, but execution still depends on repository-local setup "
+        "such as query packs, databases, or policy configuration."
+    ),
 }
 
 
@@ -41,11 +48,76 @@ class AciAnalyzerCatalogEntry:
 
 ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
     AciAnalyzerCatalogEntry(
+        analyzer_id="semgrep",
+        category="static-analysis",
+        purpose="polyglot semantic rule matching and taint-style security evidence across common source languages",
+        evidence_type="machine evidence",
+        support_level="execution-ready",
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        typical_ci_ids=("CI-14", "CI-21", "CI-22", "CI-23", "CI-26"),
+        ownership_boundary=(
+            "The common shelf ships a bounded baseline Semgrep rule pack and normalizes its JSON output. "
+            "Repository-local rule packs and stricter policies remain downstream."
+        ),
+    ),
+    AciAnalyzerCatalogEntry(
+        analyzer_id="codeql",
+        category="static-analysis",
+        purpose="deep semantic and dataflow evidence when a repository-local CodeQL database and query pack exist",
+        evidence_type="machine evidence",
+        support_level="project-local-setup-required",
+        referenced_by_profiles=(PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        typical_ci_ids=("CI-14", "CI-21", "CI-22", "CI-23", "CI-26"),
+        ownership_boundary=(
+            "The common shelf catalogs CodeQL and can report readiness, but CodeQL database creation, query pack "
+            "selection, and repo-specific tuning remain downstream."
+        ),
+    ),
+    AciAnalyzerCatalogEntry(
+        analyzer_id="gitleaks",
+        category="secret-scan",
+        purpose="repository secret and credential leakage detection",
+        evidence_type="machine evidence",
+        support_level="project-local-setup-required",
+        referenced_by_profiles=(),
+        typical_ci_ids=("CI-14",),
+        ownership_boundary=(
+            "The common shelf catalogs gitleaks as an optional secret-scanning evidence lane. "
+            "Rule tuning, allowlists, and enforcement policy remain downstream."
+        ),
+    ),
+    AciAnalyzerCatalogEntry(
+        analyzer_id="osv-scanner",
+        category="dependency-audit",
+        purpose="dependency vulnerability evidence from lockfiles and manifests",
+        evidence_type="machine evidence",
+        support_level="project-local-setup-required",
+        referenced_by_profiles=(),
+        typical_ci_ids=("CI-14", "CI-23"),
+        ownership_boundary=(
+            "The common shelf catalogs OSV-Scanner as an optional dependency audit lane. "
+            "Manifest scope, advisory policy, and remediation workflow remain downstream."
+        ),
+    ),
+    AciAnalyzerCatalogEntry(
+        analyzer_id="trivy",
+        category="dependency-and-image-audit",
+        purpose="dependency, container image, and IaC vulnerability evidence",
+        evidence_type="machine evidence",
+        support_level="project-local-setup-required",
+        referenced_by_profiles=(),
+        typical_ci_ids=("CI-14",),
+        ownership_boundary=(
+            "The common shelf catalogs Trivy as an optional security evidence lane. "
+            "Target selection, policy thresholds, and CI gating remain downstream."
+        ),
+    ),
+    AciAnalyzerCatalogEntry(
         analyzer_id="ruff",
         category="lint",
         purpose="fast lint and rule-based static evidence for code hygiene and contract drift",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-07", "CI-13", "CI-14", "CI-15", "CI-21", "CI-23", "CI-25"),
         ownership_boundary=(
@@ -58,7 +130,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="import, undefined-name, and dead-code style evidence for bounded Python review",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-07", "CI-13", "CI-21", "CI-23", "CI-25"),
         ownership_boundary=(
@@ -71,7 +143,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="type-check",
         purpose="static type and interface mismatch evidence",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-15", "CI-23", "CI-25"),
         ownership_boundary=(
@@ -84,7 +156,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="test",
         purpose="test execution evidence for regression and fixture behavior",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-09", "CI-23", "CI-25"),
         ownership_boundary=(
@@ -97,7 +169,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="JS/TS rule-based static analysis for code quality, import hygiene, and type contract violations",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-02", "CI-07", "CI-13", "CI-14", "CI-21", "CI-23"),
         ownership_boundary=(
@@ -110,7 +182,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="type-check",
         purpose="TypeScript compiler type checking for interface and contract drift",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-23",),
         ownership_boundary=(
@@ -123,7 +195,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="shell script static analysis for unsafe patterns, error-handling gaps, and portability issues",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-02", "CI-21"),
         ownership_boundary=(
@@ -136,7 +208,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="SQL style and structure linting for query quality",
         evidence_type="machine evidence",
-        support_level="profile-default-catalog",
+        support_level="execution-ready",
         referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-02",),
         ownership_boundary=(

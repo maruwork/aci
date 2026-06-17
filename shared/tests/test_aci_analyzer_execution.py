@@ -32,20 +32,39 @@ def test_pytest_no_tests_collected_is_treated_as_nonfatal(monkeypatch, tmp_path:
 
 def test_pytest_command_disables_cacheprovider_writes(tmp_path: Path) -> None:
     command = execmod._pytest_command(tmp_path)
-    assert command == ["pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)]
+    assert command == [execmod.sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)]
 
 
 def test_pytest_command_uses_workspace_scratch_when_available(tmp_path: Path) -> None:
     (tmp_path / "workspace").mkdir()
     command = execmod._pytest_command(tmp_path)
     assert command == [
+        execmod.sys.executable,
+        "-m",
         "pytest",
         "-q",
         "-p",
         "no:cacheprovider",
+        "--ignore",
+        str(tmp_path / "workspace"),
         "--basetemp",
         str(tmp_path / "workspace" / ".aci-pytest-tmp"),
         str(tmp_path),
+    ]
+
+
+def test_pytest_command_prefers_conventional_test_shelves(tmp_path: Path) -> None:
+    (tmp_path / "shared" / "tests").mkdir(parents=True)
+    command = execmod._pytest_command(tmp_path)
+
+    assert command == [
+        execmod.sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        str(tmp_path / "shared" / "tests"),
     ]
 
 
@@ -71,6 +90,19 @@ def test_sarif_ready_readiness_summary_contains_known_states() -> None:
     quick_gate = next(row for row in rows if row["profile_id"] == PROFILE_QUICK_GATE)
     assert "ruff" in quick_gate["readiness_summary"]
     assert "pyflakes" in quick_gate["readiness_summary"]
+
+
+def test_full_profile_readiness_summary_includes_semgrep() -> None:
+    rows = execmod.profile_execution_plan()
+    full = next(row for row in rows if row["profile_id"] == "full")
+    assert "semgrep" in full["readiness_summary"]
+
+
+def test_optional_security_analyzers_are_cataloged() -> None:
+    from aci.aci_analyzers import analyzer_catalog
+
+    ids = {entry["analyzer_id"] for entry in analyzer_catalog()}
+    assert {"gitleaks", "osv-scanner", "trivy"} <= ids
 
 
 def test_ruff_output_is_normalized_into_findings(tmp_path: Path) -> None:
@@ -119,6 +151,8 @@ def test_mypy_command_uses_workspace_cache_and_python_sources(tmp_path: Path) ->
     command = execmod._mypy_command(tmp_path, [str(alpha), str(beta)])
     assert command == [
         "mypy",
+        "--namespace-packages",
+        "--explicit-package-bases",
         "--hide-error-context",
         "--no-color-output",
         "--show-column-numbers",
@@ -238,6 +272,52 @@ def test_eslint_no_messages_produces_no_findings(tmp_path: Path) -> None:
     stdout = json.dumps([{"filePath": str(tmp_path / "clean.js"), "messages": []}])
     findings = execmod._eslint_findings(stdout, tmp_path, 1)
     assert findings == []
+
+
+def test_semgrep_output_is_normalized_into_findings(tmp_path: Path) -> None:
+    stdout = json.dumps(
+        {
+            "results": [
+                {
+                    "check_id": "aci.ci14.unsafe-yaml-load",
+                    "path": str(tmp_path / "config.py"),
+                    "start": {"line": 8},
+                    "extra": {"message": "yaml.load without SafeLoader", "severity": "ERROR"},
+                }
+            ]
+        }
+    )
+    findings = execmod._semgrep_findings(stdout, tmp_path, 40)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_SEMGREP"
+    assert findings[0].ci_id == "CI-14"
+    assert findings[0].line == 8
+    assert findings[0].severity == "high"
+    assert findings[0].evidence_ref == "semgrep:aci.ci14.unsafe-yaml-load"
+
+
+def test_semgrep_command_requires_supported_source_and_rules(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(execmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
+    (tmp_path / "aci-semgrep-rules.yml").write_text("rules: []\n", encoding="utf-8")
+    (tmp_path / "Dockerfile").write_text("FROM python:3.12\n", encoding="utf-8")
+    command = execmod._semgrep_command(tmp_path)
+    assert command == [
+        "semgrep",
+        "scan",
+        "--config",
+        str(tmp_path / "aci-semgrep-rules.yml"),
+        "--json",
+        "--quiet",
+        "--disable-version-check",
+        str(tmp_path),
+    ]
+
+
+def test_semgrep_command_returns_none_without_applicable_source(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(execmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
+    (tmp_path / "aci-semgrep-rules.yml").write_text("rules: []\n", encoding="utf-8")
+    (tmp_path / "README.md").write_text("docs only\n", encoding="utf-8")
+    assert execmod._semgrep_command(tmp_path) is None
 
 
 def test_tsc_output_is_normalized_into_findings(tmp_path: Path) -> None:

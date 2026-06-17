@@ -321,6 +321,26 @@ def test_ci14_secret_clean_on_env_var_reference(tmp_path: Path) -> None:
     assert "CI14_PLAINTEXT_SECRET" not in _signals(_scan(tmp_path))
 
 
+def test_ci14_yaml_load_triggers_on_unsafe_loader(tmp_path: Path) -> None:
+    _write(tmp_path / "yaml_load.py", "import yaml\nvalue = yaml.load(data)\n")
+    assert "CI14_UNSAFE_YAML_LOAD" in _signals(_scan(tmp_path))
+
+
+def test_ci14_yaml_load_clean_on_safe_loader(tmp_path: Path) -> None:
+    _write(tmp_path / "yaml_load.py", "import yaml\nvalue = yaml.safe_load(data)\n")
+    assert "CI14_UNSAFE_YAML_LOAD" not in _signals(_scan(tmp_path))
+
+
+def test_ci14_deserialization_triggers_on_pickle_loads(tmp_path: Path) -> None:
+    _write(tmp_path / "pickle_load.py", "import pickle\nvalue = pickle.loads(blob)\n")
+    assert "CI14_UNSAFE_DESERIALIZATION" in _signals(_scan(tmp_path))
+
+
+def test_ci14_deserialization_clean_on_json_loads(tmp_path: Path) -> None:
+    _write(tmp_path / "json_load.py", "import json\nvalue = json.loads(blob)\n")
+    assert "CI14_UNSAFE_DESERIALIZATION" not in _signals(_scan(tmp_path))
+
+
 # ── CI-14 (Insecure HTTP) ─────────────────────────────────────────────────
 
 def test_ci14_http_triggers_on_plain_http_url(tmp_path: Path) -> None:
@@ -337,6 +357,29 @@ def test_ci14_http_clean_on_https_url(tmp_path: Path) -> None:
         'ENDPOINT = "https://internal.example.local/api"\n',
     )
     assert "CI14_INSECURE_HTTP" not in _signals(_scan(tmp_path))
+
+
+def test_ci14_supply_chain_triggers_on_unpinned_requirement(tmp_path: Path) -> None:
+    _write(tmp_path / "requirements.txt", "requests>=2.31.0\n")
+    assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_scan(tmp_path))
+
+
+def test_ci14_supply_chain_clean_on_pinned_requirement(tmp_path: Path) -> None:
+    _write(tmp_path / "requirements.txt", "requests==2.31.0\n")
+    assert "CI14_SUPPLY_CHAIN_DRIFT" not in _signals(_scan(tmp_path))
+
+
+def test_ci14_supply_chain_triggers_on_latest_container_tag(tmp_path: Path) -> None:
+    _write(tmp_path / "Dockerfile", "FROM python:latest\n")
+    assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_scan(tmp_path))
+
+
+def test_ci14_supply_chain_clean_on_sha_pinned_github_action(tmp_path: Path) -> None:
+    _write(
+        tmp_path / ".github" / "workflows" / "ci.yml",
+        "jobs:\n  test:\n    steps:\n      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567\n",
+    )
+    assert "CI14_SUPPLY_CHAIN_DRIFT" not in _signals(_scan(tmp_path))
 
 
 # ── CI-18 (Parameter Cluster) ─────────────────────────────────────────────
@@ -444,6 +487,22 @@ def test_ci22_clean_on_open_with_context_manager(tmp_path: Path) -> None:
         'with open("data.txt") as f:\n    data = f.read()\n',
     )
     assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_triggers_on_fire_and_forget_task(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "tasks.py",
+        "import asyncio\nasync def run():\n    asyncio.create_task(worker())\nasync def worker():\n    return 1\n",
+    )
+    assert "CI22_FIRE_AND_FORGET_TASK" in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_retained_task(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "tasks.py",
+        "import asyncio\nasync def run():\n    task = asyncio.create_task(worker())\n    return await task\nasync def worker():\n    return 1\n",
+    )
+    assert "CI22_FIRE_AND_FORGET_TASK" not in _signals(_scan(tmp_path))
 
 
 # ── CI-23 (Contract Field Drift) ──────────────────────────────────────────

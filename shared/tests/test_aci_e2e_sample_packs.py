@@ -46,6 +46,22 @@ def test_fn_pack_detects_race_hazard() -> None:
     assert "CI26_RACE_HAZARD" in _signals(_FN_PACK)
 
 
+def test_fn_pack_detects_unsafe_yaml_load() -> None:
+    assert "CI14_UNSAFE_YAML_LOAD" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_unsafe_deserialization() -> None:
+    assert "CI14_UNSAFE_DESERIALIZATION" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_fire_and_forget_task() -> None:
+    assert "CI22_FIRE_AND_FORGET_TASK" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_supply_chain_drift() -> None:
+    assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_FN_PACK)
+
+
 # ── Precision replay pack ─────────────────────────────────────────────────
 
 def test_pr_pack_no_false_positive_parameter_cluster() -> None:
@@ -66,3 +82,19 @@ def test_pr_pack_no_false_positive_environment_drift() -> None:
 
 def test_pr_pack_no_false_positive_race_hazard() -> None:
     assert "CI26_RACE_HAZARD" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_unsafe_yaml_load() -> None:
+    assert "CI14_UNSAFE_YAML_LOAD" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_unsafe_deserialization() -> None:
+    assert "CI14_UNSAFE_DESERIALIZATION" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_fire_and_forget_task() -> None:
+    assert "CI22_FIRE_AND_FORGET_TASK" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_supply_chain_drift() -> None:
+    assert "CI14_SUPPLY_CHAIN_DRIFT" not in _signals(_PR_PACK)

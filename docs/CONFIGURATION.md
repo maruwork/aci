@@ -127,5 +127,6 @@ aci scan --target . --profile full --ratchet
 aci scan --target . --profile full --output-format json > report.json
 aci emit-sarif --report report.json > aci.sarif    # SARIF 2.1.0 for code scanning
 aci emit-annotations --report report.json          # GitHub Actions annotations
+aci emit-github-summary --report report.json       # GitHub markdown summary
 aci validate-report --report report.json           # check against the report contract
 ```

@@ -11,6 +11,7 @@ try:
     from .aci_config import AciCliConfig, config_schema, load_cli_config
     from .aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from .aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
+    from .aci_github_summary import build_github_summary_markdown
     from .aci_profiles import PROFILE_QUICK_GATE
     from .aci_scan import (
         scan_target,
@@ -38,6 +39,7 @@ except ImportError:  # pragma: no cover - direct script/module import path
     from aci_config import AciCliConfig, config_schema, load_cli_config
     from aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
+    from aci_github_summary import build_github_summary_markdown
     from aci_profiles import PROFILE_QUICK_GATE
     from aci_scan import (
         scan_target,
@@ -171,6 +173,11 @@ def _build_parser() -> argparse.ArgumentParser:
     annotations_cmd.add_argument(
         "--report", type=Path, required=True, help="ACI report JSON file to convert"
     )
+    github_summary_cmd = sub.add_parser(
+        "emit-github-summary",
+        help="Convert an ACI machine-readable report JSON file into a GitHub-friendly markdown summary",
+    )
+    github_summary_cmd.add_argument("--report", type=Path, required=True, help="ACI report JSON file to summarize")
 
     catalog = sub.add_parser(
         "show-analyzer-catalog",
@@ -358,6 +365,12 @@ def _handle_report_command(args: argparse.Namespace) -> int | None:
             raise ValueError(f"Report file is not a JSON object: {args.report}")
         for annotation_line in build_github_annotations(data):
             print(annotation_line)
+        return EXIT_OK
+    if args.command == "emit-github-summary":
+        data = _read_json_file(args.report)
+        if not isinstance(data, dict):
+            raise ValueError(f"Report file is not a JSON object: {args.report}")
+        print(build_github_summary_markdown(data), end="")
         return EXIT_OK
     return None
 

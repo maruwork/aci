@@ -117,6 +117,19 @@ def _opened_resource_name(node: ast.Call) -> str | None:
     return None
 
 
+def _is_fire_and_forget_task(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Expr) or not isinstance(node.value, ast.Call):
+        return False
+    call = node.value
+    if isinstance(call.func, ast.Attribute):
+        if call.func.attr != "create_task":
+            return False
+        if isinstance(call.func.value, ast.Name) and call.func.value.id == "asyncio":
+            return True
+        return True
+    return False
+
+
 def _build_resource_finding(
     context: _ResourceFindingContext,
     finding_index: int,
@@ -147,6 +160,25 @@ def _build_resource_finding(
     )
 
 
+def _build_task_finding(context: _ResourceFindingContext, finding_index: int, line: int) -> AciFinding:
+    return build_finding(
+        finding_id=f"F-SCAN-{context.next_id + finding_index:04d}",
+        ci_id="CI-22",
+        signal="CI22_FIRE_AND_FORGET_TASK",
+        severity="medium",
+        target_file=_relative_path(context.path, context.target_root),
+        line=line,
+        excerpt=_line_excerpt(context.text, line),
+        reason="asyncio.create_task is launched without retaining or awaiting the task, so failures can escape the owning boundary.",
+        evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
+        recommended_action="Retain the task handle and await, cancel, or explicitly supervise it at the owning boundary.",
+        confidence=CONFIDENCE_MEDIUM,
+        priority="P2",
+        owner_lane=LANE_NATIVE_STATIC,
+        verification_status=VERIFICATION_EXECUTED,
+    )
+
+
 def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     if path.suffix.lower() != ".py":
         return []
@@ -159,6 +191,9 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
     with_wrapped = _with_wrapped_nodes(tree)
     context = _ResourceFindingContext(path=path, text=text, target_root=target_root, next_id=next_id)
     findings: list[AciFinding] = []
+    for node in ast.walk(tree):
+        if _is_fire_and_forget_task(node):
+            findings.append(_build_task_finding(context, len(findings), getattr(node, "lineno", 1)))
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue

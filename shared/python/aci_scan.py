@@ -125,9 +125,17 @@ TEXT_SUFFIXES = {
     ".jsx",
     ".ts",
     ".tsx",
+    ".go",
+    ".rs",
+    ".java",
+    ".cs",
+    ".kt",
+    ".kts",
     ".sh",
     ".bash",
     ".sql",
+    ".tf",
+    ".hcl",
     ".md",
     ".txt",
     ".toml",
@@ -239,6 +247,9 @@ _NATIVE_HYGIENE_SIGNALS: tuple[str, ...] = (
     "CI14_DYNAMIC_CODE_EXECUTION",
     "CI14_SUBPROCESS_SHELL_TRUE",
     "CI14_INSECURE_HTTP",
+    "CI14_UNSAFE_DESERIALIZATION",
+    "CI14_UNSAFE_YAML_LOAD",
+    "CI14_SUPPLY_CHAIN_DRIFT",
     "CI18_PARAMETER_CLUSTER",
     "CI20_SCATTERED_CONSTANT",
     "CI21_BROAD_EXCEPTION_SWALLOW",
@@ -326,7 +337,7 @@ class ScanArtifacts:
 
 
 def _is_supported_text_file(path: Path) -> bool:
-    return path.suffix.lower() in TEXT_SUFFIXES
+    return path.suffix.lower() in TEXT_SUFFIXES or path.name in {"Dockerfile", "Containerfile"}
 
 
 def _has_suffix(paths: list[Path], *suffixes: str) -> bool:
@@ -384,7 +395,10 @@ def _classify_relative_path(relative_path: str) -> str:
         return SCOPE_CLASS_DOCS_EVIDENCE
     if "tests" in parts or name.startswith("test_") or pure.stem.endswith("_test"):
         return SCOPE_CLASS_TESTS
-    if pure.suffix.lower() in {".py", ".js", ".jsx", ".ts", ".tsx", ".sh", ".bash", ".sql"}:
+    if pure.name in {"Dockerfile", "Containerfile"} or pure.suffix.lower() in {
+        ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".cs", ".kt", ".kts",
+        ".sh", ".bash", ".sql", ".tf", ".hcl", ".yaml", ".yml", ".toml", ".json",
+    }:
         return SCOPE_CLASS_RUNTIME_SOURCE
     return SCOPE_CLASS_SUPPORT
 
@@ -400,6 +414,7 @@ def _select_external_analyzers(
     target_files: list[Path],
     target_root: Path,
 ) -> tuple[str, ...]:
+    has_runtime_source = any(_classify_relative_path(_relative_path(path, target_root)) == SCOPE_CLASS_RUNTIME_SOURCE for path in target_files)
     if profile_id == PROFILE_QUICK_GATE:
         return ("ruff", "pyflakes") if _has_suffix(target_files, ".py") else ()
 
@@ -411,6 +426,8 @@ def _select_external_analyzers(
         analyzers.extend(["ruff", "pyflakes", "mypy"])
         if profile_id in {PROFILE_BUILD_REVIEW, PROFILE_FULL}:
             analyzers.append("pytest")
+    if has_runtime_source:
+        analyzers.append("semgrep")
     if _has_suffix(target_files, ".js", ".jsx", ".ts", ".tsx"):
         analyzers.append("eslint")
     if _has_suffix(target_files, ".ts", ".tsx") and (target_root / "tsconfig.json").is_file():
@@ -625,6 +642,69 @@ def _build_summary(findings: list[AciFinding]) -> dict[str, object]:
         ),
         "blocker_count": len(blocking),
         "residual_count": sum(1 for item in findings if item.triage_state == "accepted-residual"),
+    }
+
+
+def _top_counts(values: list[str], *, limit: int = 5) -> list[dict[str, object]]:
+    counter = Counter(values)
+    return [
+        {"name": name, "count": count}
+        for name, count in counter.most_common(limit)
+    ]
+
+
+def _build_review_brief(
+    findings: list[AciFinding],
+    blockers: list[dict[str, object]],
+    analyzer_runs: list[dict[str, object]],
+    session: ScanSession,
+    gate: dict[str, object],
+) -> dict[str, object]:
+    top_files = _top_counts([finding.target_file for finding in findings])
+    top_signals = _top_counts([finding.signal for finding in findings])
+    availability_note_states = {
+        "not-installed",
+        "unsupported-version",
+        "unsupported-in-common-shelf",
+        "project-local-setup-required",
+    }
+    analyzer_failures = [
+        {
+            "analyzer_id": str(run.get("analyzer_id") or ""),
+            "runtime_state": str(run.get("runtime_state") or ""),
+        }
+        for run in analyzer_runs
+        if str(run.get("runtime_state") or "") not in {"executed", "no-tests-collected", "no-applicable-source"}
+        and str(run.get("runtime_state") or "") not in availability_note_states
+    ]
+    analyzer_availability_notes = [
+        {
+            "analyzer_id": str(run.get("analyzer_id") or ""),
+            "runtime_state": str(run.get("runtime_state") or ""),
+        }
+        for run in analyzer_runs
+        if str(run.get("runtime_state") or "") in availability_note_states
+    ]
+    blocker_headline = (
+        f"{len(blockers)} blocking findings need owner action."
+        if blockers
+        else "No blocking findings remain in the gated scope."
+    )
+    recommended_focus = ["Start with the hottest files and highest-severity signals."]
+    if analyzer_failures:
+        recommended_focus.append("Resolve analyzer runtime failures before trusting an all-clear.")
+    elif analyzer_availability_notes:
+        recommended_focus.append("Decide whether unavailable analyzers are required for this environment or CI lane.")
+    return {
+        "gate_decision": gate.get("decision", "fail"),
+        "scope_mode": session.scope_mode,
+        "diff_from": session.diff_from,
+        "blocker_headline": blocker_headline,
+        "top_files": top_files,
+        "top_signals": top_signals,
+        "analyzer_failures": analyzer_failures,
+        "analyzer_availability_notes": analyzer_availability_notes,
+        "recommended_focus": recommended_focus,
     }
 
 
@@ -1020,6 +1100,7 @@ def _build_scan_report(session: ScanSession, operations_file: Path | None, artif
     residuals = _build_residuals(artifacts.findings)
     summary["blocker_count"] = len(blockers)
     summary["residual_count"] = len(residuals)
+    review_brief = _build_review_brief(artifacts.findings, blockers, artifacts.analyzer_runs, session, gate)
     return {
         "tool": "ACI",
         "command": "scan",
@@ -1054,6 +1135,7 @@ def _build_scan_report(session: ScanSession, operations_file: Path | None, artif
         "findings": _report_findings(artifacts.findings),
         "blockers": blockers,
         "residuals": residuals,
+        "review_brief": review_brief,
         "resolved_baseline_entries": artifacts.resolved_baseline,
         "gate": gate,
         "next_actions": [
