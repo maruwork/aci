@@ -63,7 +63,7 @@ Domain packs are **not bundled** in the `aci` core package. The correct connecti
 |---|---|
 | Repository checkout / editable install (`pip install -e .`) | `--domain <id>` — loader auto-discovers `domains/<id>/python/<id>_domain_rules.py` relative to the repo root |
 | Installed outside a repo checkout | `--domain-file <path>` pointing to the domain rules file; auto-discovery does not apply |
-| Separate domain package (future, e.g. `aci-pier`) | `pip install aci-pier`; the package registers via the loader convention and `--domain <id>` works again |
+| Separate domain package (future, e.g. `aci-myproject`) | `pip install aci-myproject`; the package registers via the loader convention and `--domain <id>` works again |
 
 **If you installed ACI outside a repo checkout and want to use a domain pack:**
 
@@ -71,7 +71,7 @@ Domain packs are **not bundled** in the `aci` core package. The correct connecti
 aci scan --target . --domain-file path/to/<domain>_domain_rules.py
 ```
 
-Clone the domain pack source (e.g. `domains/pier/python/pier_domain_rules.py` from this repo) and point `--domain-file` at it, or wait for a published separate package.
+Copy `domains/custom-template/python/custom_template_domain_rules.py`, fill in your domain values, and point `--domain-file` at it, or wait for a published separate package.
 
 ## Minimal Verification
 

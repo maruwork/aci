@@ -29,7 +29,5 @@ Entry point for `ACI` optional domain packs.
 
 ## Available Packs
 
-- `pier/`
-  - optional pier domain vocabulary and bridge documents
 - `custom-template/`
-  - future domain pack template
+  - starting point for creating a new domain pack; copy and fill in `REPLACE_ME` placeholders

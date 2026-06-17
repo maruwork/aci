@@ -31,11 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release gate lane in `aci_installed_package_verification.py`: version consistency check and sample report schema validation
 - Test coverage for CI-06 (Literal Rot), CI-09 (Test Rot ruff PT codes), CI-13 (Dependency Rot ruff I codes)
 - GitHub optimization baseline files for repository health, contribution guidance, and security reporting
-- Pier sample reports in `domains/pier/examples/` (pier content separated from core `report/` shelf)
+- Domain pack template in `domains/custom-template/` for creating new domain packs
 
 ### Changed
 - `ANALYZER_MAX_OUTPUT_BYTES` renamed to `ANALYZER_MAX_OUTPUT_CHARS` (subprocess returns `str` not `bytes` when `text=True`)
-- `aci_working_mirror_sync.py` reduced from ~970 lines to 70 lines: pier-monorepo-specific `REQUIRED_MIRROR_PAIRS` removed; pairs are managed by the downstream host project
+- `aci_working_mirror_sync.py` reduced from ~970 lines to 70 lines: host-project-specific `REQUIRED_MIRROR_PAIRS` removed; pairs are managed by the downstream host project
 - repository community guidance now uses the promoted `SECURITY.md` and `CONTRIBUTING.md` surfaces instead of draft-only wording
 
 ### Fixed

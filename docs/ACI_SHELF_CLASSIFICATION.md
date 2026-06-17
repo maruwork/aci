@@ -17,25 +17,20 @@ These shelves define reusable `ACI` contracts and must stay domain-independent.
 
 ## Domain-Specific ACI Documents
 
-These files belong to a selected domain pack or its reviewed persistence bridge.
-They are not generic `ACI` authority.
+Files under `domains/<domain>/` belong to that domain pack. They are not generic `ACI` authority.
 
-### Domain Pack Bridge Documents (`pier/`)
+Each domain pack owns:
+- domain vocabulary and detection rules (`python/<domain>_domain_rules.py`)
+- domain-specific bridge documents and integration specs
+- domain-specific sample reports and validation registers
 
-- `domains/pier/aci-pier-integration-spec.md`
-- `domains/pier/aci-trigger-read-spec.md`
-- `domains/pier/aci-trigger-routing-spec.md`
-- `domains/pier/python/pier_domain_rules.py`
-
-### Domain Pack Validation Register (`pier/`)
-
-- `domains/pier/aci-pier-validation-decision-register.md`
+Use `domains/custom-template/` as the starting point for a new domain pack.
 
 ## Reading Rule
 
 1. Read `shared/core/`, `shared/python/`, `shared/runtime/`, and `shared/report/` first for generic `ACI`.
 2. Read `domains/<domain>/` only when that domain pack is selected.
-3. Read domain-specific validation registers in `domains/<domain>/` only as reviewed residual bridge material for that domain.
+3. Domain-specific validation registers in `domains/<domain>/` are reviewed residual bridge material for that domain only.
 
 ## Must Not Misread
 
