@@ -1,6 +1,9 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*.log
+.env
+.env.*
 .ruff_cache/
 .pytest_cache/
 aci.egg-info/

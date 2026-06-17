@@ -57,15 +57,15 @@ domains/<domain>/
 
 ## Distribution Model
 
-Domain packs are **not bundled** in the `aci` core wheel. The correct connection depends on how the pack is distributed:
+Domain packs are **not bundled** in the `aci` core package. The correct connection depends on how ACI is installed:
 
 | Context | How to connect |
 |---|---|
-| Repository checkout (source) | `--domain <id>` — loader auto-discovers `domains/<id>/python/<id>_domain_rules.py` relative to the repo root |
-| `pip install aci` (wheel) | `--domain-file <path>` pointing to the domain rules file; auto-discovery does not apply outside a repo checkout |
-| Separate package (future, e.g. `aci-pier`) | `pip install aci-pier`; the package registers via the loader convention and `--domain <id>` works again |
+| Repository checkout / editable install (`pip install -e .`) | `--domain <id>` — loader auto-discovers `domains/<id>/python/<id>_domain_rules.py` relative to the repo root |
+| Installed outside a repo checkout | `--domain-file <path>` pointing to the domain rules file; auto-discovery does not apply |
+| Separate domain package (future, e.g. `aci-pier`) | `pip install aci-pier`; the package registers via the loader convention and `--domain <id>` works again |
 
-**If you are a `pip install aci` user wanting to use a domain pack:**
+**If you installed ACI outside a repo checkout and want to use a domain pack:**
 
 ```bash
 aci scan --target . --domain-file path/to/<domain>_domain_rules.py

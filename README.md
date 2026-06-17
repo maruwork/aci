@@ -3,7 +3,7 @@
 **Python-first static structure inspector.**
 
 Finds cross-file and structural code quality issues that single-file linters miss.
-Install with `pip install aci`; scan any Python project in one command.
+Install from source (`git clone` + `pip install -e .`); scan any Python project in one command.
 
 ## What is this
 

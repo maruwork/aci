@@ -15,8 +15,12 @@ authors = [
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Operating System :: OS Independent"
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows"
 ]
+# CI verification is on Ubuntu (ubuntu-latest). Linux/macOS/Windows are expected to work
+# as the package is pure Python, but only Linux is continuously verified.
 
 [project.scripts]
 aci = "aci.aci_cli:main"

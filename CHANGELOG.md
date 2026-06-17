@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+---
+
+## [0.1.0] - 2026-06-17
+
+### Added
 - `aci_annotations.py`: GitHub Actions workflow command annotation emitter (`emit-annotations` CLI command)
 - `--version` flag for `aci` CLI (emits `ACI_TOOL_VERSION` from `aci_scan.py`)
 - Protocol types `PerFileDetector` and `CrossFileDetector` (PEP 544) in `aci_scan.py`

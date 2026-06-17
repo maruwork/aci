@@ -6,10 +6,12 @@ ACI is Python-first (see the Language Support section in `README.md`).
 ## 1. Install
 
 ```bash
-pip install aci
+git clone https://github.com/maruwork/aci.git
+cd aci
+pip install -e .
 ```
 
-This installs the `aci` CLI. Verify the shelf and sample report contract:
+This installs the `aci` CLI from source. Verify the shelf and sample report contract:
 
 ```bash
 aci automation-smoke
