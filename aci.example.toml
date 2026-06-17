@@ -1,2 +1,26 @@
+# aci.toml — project ACI configuration
+# Copy this file to aci.toml (or aci.toml at the repo root) and remove the fields you don't need.
+# All fields are optional; defaults are listed as comments.
+# Run `aci config-schema` for the authoritative field list and allowed values.
+
 [aci]
+# Output format for `aci scan` when --output-format is not passed.
+# Allowed: "json", "pretty-json"
 output_format = "pretty-json"
+
+# Gate threshold: findings at this severity or above block the gate.
+# Allowed: "low", "medium", "high", "critical"
+severity_threshold = "high"
+
+# Fail the gate when any finding is new (not in baseline, not waived, not suppressed).
+fail_on_new_findings = false
+
+# Fail the gate when any configured external analyzer is missing or fails to run.
+fail_on_analyzer_errors = false
+
+# Fail the gate when any human-judgment-lane finding has not been explicitly waived or baselined.
+fail_on_unreviewed_review_required = false
+
+# Write the scan report to this path instead of stdout.
+# Empty string means stdout. Relative paths resolve from the working directory.
+report_output = ""

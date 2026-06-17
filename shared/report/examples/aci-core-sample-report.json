@@ -43,7 +43,7 @@
     {
       "finding_id": "F-CORE-001",
       "ci_id": "CI-04",
-      "signal": "RESPONSIBILITY_SPROUT",
+      "signal": "CI04_GOD_CLASS",
       "severity": "medium",
       "confidence": "medium",
       "actor_label": "ACI-detected",
@@ -54,12 +54,12 @@
       "waiver_status": "none",
       "lifecycle_state": "in-review",
       "target_file": "python/aci_scan.py",
-      "line": 351,
-      "excerpt": "def _scan_side_program_leak(",
-      "reason": "Multiple distinct inspection responsibilities are handled within a single scanner function without explicit ownership boundaries.",
+      "line": 222,
+      "excerpt": "class ScanSession:",
+      "reason": "Class ScanSession has 16 methods across 3 responsibility clusters (LCOM ≈ 0.67).",
       "evidence_ref": "core/aci-code-inspection-execution-spec.md",
-      "recommended_action": "Split distinct responsibilities into separate modules; each module should own one concern.",
-      "owner_lane": "human-judgment",
+      "recommended_action": "Split ScanSession into focused classes, one per responsibility cluster.",
+      "owner_lane": "native-static",
       "verification_status": "executed"
     }
   ],
@@ -81,7 +81,7 @@
     "fail_on_analyzer_errors": false
   },
   "next_actions": [
-    "Review python/aci_scan.py for responsibility boundary",
-    "Decide whether the scan function should be split by ownership"
+    "Review python/aci_scan.py:222 for god-class refactoring opportunity",
+    "Split ScanSession by responsibility cluster if coupling is not intentional"
   ]
 }

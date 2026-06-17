@@ -315,3 +315,71 @@ def test_diff_from_invalid_ref_raises_value_error(tmp_path: Path) -> None:
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "no-such-ref" in str(exc)
+
+
+# ── suppression tests ──────────────────────────────────────────────────────
+
+def test_suppression_by_signal_removes_finding(tmp_path: Path) -> None:
+    _write(tmp_path / "sample.py", "# TODO: known tech debt\n")
+    _write(
+        tmp_path / "operations.toml",
+        "\n".join([
+            "[suppression]",
+            'entries = [{ suppression_id = "S1", match = "CI03_TODO_HACK", reason = "intentional tech debt" }]',
+        ]),
+    )
+
+    report = scan_target(
+        tmp_path, "full", "core-only",
+        tmp_path / "operations.toml",
+        include_external_analyzers=False,
+    )
+
+    signals = {f["signal"] for f in report["findings"]}
+    assert "CI03_TODO_HACK" not in signals
+    assert report["summary"]["suppressed_count"] >= 1
+
+
+def test_suppression_by_target_file_removes_finding(tmp_path: Path) -> None:
+    _write(tmp_path / "noise.py", "# TODO: generated file marker\n")
+    _write(tmp_path / "real.py", "# TODO: track this\n")
+    _write(
+        tmp_path / "operations.toml",
+        "\n".join([
+            "[suppression]",
+            'entries = [{ suppression_id = "S1", match = "noise.py", reason = "generated file" }]',
+        ]),
+    )
+
+    report = scan_target(
+        tmp_path, "full", "core-only",
+        tmp_path / "operations.toml",
+        include_external_analyzers=False,
+    )
+
+    target_files = {f["target_file"] for f in report["findings"]}
+    assert "noise.py" not in target_files
+    assert "real.py" in target_files
+    assert report["summary"]["suppressed_count"] >= 1
+
+
+def test_suppression_count_in_summary(tmp_path: Path) -> None:
+    _write(tmp_path / "a.py", "# TODO: first\n")
+    _write(tmp_path / "b.py", "# TODO: second\n")
+    _write(
+        tmp_path / "operations.toml",
+        "\n".join([
+            "[suppression]",
+            'entries = [{ suppression_id = "S1", match = "CI03_TODO_HACK" }]',
+        ]),
+    )
+
+    report = scan_target(
+        tmp_path, "full", "core-only",
+        tmp_path / "operations.toml",
+        include_external_analyzers=False,
+    )
+
+    assert report["summary"]["suppressed_count"] >= 2
+    signals = {f["signal"] for f in report["findings"]}
+    assert "CI03_TODO_HACK" not in signals

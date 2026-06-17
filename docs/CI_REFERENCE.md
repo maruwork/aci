@@ -88,11 +88,12 @@ Profiles control which signals (and therefore which detectors) are active per ru
 all native CI-xx detectors via the `native_hygiene_signals` group.
 
 **Workflow profiles** (`startup`, `wrap-up`, `state-change`, `build-preflight`,
-`build-review`) reference structure signals (`RESPONSIBILITY_SPROUT`,
+`build-review`) include structure signals (`RESPONSIBILITY_SPROUT`,
 `OPERATOR_VIEW_GAP`, `STATE_DUPLICATION`, `SIDE_PROGRAM_LEAK`). These are domain-pack
 vocabulary signals with no native detector in generic ACI core.
-Running a workflow profile without a domain pack produces findings only when:
-- `state-change` / `build-*` also include some native CI-xx signals (e.g. CI-21, CI-22)
+Running a workflow profile without a domain pack produces findings when:
+- `startup` includes CI-04, CI-12, CI-02 — structural quality detectors active without a domain pack
+- `state-change` / `build-*` include additional native CI-xx signals (e.g. CI-21, CI-22)
 - A domain pack with `side_program_terms` is loaded (enables the SIDE_PROGRAM_LEAK detector)
 
 The human-judgment lane (`_HUMAN_JUDGMENT_SIGNALS = ()`) is intentionally empty:

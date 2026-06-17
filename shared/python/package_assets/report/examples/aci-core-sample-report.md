@@ -36,13 +36,13 @@ Status: Active
 - blocker present: `no`
 - residual present: `no`
 - next action summary:
-  - review whether the scanner function should be split by ownership boundary
+  - review python/aci_scan.py:222 for god-class refactoring opportunity
 
 ## Highest Severity Findings
 
 | finding_id | ci_id | signal | severity | confidence | actor_label | triage_state | priority | fixability | baseline_status | waiver_status | lifecycle_state | owner_lane | target_file | line | reason | evidence_ref | recommended_action | verification_status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|
-| `F-CORE-001` | `CI-04` | `RESPONSIBILITY_SPROUT` | `medium` | `medium` | `ACI-detected` | `review-first` | `P2` | `owner-decision` | `new` | `none` | `in-review` | `human-judgment` | `python/aci_scan.py` | 351 | `Multiple distinct inspection responsibilities are handled within a single scanner function without explicit ownership boundaries.` | `core/aci-code-inspection-execution-spec.md` | split distinct responsibilities into separate modules; each module should own one concern | `executed` |
+| `F-CORE-001` | `CI-04` | `CI04_GOD_CLASS` | `medium` | `medium` | `ACI-detected` | `review-first` | `P2` | `owner-decision` | `new` | `none` | `in-review` | `native-static` | `python/aci_scan.py` | 222 | `Class ScanSession has 16 methods across 3 responsibility clusters (LCOM ≈ 0.67).` | `core/aci-code-inspection-execution-spec.md` | split ScanSession into focused classes, one per responsibility cluster | `executed` |
 
 ## Triage View
 
@@ -55,5 +55,5 @@ Status: Active
 
 ## Next Actions
 
-- review `python/aci_scan.py` for responsibility boundary
-- decide whether the scan function should be split by ownership
+- review `python/aci_scan.py:222` for god-class refactoring opportunity
+- split ScanSession by responsibility cluster if coupling is not intentional

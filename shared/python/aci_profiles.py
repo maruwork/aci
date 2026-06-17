@@ -68,7 +68,12 @@ def build_profile_signals(
     native_hygiene_signals: tuple[str, ...],
 ) -> dict[str, tuple[str, ...]]:
     return {
-        PROFILE_STARTUP: structure_signals,
+        PROFILE_STARTUP: (
+            *structure_signals,
+            "CI04_GOD_CLASS",
+            "CI12_POLTERGEIST",
+            "CI02_SPAGHETTI_CODE",
+        ),
         PROFILE_QUICK_GATE: (
             *structure_signals,
             *external_evidence_signals,
