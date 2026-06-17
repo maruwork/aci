@@ -30,14 +30,14 @@ One finding may cross lanes. Split it before handoff if different owners must de
 
 | Analyzer | Language | CI IDs | Notes |
 |---|---|---|---|
-| ruff | Python | CI-02, CI-07, CI-13, CI-14, CI-15, CI-21, CI-23, CI-25 | default for quick-gate, build-preflight, build-review, full |
-| pyflakes | Python | CI-07, CI-13, CI-21 | default for quick-gate and above |
-| mypy | Python | CI-23 | default for build-preflight and above |
-| pytest | Python | CI-09 | default for build-review and full |
-| eslint | JS / TS | CI-02, CI-07, CI-13, CI-14, CI-21, CI-23 | cataloged; opt-in per project |
-| tsc | TypeScript | CI-23 | requires tsconfig.json in target root; opt-in |
-| shellcheck | Shell | CI-02, CI-21 | scans .sh/.bash files; opt-in |
-| sqlfluff | SQL | CI-02 | opt-in per project |
+| ruff | Python | CI-02, CI-07, CI-13, CI-14, CI-15, CI-21, CI-23, CI-25 | default for quick-gate, build-preflight, build-review, full when `.py` files are present |
+| pyflakes | Python | CI-07, CI-13, CI-21 | default for quick-gate and above when `.py` files are present |
+| mypy | Python | CI-23 | default for build-preflight and above when `.py` files are present |
+| pytest | Python | CI-09 | default for build-review and full when `.py` files are present |
+| eslint | JS / TS | CI-02, CI-07, CI-13, CI-14, CI-21, CI-23 | default for build-preflight, build-review, and full when JS/TS files are present |
+| tsc | TypeScript | CI-23 | default for build-preflight, build-review, and full when TS files and `tsconfig.json` are present |
+| shellcheck | Shell | CI-02, CI-21 | default for build-preflight, build-review, and full when `.sh`/`.bash` files are present |
+| sqlfluff | SQL | CI-02 | default for build-preflight, build-review, and full when `.sql` files are present |
 
 ## 3. Classification Rule
 

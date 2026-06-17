@@ -1,6 +1,6 @@
 # ACI Quickstart
 
-Scan a Python project, read the report, and gate CI — in a few commands.
+Scan a project, read the report, and gate CI — in a few commands.
 ACI is Python-first (see the Language Support section in `README.md`).
 
 ## 1. Install
@@ -27,11 +27,14 @@ aci scan --target . --profile full --domain core-only --output-format pretty-jso
 
 - `--target` the directory to scan (read-only; ACI never writes into it).
 - `--profile` how much runs. Common choices:
-  - `quick-gate` — fast: native structure signals + lightweight external analyzers.
-  - `full` — all native detectors + external analyzers + human-judgment lane.
+  - `quick-gate` — fast: native structure signals + lightweight Python external analyzers.
+  - `full` — all native detectors + all applicable external analyzers + human-judgment lane.
 - `--domain core-only` — generic core. Add an optional domain pack with
   `--domain <id> --domain-file <path>`.
-- `--no-external-analyzers` — skip ruff/pyflakes/mypy/pytest (native lane only).
+- `--scope-mode source-only` - default preset; excludes common non-runtime shelves such as `docs/` and `examples/`.
+- `--scope-mode dogfood` - focuses on common source + test shelves for self-audit.
+- `--scope-mode full-repo` - scans the full tree but only `runtime-source` findings can block the gate.
+- `--no-external-analyzers` — skip ruff/pyflakes/mypy/pytest/eslint/tsc/shellcheck/sqlfluff (native lane only).
 
 The exit code is non-zero when findings are present (including waived ones) or the
 gate fails. If you want to rely only on the gate decision, check

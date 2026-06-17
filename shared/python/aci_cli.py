@@ -8,10 +8,16 @@ import json
 from pathlib import Path
 
 try:
+    from .aci_config import AciCliConfig, config_schema, load_cli_config
     from .aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from .aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
     from .aci_profiles import PROFILE_QUICK_GATE
-    from .aci_scan import scan_target, ACI_TOOL_VERSION
+    from .aci_scan import (
+        scan_target,
+        ACI_TOOL_VERSION,
+        SUPPORTED_SCOPE_MODES,
+        SCOPE_MODE_SOURCE_ONLY,
+    )
     from .aci_annotations import build_github_annotations
     from .aci_sarif import build_sarif_report
     from .aci_sarif import validate_sarif_report
@@ -24,16 +30,21 @@ try:
     )
     from .aci_analyzers import analyzer_catalog, analyzer_support_levels
     from .aci_automation import validate_report_payload, validate_sample_reports
-    from .aci_config import config_schema, load_cli_config
     from .aci_fixture_check import run_fixture_check
     from .aci_profile_catalog import profile_catalog, profile_support_levels
     from .aci_public_smoke import build_public_smoke_result, detect_repo_root
     from .aci_ratchet import check_ratchet
 except ImportError:  # pragma: no cover - direct script/module import path
+    from aci_config import AciCliConfig, config_schema, load_cli_config
     from aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
     from aci_profiles import PROFILE_QUICK_GATE
-    from aci_scan import scan_target, ACI_TOOL_VERSION
+    from aci_scan import (
+        scan_target,
+        ACI_TOOL_VERSION,
+        SUPPORTED_SCOPE_MODES,
+        SCOPE_MODE_SOURCE_ONLY,
+    )
     from aci_annotations import build_github_annotations
     from aci_sarif import build_sarif_report
     from aci_sarif import validate_sarif_report
@@ -46,7 +57,6 @@ except ImportError:  # pragma: no cover - direct script/module import path
     )
     from aci_analyzers import analyzer_catalog, analyzer_support_levels
     from aci_automation import validate_report_payload, validate_sample_reports
-    from aci_config import config_schema, load_cli_config
     from aci_fixture_check import run_fixture_check
     from aci_profile_catalog import profile_catalog, profile_support_levels
     from aci_public_smoke import build_public_smoke_result, detect_repo_root
@@ -225,6 +235,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Relative path under target root to exclude; may be repeated",
     )
     scan.add_argument(
+        "--scope-mode",
+        choices=list(SUPPORTED_SCOPE_MODES),
+        default=SCOPE_MODE_SOURCE_ONLY,
+        help=(
+            "Scope preset: source-only excludes common non-runtime shelves; "
+            "dogfood focuses on common source/test shelves; full-repo scans the full tree."
+        ),
+    )
+    scan.add_argument(
         "--ignore-file",
         type=Path,
         help="Optional ignore file; defaults to .aciignore under the target root when present",
@@ -313,6 +332,184 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _handle_report_command(args: argparse.Namespace) -> int | None:
+    if args.command == "show-config-schema":
+        _print_json(config_schema(), "pretty-json")
+        return EXIT_OK
+    if args.command == "validate-report":
+        data = _read_json_file(args.report)
+        result = validate_report_payload(args.report.name, data)
+        _print_json(result, "json")
+        return EXIT_OK if result["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
+    if args.command == "emit-sarif":
+        data = _read_json_file(args.report)
+        if not isinstance(data, dict):
+            raise ValueError(f"Report file is not a JSON object: {args.report}")
+        _print_json(build_sarif_report(data), "pretty-json")
+        return EXIT_OK
+    if args.command == "validate-sarif":
+        data = _read_json_file(args.report)
+        result = validate_sarif_report(data)
+        _print_json(result, "json")
+        return EXIT_OK if result["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
+    if args.command == "emit-annotations":
+        data = _read_json_file(args.report)
+        if not isinstance(data, dict):
+            raise ValueError(f"Report file is not a JSON object: {args.report}")
+        for annotation_line in build_github_annotations(data):
+            print(annotation_line)
+        return EXIT_OK
+    return None
+
+
+def _handle_catalog_command(args: argparse.Namespace, cfg: AciCliConfig) -> int | None:
+    output_format = args.output_format or cfg.output_format
+    if args.command == "show-analyzer-catalog":
+        _print_json(
+            {
+                "tool": "ACI",
+                "catalog_kind": "external-analyzer",
+                "support_levels": analyzer_support_levels(),
+                "entries": analyzer_catalog(),
+            },
+            output_format,
+        )
+        return EXIT_OK
+    if args.command == "show-profile-catalog":
+        _print_json(
+            {
+                "tool": "ACI",
+                "catalog_kind": "profile-execution",
+                "support_levels": profile_support_levels(),
+                "entries": profile_catalog(),
+            },
+            output_format,
+        )
+        return EXIT_OK
+    if args.command == "show-analyzer-availability":
+        _print_json(
+            {
+                "tool": "ACI",
+                "catalog_kind": "analyzer-availability",
+                "support_levels": analyzer_execution_support_levels(),
+                "entries": analyzer_availability(),
+            },
+            output_format,
+        )
+        return EXIT_OK
+    if args.command == "show-profile-execution-plan":
+        _print_json(
+            {
+                "tool": "ACI",
+                "catalog_kind": "profile-execution-plan",
+                "support_levels": analyzer_execution_support_levels(),
+                "entries": profile_execution_plan(),
+            },
+            output_format,
+        )
+        return EXIT_OK
+    return None
+
+
+def _handle_verification_command(args: argparse.Namespace, cfg: AciCliConfig) -> int | None:
+    if args.command == "automation-smoke":
+        result = build_public_smoke_result(_resolve_repo_root())
+        sample_validation = validate_sample_reports()
+        smoke_ok = bool(result.get("ok", False))
+        _print_json(
+            {
+                "tool": "ACI",
+                "command": "automation-smoke",
+                "verification": {
+                    "smoke_ok": smoke_ok,
+                    "sample_reports_ok": sample_validation["ok"],
+                },
+                "mode_checks": result["mode_checks"],
+                "finding_sample": result["finding_sample"],
+                "layout_note": result.get("layout_note"),
+                "sample_report_checks": sample_validation["checks"],
+            },
+            "json",
+        )
+        return EXIT_OK if smoke_ok and sample_validation["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
+    if args.command == "fixture-check":
+        result = run_fixture_check(_resolve_repo_root())
+        _print_json(result, "json")
+        return EXIT_OK if result["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
+    if args.command == "installed-package-check":
+        result = run_installed_package_check(_resolve_repo_root())
+        _print_json(result, "json")
+        return EXIT_OK if result["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
+    if args.command == "show-sample-report":
+        fallback_root = Path(__file__).resolve().parent / "package_assets"
+        sample_text = read_text_asset(_sample_asset_relative_path(args.format), fallback_root)
+        if args.format == "markdown":
+            print(sample_text)
+        else:
+            _print_json(json.loads(sample_text), args.format)
+        return EXIT_OK
+    if args.command == "smoke":
+        _print_json(build_public_smoke_result(_resolve_repo_root()), args.output_format or cfg.output_format)
+        return EXIT_OK
+    return None
+
+
+def _handle_scan_command(args: argparse.Namespace, cfg: AciCliConfig) -> int | None:
+    if args.command != "scan":
+        return None
+    output_format = args.output_format or cfg.output_format
+    result = scan_target(
+        args.target,
+        args.profile,
+        args.domain,
+        args.operations_file,
+        tuple(args.include_path),
+        tuple(args.exclude_path),
+        args.severity_threshold or cfg.severity_threshold,
+        args.fail_on_new_findings or cfg.fail_on_new_findings,
+        not args.no_external_analyzers,
+        args.fail_on_analyzer_errors or cfg.fail_on_analyzer_errors,
+        args.ignore_file,
+        args.domain_file,
+        args.fail_on_unreviewed_review_required or cfg.fail_on_unreviewed_review_required,
+        diff_from=args.diff_from,
+        scope_mode=args.scope_mode,
+    )
+    ratchet_result: dict[str, object] | None = None
+    if args.ratchet:
+        ratchet_path = args.ratchet_file or (args.target / ".aci-ratchet")
+        findings: list[dict[str, object]] = result.get("findings", [])  # type: ignore[assignment]
+        ratchet_result = check_ratchet(findings, state_path=ratchet_path)
+        result["ratchet"] = ratchet_result
+
+    report_output = args.output or (Path(cfg.report_output) if cfg.report_output else None)
+    if report_output is not None:
+        _write_report_file(result, report_output, output_format)
+    else:
+        _print_json(result, output_format)
+    gate = result.get("gate")
+    summary = result.get("summary")
+    if not isinstance(gate, dict) or not isinstance(summary, dict):
+        raise RuntimeError("scan_target returned unexpected result structure")
+    ratchet_failed = ratchet_result is not None and ratchet_result.get("decision") == "fail"
+    if gate.get("decision") == "fail" or summary.get("total_findings", 0) > 0 or ratchet_failed:
+        return EXIT_FINDINGS_PRESENT
+    return EXIT_OK
+
+
+def _dispatch_command(args: argparse.Namespace, cfg: AciCliConfig) -> int:
+    for handler in (
+        _handle_report_command,
+        lambda ns: _handle_catalog_command(ns, cfg),
+        lambda ns: _handle_verification_command(ns, cfg),
+        lambda ns: _handle_scan_command(ns, cfg),
+    ):
+        result = handler(args)
+        if result is not None:
+            return result
+    return EXIT_USAGE_OR_CONFIG_ERROR
+
+
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
@@ -324,179 +521,7 @@ def main() -> int:
         return EXIT_USAGE_OR_CONFIG_ERROR
 
     try:
-        if args.command == "show-config-schema":
-            _print_json(config_schema(), "pretty-json")
-            return EXIT_OK
-
-        if args.command == "validate-report":
-            data = _read_json_file(args.report)
-            result = validate_report_payload(args.report.name, data)
-            _print_json(result, "json")
-            if not result["ok"]:
-                return EXIT_AUTOMATION_VERIFICATION_FAILURE
-            return EXIT_OK
-
-        if args.command == "emit-sarif":
-            data = _read_json_file(args.report)
-            if not isinstance(data, dict):
-                raise ValueError(f"Report file is not a JSON object: {args.report}")
-            sarif = build_sarif_report(data)
-            _print_json(sarif, "pretty-json")
-            return EXIT_OK
-
-        if args.command == "validate-sarif":
-            data = _read_json_file(args.report)
-            result = validate_sarif_report(data)
-            _print_json(result, "json")
-            if not result["ok"]:
-                return EXIT_AUTOMATION_VERIFICATION_FAILURE
-            return EXIT_OK
-
-        if args.command == "emit-annotations":
-            data = _read_json_file(args.report)
-            if not isinstance(data, dict):
-                raise ValueError(f"Report file is not a JSON object: {args.report}")
-            for annotation_line in build_github_annotations(data):
-                print(annotation_line)
-            return EXIT_OK
-
-        if args.command == "show-analyzer-catalog":
-            output_format = args.output_format or cfg.output_format
-            payload = {
-                "tool": "ACI",
-                "catalog_kind": "external-analyzer",
-                "support_levels": analyzer_support_levels(),
-                "entries": analyzer_catalog(),
-            }
-            _print_json(payload, output_format)
-            return EXIT_OK
-
-        if args.command == "show-profile-catalog":
-            output_format = args.output_format or cfg.output_format
-            payload = {
-                "tool": "ACI",
-                "catalog_kind": "profile-execution",
-                "support_levels": profile_support_levels(),
-                "entries": profile_catalog(),
-            }
-            _print_json(payload, output_format)
-            return EXIT_OK
-
-        if args.command == "show-analyzer-availability":
-            output_format = args.output_format or cfg.output_format
-            payload = {
-                "tool": "ACI",
-                "catalog_kind": "analyzer-availability",
-                "support_levels": analyzer_execution_support_levels(),
-                "entries": analyzer_availability(),
-            }
-            _print_json(payload, output_format)
-            return EXIT_OK
-
-        if args.command == "show-profile-execution-plan":
-            output_format = args.output_format or cfg.output_format
-            payload = {
-                "tool": "ACI",
-                "catalog_kind": "profile-execution-plan",
-                "support_levels": analyzer_execution_support_levels(),
-                "entries": profile_execution_plan(),
-            }
-            _print_json(payload, output_format)
-            return EXIT_OK
-
-        if args.command == "automation-smoke":
-            result = build_public_smoke_result(_resolve_repo_root())
-            sample_validation = validate_sample_reports()
-            smoke_ok = bool(result.get("ok", False))
-            payload: dict[str, object] = {
-                "tool": "ACI",
-                "command": "automation-smoke",
-                "verification": {
-                    "smoke_ok": smoke_ok,
-                    "sample_reports_ok": sample_validation["ok"],
-                },
-                "mode_checks": result["mode_checks"],
-                "finding_sample": result["finding_sample"],
-                "layout_note": result.get("layout_note"),
-                "sample_report_checks": sample_validation["checks"],
-            }
-            _print_json(payload, "json")
-            if not smoke_ok or not sample_validation["ok"]:
-                return EXIT_AUTOMATION_VERIFICATION_FAILURE
-            return EXIT_OK
-
-        if args.command == "fixture-check":
-            result = run_fixture_check(_resolve_repo_root())
-            _print_json(result, "json")
-            if not result["ok"]:
-                return EXIT_AUTOMATION_VERIFICATION_FAILURE
-            return EXIT_OK
-
-        if args.command == "installed-package-check":
-            result = run_installed_package_check(_resolve_repo_root())
-            _print_json(result, "json")
-            if not result["ok"]:
-                return EXIT_AUTOMATION_VERIFICATION_FAILURE
-            return EXIT_OK
-
-        if args.command == "show-sample-report":
-            fallback_root = Path(__file__).resolve().parent / "package_assets"
-            sample_text = read_text_asset(
-                _sample_asset_relative_path(args.format),
-                fallback_root,
-            )
-            if args.format == "markdown":
-                print(sample_text)
-            else:
-                data = json.loads(sample_text)
-                _print_json(data, args.format)
-            return EXIT_OK
-
-        if args.command == "smoke":
-            output_format = args.output_format or cfg.output_format
-            result = build_public_smoke_result(_resolve_repo_root())
-
-            _print_json(result, output_format)
-            return EXIT_OK
-
-        if args.command == "scan":
-            output_format = args.output_format or cfg.output_format
-            result = scan_target(
-                args.target,
-                args.profile,
-                args.domain,
-                args.operations_file,
-                tuple(args.include_path),
-                tuple(args.exclude_path),
-                args.severity_threshold or cfg.severity_threshold,
-                args.fail_on_new_findings or cfg.fail_on_new_findings,
-                not args.no_external_analyzers,
-                args.fail_on_analyzer_errors or cfg.fail_on_analyzer_errors,
-                args.ignore_file,
-                args.domain_file,
-                args.fail_on_unreviewed_review_required or cfg.fail_on_unreviewed_review_required,
-                diff_from=args.diff_from,
-            )
-            ratchet_result: dict[str, object] | None = None
-            if args.ratchet:
-                ratchet_path = args.ratchet_file or (args.target / ".aci-ratchet")
-                findings: list[dict[str, object]] = result.get("findings", [])  # type: ignore[assignment]
-                ratchet_result = check_ratchet(findings, state_path=ratchet_path)
-                result["ratchet"] = ratchet_result
-
-            report_output = args.output or (Path(cfg.report_output) if cfg.report_output else None)
-            if report_output is not None:
-                _write_report_file(result, report_output, output_format)
-            else:
-                _print_json(result, output_format)
-            gate = result.get("gate")
-            summary = result.get("summary")
-            if not isinstance(gate, dict) or not isinstance(summary, dict):
-                raise RuntimeError("scan_target returned unexpected result structure")
-            ratchet_failed = ratchet_result is not None and ratchet_result.get("decision") == "fail"
-            if gate.get("decision") == "fail" or summary.get("total_findings", 0) > 0 or ratchet_failed:
-                return EXIT_FINDINGS_PRESENT
-            return EXIT_OK
+        return _dispatch_command(args, cfg)
     except FileNotFoundError as exc:
         print(f"ACI runtime failure: {exc}")
         return EXIT_RUNTIME_FAILURE
@@ -506,8 +531,6 @@ def main() -> int:
     except Exception as exc:  # pragma: no cover - bounded unexpected failure
         print(f"ACI runtime failure: {exc}")
         return EXIT_RUNTIME_FAILURE
-
-    return EXIT_USAGE_OR_CONFIG_ERROR
 
 
 if __name__ == "__main__":

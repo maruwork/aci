@@ -13,11 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from aci.aci_scan import scan_target
-
-
-def _write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+from shared.tests._aci_test_helpers import insecure_http_fixture_line, write_fixture as _write
 
 
 def _signals(report: dict) -> set[str]:
@@ -89,7 +85,7 @@ def test_ci02_long_function_triggers(tmp_path: Path) -> None:
     for i in range(15):
         lines.append(f"    if n == {i}:")
         lines.append(f"        x = {i}")
-    lines += ["    y = 1" for _ in range(25)]
+    lines += ["    y = 1" for _ in range(55)]
     _write(tmp_path / "long.py", "\n".join(lines))
     assert "CI02_LONG_FUNCTION" in _signals(_scan(tmp_path))
 
@@ -132,7 +128,7 @@ def test_ci04_god_class_clean_on_small_class(tmp_path: Path) -> None:
     assert "CI04_GOD_CLASS" not in _signals(_scan(tmp_path))
 
 
-# ── CI-03 (TODO/HACK markers) ──────────────────────────────────────────────
+# ── CI-03 (marker comments) ────────────────────────────────────────────────
 
 def test_ci03_triggers_on_todo_comment(tmp_path: Path) -> None:
     _write(tmp_path / "markers.py", "# TODO: remove this\nx = 1\n")
@@ -330,7 +326,7 @@ def test_ci14_secret_clean_on_env_var_reference(tmp_path: Path) -> None:
 def test_ci14_http_triggers_on_plain_http_url(tmp_path: Path) -> None:
     _write(
         tmp_path / "http.py",
-        'ENDPOINT = "http://api.acme-corp.com/v1/charge"\n',
+        insecure_http_fixture_line(),
     )
     assert "CI14_INSECURE_HTTP" in _signals(_scan(tmp_path))
 

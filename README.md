@@ -10,10 +10,16 @@ Install from source (`git clone` + `pip install -e .`); scan any Python project 
 ACI is a Python code inspection tool focused on cross-file structure:
 
 - **Native static detectors** — 17 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
-- **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest when installed
+- **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest, eslint, tsc, shellcheck, and sqlfluff when installed and applicable
 - **Optional domain packs** — add project-specific vocabulary and exclusion rules without touching core
 
 `ACI` provides a normalized finding format, configurable severity gate, suppression/baseline/waiver contract, SARIF and annotation output, and a machine-readable report schema.
+
+The `scan` CLI supports three scope presets:
+
+- `source-only` - default; excludes common non-runtime shelves such as `docs/`, `examples/`, `fixtures/`, and scratch/output shelves
+- `dogfood` - focuses on common source + test shelves for self-audit
+- `full-repo` - scans the full tree, but blocker decisions stay limited to `runtime-source` findings
 
 ## What this is not
 
@@ -38,11 +44,11 @@ ACI is **Python-first**. Be aware of the scope before adopting:
 | Lane | Languages | Notes |
 |---|---|---|
 | Native static detectors | **Python** | All 17 native CI-ID detectors parse Python (AST). This is the only language with full native coverage. |
-| Language-agnostic text scans | any text file | A few detectors are text-based, not AST-based: plaintext-secret and insecure-HTTP (CI-14), and TODO/FIXME/HACK markers (CI-03). |
-| External analyzers (opt-in) | Python, JS/TS, Shell, SQL | ruff / pyflakes / mypy / pytest (Python); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL). Each runs only when installed and enabled. TypeScript type checking via `tsc` requires a `tsconfig.json` in the target root. |
+| Language-agnostic text scans | supported text/code files | A few detectors are text-based rather than Python-AST-based: plaintext-secret and insecure-HTTP (CI-14), and TODO/FIXME/HACK markers (CI-03). Supported suffixes include `.py`, `.js`, `.jsx`, `.ts`, `.tsx`, `.sh`, `.bash`, `.sql`, `.md`, `.txt`, `.toml`, `.yml`, `.yaml`, and `.json`. |
+| External analyzers (opt-in) | Python, JS/TS, Shell, SQL | ruff / pyflakes / mypy / pytest (Python); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL). `full`, `build-preflight`, and `build-review` automatically run the analyzers that match files/config found in the target; `quick-gate` keeps the lighter Python pair (`ruff`, `pyflakes`). TypeScript type checking via `tsc` requires a `tsconfig.json` in the target root. |
 
-Non-Python codebases get only the language-agnostic text scans plus whatever
-opt-in external analyzers are installed — not the native structure detectors.
+Non-Python codebases do not get the Python-native structure detectors. They can
+still use the supported text scans plus any applicable external analyzers.
 
 ## Relationship to ruff and other single-file linters
 

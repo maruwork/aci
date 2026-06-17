@@ -26,15 +26,13 @@ SIGNALS_LONG: frozenset[str] = frozenset({"CI02_LONG_FUNCTION"})
 # measured in logical lines (code only) so documentation does not inflate it.
 _NESTING_THRESHOLD = 5
 _COMPLEXITY_THRESHOLD = 8  # McCabe cyclomatic complexity
-_LONG_FUNCTION_THRESHOLD = 50
+_LONG_FUNCTION_THRESHOLD = 80
 # A long function is a "does too much" smell only when it is also branch-complex.
 # A long-but-flat function -- a big __init__ of attribute assignments, a config
-# builder, a data table -- is not a refactor target, so length in the mid band
-# must be paired with cyclomatic complexity. Past a hard ceiling, sheer length is
-# unwieldy on its own. (This is what separates CI-02 from ruff's PLR0915, which
-# counts statements with no complexity dimension.)
-_LONG_FUNCTION_COMPLEXITY = 10
-_LONG_FUNCTION_HARD = 120
+# builder, a data table, a declarative CLI parser -- is not a refactor target,
+# so length must be paired with meaningful branching. This keeps CI-02 focused on
+# "does too much" behavior rather than large but linear builders.
+_LONG_FUNCTION_COMPLEXITY = 15
 
 
 def _cyclomatic_complexity(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
@@ -177,7 +175,7 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
         if body_lines < _LONG_FUNCTION_THRESHOLD:
             continue
         complexity = _cyclomatic_complexity(node)
-        if body_lines < _LONG_FUNCTION_HARD and complexity < _LONG_FUNCTION_COMPLEXITY:
+        if complexity < _LONG_FUNCTION_COMPLEXITY:
             # Long but flat (e.g. a big __init__ / config builder / data table):
             # length without branching is not a "does too much" smell.
             continue

@@ -30,6 +30,25 @@ def test_pytest_no_tests_collected_is_treated_as_nonfatal(monkeypatch, tmp_path:
     assert result.findings == ()
 
 
+def test_pytest_command_disables_cacheprovider_writes(tmp_path: Path) -> None:
+    command = execmod._pytest_command(tmp_path)
+    assert command == ["pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)]
+
+
+def test_pytest_command_uses_workspace_scratch_when_available(tmp_path: Path) -> None:
+    (tmp_path / "workspace").mkdir()
+    command = execmod._pytest_command(tmp_path)
+    assert command == [
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp",
+        str(tmp_path / "workspace" / ".aci-pytest-tmp"),
+        str(tmp_path),
+    ]
+
+
 def test_missing_analyzer_returns_not_installed(tmp_path: Path, monkeypatch) -> None:
     # Force not-installed readiness so the test is deterministic regardless of
     # whether the analyzer binary happens to be installed in the environment
@@ -90,6 +109,39 @@ def test_mypy_evidence_ref_includes_error_code(tmp_path: Path) -> None:
 
     assert len(findings) == 1
     assert findings[0].evidence_ref == "mypy:union-attr"
+
+
+def test_mypy_command_uses_workspace_cache_and_python_sources(tmp_path: Path) -> None:
+    (tmp_path / "workspace").mkdir()
+    alpha = tmp_path / "alpha.py"
+    beta = tmp_path / "pkg" / "beta.py"
+    beta.parent.mkdir()
+    command = execmod._mypy_command(tmp_path, [str(alpha), str(beta)])
+    assert command == [
+        "mypy",
+        "--hide-error-context",
+        "--no-color-output",
+        "--show-column-numbers",
+        "--no-error-summary",
+        "--cache-dir",
+        str(tmp_path / "workspace" / ".aci-mypy-cache"),
+        str(alpha),
+        str(beta),
+    ]
+
+
+def test_mypy_returns_no_applicable_source_when_no_py_files(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(execmod, "_readiness_for", lambda analyzer_id: execmod.AnalyzerReadiness(
+        analyzer_id=analyzer_id,
+        executable_path=f"C:/fake/{analyzer_id}.exe",
+        availability_state="ready",
+        version_text="mypy 1.0.0",
+        version_ok=True,
+        minimum_version="1.0.0",
+    ))
+    result = execmod.run_analyzer("mypy", tmp_path, 1)
+    assert result.ok is False
+    assert result.runtime_state == "no-applicable-source"
 
 
 def test_ruff_pt_code_maps_to_ci09(tmp_path: Path) -> None:

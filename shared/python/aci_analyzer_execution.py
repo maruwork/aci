@@ -235,8 +235,8 @@ _RUFF_PREFIX_TO_CI: dict[str, str] = {
     "B":   "CI-21",  # flake8-bugbear — e.g. B904 broken exception chain (raise without `from e`)
     "TRY": "CI-21",  # flake8-tryceratops — e.g. TRY400 missing logging.exception
     "BLE": "CI-21",  # flake8-blind-except — BLE001 broad except (same as native CI-21)
-    "TD":  "CI-03",  # flake8-todos — TODO markers (same as native CI-03)
-    "FIX": "CI-03",  # flake8-fixme — FIXME/HACK markers
+    "TD":  "CI-03",  # flake8-todos — patchwork markers (same as native CI-03)
+    "FIX": "CI-03",  # flake8-fixme — patchwork markers
     "PLR": "CI-02",  # pylint refactor (complexity-ish) — default bucket
     "PLW": "CI-02",  # pylint warning — default bucket
     "PLC": "CI-02",
@@ -284,19 +284,43 @@ def _pyflakes_command(target_root: Path) -> list[str]:
     return ["pyflakes", str(target_root)]
 
 
-def _mypy_command(target_root: Path) -> list[str]:
-    return [
+_PYTHON_ANALYZER_SKIP_SEGMENTS: frozenset[str] = frozenset({
+    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
+    ".claude", "archive", "common", "workspace",
+})
+
+
+def _find_python_files(target_root: Path) -> list[str]:
+    return sorted(
+        str(p)
+        for p in target_root.rglob("*.py")
+        if p.is_file() and not any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in p.parts)
+    )
+
+
+def _mypy_command(target_root: Path, python_files: list[str]) -> list[str]:
+    command = [
         "mypy",
-        str(target_root),
         "--hide-error-context",
         "--no-color-output",
         "--show-column-numbers",
         "--no-error-summary",
     ]
+    workspace_dir = target_root / "workspace"
+    if workspace_dir.is_dir():
+        command.extend(["--cache-dir", str(workspace_dir / ".aci-mypy-cache")])
+    command.extend(python_files)
+    return command
 
 
 def _pytest_command(target_root: Path) -> list[str]:
-    return ["pytest", "-q", str(target_root)]
+    command = ["pytest", "-q", "-p", "no:cacheprovider"]
+    workspace_dir = target_root / "workspace"
+    if workspace_dir.is_dir():
+        command.extend(["--basetemp", str(workspace_dir / ".aci-pytest-tmp")])
+    command.append(str(target_root))
+    return command
 
 
 _ESLINT_RULE_PREFIX_MAP: tuple[tuple[str, str], ...] = (
@@ -374,8 +398,6 @@ def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
         return _ruff_command(target_root)
     if analyzer_id == "pyflakes":
         return _pyflakes_command(target_root)
-    if analyzer_id == "mypy":
-        return _mypy_command(target_root)
     if analyzer_id == "pytest":
         return _pytest_command(target_root)
     if analyzer_id == "eslint":
@@ -727,6 +749,113 @@ def _sqlfluff_findings(stdout: str, target_root: Path, next_id: int) -> list[Aci
     return findings
 
 
+def _resolve_analyzer_command(analyzer_id: str, target_root: Path) -> tuple[list[str] | None, int, bool]:
+    skipped_source_count = 0
+    if analyzer_id == "tsc":
+        tsconfig = _find_tsconfig(target_root)
+        return (_tsc_command(tsconfig) if tsconfig else None, skipped_source_count, True)
+    if analyzer_id == "mypy":
+        python_files = _find_python_files(target_root)
+        return (_mypy_command(target_root, python_files) if python_files else None, skipped_source_count, True)
+    if analyzer_id == "shellcheck":
+        shell_files = _find_shell_files(target_root)
+        skipped_source_count = max(0, len(shell_files) - 200)
+        return (_shellcheck_command(shell_files) if shell_files else None, skipped_source_count, True)
+    return _analyzer_command(analyzer_id, target_root), skipped_source_count, False
+
+
+def _no_source_result(analyzer_id: str, no_source: bool) -> AnalyzerRunResult:
+    return AnalyzerRunResult(
+        analyzer_id=analyzer_id,
+        ok=False,
+        exit_code=None,
+        runtime_state="no-applicable-source" if no_source else "unsupported-in-common-shelf",
+        stdout="",
+        stderr=(
+            "No applicable source files or configuration found for this analyzer."
+            if no_source
+            else "Analyzer is cataloged but not yet runnable from the common shelf."
+        ),
+        findings=(),
+    )
+
+
+def _execute_analyzer_command(analyzer_id: str, command: list[str]) -> tuple[subprocess.CompletedProcess[str] | None, AnalyzerRunResult | None]:
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=ANALYZER_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return None, AnalyzerRunResult(
+            analyzer_id=analyzer_id,
+            ok=False,
+            exit_code=None,
+            runtime_state="timeout",
+            stdout=exc.stdout.decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or ""),
+            stderr=exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else (exc.stderr or ""),
+            findings=(),
+        )
+    except OSError as exc:
+        return None, AnalyzerRunResult(
+            analyzer_id=analyzer_id,
+            ok=False,
+            exit_code=None,
+            runtime_state="spawn-failure",
+            stdout="",
+            stderr=str(exc),
+            findings=(),
+        )
+    return completed, None
+
+
+def _parse_analyzer_findings(
+    analyzer_id: str,
+    stdout: str,
+    stderr: str,
+    target_root: Path,
+    next_id: int,
+) -> tuple[list[AciFinding], bool]:
+    try:
+        if analyzer_id == "ruff":
+            return _ruff_findings(stdout, target_root, next_id), True
+        if analyzer_id == "pyflakes":
+            return _pyflakes_findings(stdout, stderr, target_root, next_id), True
+        if analyzer_id == "mypy":
+            return _mypy_findings(stdout, stderr, target_root, next_id), True
+        if analyzer_id == "pytest":
+            return _pytest_findings(stdout, stderr, next_id), True
+        if analyzer_id == "eslint":
+            return _eslint_findings(stdout, target_root, next_id), True
+        if analyzer_id == "tsc":
+            return _tsc_findings(stdout, stderr, target_root, next_id), True
+        if analyzer_id == "shellcheck":
+            return _shellcheck_findings(stdout, target_root, next_id), True
+        if analyzer_id == "sqlfluff":
+            return _sqlfluff_findings(stdout, target_root, next_id), True
+    except json.JSONDecodeError:
+        return [], False
+    return [], True
+
+
+def _evaluate_analyzer_outcome(analyzer_id: str, exit_code: int, parse_ok: bool) -> tuple[bool, str]:
+    ok_exit_codes = {0, 1}
+    runtime_state = VERIFICATION_EXECUTED
+    if analyzer_id == "pytest" and exit_code == 5:
+        ok_exit_codes.add(5)
+        runtime_state = "no-tests-collected"
+    exit_ok = exit_code in ok_exit_codes
+    ok = exit_ok and parse_ok
+    if not ok:
+        runtime_state = "parse-failure" if exit_ok and not parse_ok else "runtime-failure"
+    return ok, runtime_state
+
+
 def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerRunResult:
     readiness = _readiness_for(analyzer_id)
     if readiness.availability_state != "ready":
@@ -739,106 +868,18 @@ def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerR
             stderr=readiness.version_text or "",
             findings=(),
         )
-    # tsc and shellcheck require source-file discovery before command construction.
-    _skipped_source_count = 0
-    if analyzer_id == "tsc":
-        tsconfig = _find_tsconfig(target_root)
-        command: list[str] | None = _tsc_command(tsconfig) if tsconfig else None
-    elif analyzer_id == "shellcheck":
-        shell_files = _find_shell_files(target_root)
-        command = _shellcheck_command(shell_files) if shell_files else None
-        _skipped_source_count = max(0, len(shell_files) - 200)
-    else:
-        command = _analyzer_command(analyzer_id, target_root)
+    command, skipped_source_count, no_source = _resolve_analyzer_command(analyzer_id, target_root)
 
     if command is None:
-        no_source = analyzer_id in ("tsc", "shellcheck")
-        return AnalyzerRunResult(
-            analyzer_id=analyzer_id,
-            ok=False,
-            exit_code=None,
-            runtime_state="no-applicable-source" if no_source else "unsupported-in-common-shelf",
-            stdout="",
-            stderr=(
-                "No applicable source files or configuration found for this analyzer."
-                if no_source
-                else "Analyzer is cataloged but not yet runnable from the common shelf."
-            ),
-            findings=(),
-        )
-    try:
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=ANALYZER_TIMEOUT_SECONDS,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        return AnalyzerRunResult(
-            analyzer_id=analyzer_id,
-            ok=False,
-            exit_code=None,
-            runtime_state="timeout",
-            stdout=exc.stdout.decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or ""),
-            stderr=exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else (exc.stderr or ""),
-            findings=(),
-        )
-    except OSError as exc:
-        return AnalyzerRunResult(
-            analyzer_id=analyzer_id,
-            ok=False,
-            exit_code=None,
-            runtime_state="spawn-failure",
-            stdout="",
-            stderr=str(exc),
-            findings=(),
-        )
+        return _no_source_result(analyzer_id, no_source)
+    completed, error_result = _execute_analyzer_command(analyzer_id, command)
+    if error_result is not None or completed is None:
+        return cast(AnalyzerRunResult, error_result)
 
     stdout = completed.stdout[:ANALYZER_MAX_OUTPUT_CHARS]
     stderr = completed.stderr[:ANALYZER_MAX_OUTPUT_CHARS]
-
-    findings: list[AciFinding] = []
-    _parse_ok = True
-    if analyzer_id == "ruff":
-        try:
-            findings = _ruff_findings(stdout, target_root, next_id)
-        except json.JSONDecodeError:
-            _parse_ok = False
-    elif analyzer_id == "pyflakes":
-        findings = _pyflakes_findings(stdout, stderr, target_root, next_id)
-    elif analyzer_id == "mypy":
-        findings = _mypy_findings(stdout, stderr, target_root, next_id)
-    elif analyzer_id == "pytest":
-        findings = _pytest_findings(stdout, stderr, next_id)
-    elif analyzer_id == "eslint":
-        try:
-            findings = _eslint_findings(stdout, target_root, next_id)
-        except json.JSONDecodeError:
-            _parse_ok = False
-    elif analyzer_id == "tsc":
-        findings = _tsc_findings(stdout, stderr, target_root, next_id)
-    elif analyzer_id == "shellcheck":
-        try:
-            findings = _shellcheck_findings(stdout, target_root, next_id)
-        except json.JSONDecodeError:
-            _parse_ok = False
-    elif analyzer_id == "sqlfluff":
-        try:
-            findings = _sqlfluff_findings(stdout, target_root, next_id)
-        except json.JSONDecodeError:
-            _parse_ok = False
-    ok_exit_codes = {0, 1}
-    runtime_state = VERIFICATION_EXECUTED
-    if analyzer_id == "pytest" and completed.returncode == 5:
-        ok_exit_codes.add(5)
-        runtime_state = "no-tests-collected"
-    _exit_ok = completed.returncode in ok_exit_codes
-    ok = _exit_ok and _parse_ok
-    if not ok:
-        runtime_state = "parse-failure" if _exit_ok and not _parse_ok else "runtime-failure"
+    findings, parse_ok = _parse_analyzer_findings(analyzer_id, stdout, stderr, target_root, next_id)
+    ok, runtime_state = _evaluate_analyzer_outcome(analyzer_id, completed.returncode, parse_ok)
     return AnalyzerRunResult(
         analyzer_id=analyzer_id,
         ok=ok,
@@ -847,5 +888,5 @@ def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerR
         stdout=stdout,
         stderr=stderr,
         findings=tuple(findings),
-        skipped_source_file_count=_skipped_source_count,
+        skipped_source_file_count=skipped_source_count,
     )

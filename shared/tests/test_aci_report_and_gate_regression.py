@@ -12,17 +12,14 @@ from pathlib import Path
 
 from aci.aci_automation import validate_report_payload, REQUIRED_SAMPLE_TOP_LEVEL_FIELDS
 from aci.aci_findings import (
+    AciFinding,
     FINDING_CLASS_CONFIRMED_DEFECT,
     FINDING_CLASS_DESIGN_REVIEW,
     LANE_HUMAN_JUDGMENT,
     build_finding,
 )
 from aci.aci_scan import scan_target
-
-
-def _write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+from shared.tests._aci_test_helpers import clean_startup_report, write_fixture as _write
 
 
 # ── Report schema regression ───────────────────────────────────────────────
@@ -57,15 +54,9 @@ def test_schema_operations_scan_validates(tmp_path: Path) -> None:
 
 
 def test_schema_all_top_level_fields_present(tmp_path: Path) -> None:
-    _write(tmp_path / "clean.py", "x = 1\n")
-    report = scan_target(tmp_path, "startup", "core-only", include_external_analyzers=False)
+    report = clean_startup_report(tmp_path)
     for field in REQUIRED_SAMPLE_TOP_LEVEL_FIELDS:
         assert field in report, f"required field missing from scan output: {field}"
-
-
-def test_schema_report_format_version_stable(tmp_path: Path) -> None:
-    _write(tmp_path / "clean.py", "x = 1\n")
-    report = scan_target(tmp_path, "startup", "core-only", include_external_analyzers=False)
     assert report["report_format_version"] == "1.0.0"
 
 
@@ -144,7 +135,7 @@ def test_gate_fails_on_unreviewed_review_required(tmp_path: Path) -> None:
         fail_on_unreviewed_review_required=True,
         include_external_analyzers=False,
     )
-    # CI-03 (TODO marker) is always owner_lane=LANE_HUMAN_JUDGMENT; the fixture guarantees a hit
+    # CI-03 marker findings always use owner_lane=LANE_HUMAN_JUDGMENT in this fixture.
     human_judgment_findings = [
         f for f in report["findings"] if f["owner_lane"] == LANE_HUMAN_JUDGMENT
     ]
@@ -208,7 +199,7 @@ def test_gate_resolved_baseline_count_in_summary(tmp_path: Path) -> None:
 # ── finding_class classification ───────────────────────────────────────────
 
 
-def _make_finding(ci_id: str) -> object:
+def _make_finding(ci_id: str) -> AciFinding:
     return build_finding(
         finding_id="F-0001",
         ci_id=ci_id,
@@ -223,10 +214,10 @@ def _make_finding(ci_id: str) -> object:
 def test_design_review_ci_ids_get_design_review_class() -> None:
     for ci_id in ("CI-06", "CI-08", "CI-11", "CI-12"):
         finding = _make_finding(ci_id)
-        assert finding.finding_class == FINDING_CLASS_DESIGN_REVIEW, ci_id  # type: ignore[union-attr]
+        assert finding.finding_class == FINDING_CLASS_DESIGN_REVIEW, ci_id
 
 
 def test_other_ci_ids_get_confirmed_defect_class() -> None:
     for ci_id in ("CI-02", "CI-03", "CI-07", "CI-14", "CI-22"):
         finding = _make_finding(ci_id)
-        assert finding.finding_class == FINDING_CLASS_CONFIRMED_DEFECT, ci_id  # type: ignore[union-attr]
+        assert finding.finding_class == FINDING_CLASS_CONFIRMED_DEFECT, ci_id

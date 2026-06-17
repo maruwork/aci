@@ -125,9 +125,9 @@ def build_profile_signals(
 def default_external_analyzers(profile: str) -> tuple[str, ...]:
     return {
         PROFILE_QUICK_GATE: ("ruff", "pyflakes"),
-        PROFILE_BUILD_PREFLIGHT: ("ruff", "pyflakes", "mypy"),
-        PROFILE_BUILD_REVIEW: ("ruff", "pyflakes", "mypy", "pytest"),
-        PROFILE_FULL: ("ruff", "pyflakes", "mypy", "pytest"),
+        PROFILE_BUILD_PREFLIGHT: ("ruff", "pyflakes", "mypy", "eslint", "tsc", "shellcheck", "sqlfluff"),
+        PROFILE_BUILD_REVIEW: ("ruff", "pyflakes", "mypy", "pytest", "eslint", "tsc", "shellcheck", "sqlfluff"),
+        PROFILE_FULL: ("ruff", "pyflakes", "mypy", "pytest", "eslint", "tsc", "shellcheck", "sqlfluff"),
     }.get(profile, ())
 
 

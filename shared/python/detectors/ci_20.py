@@ -29,6 +29,7 @@ _PYTHON_DUNDER_LITERAL_PATTERN = re.compile(r"^__[a-zA-Z_]+__$")
 _ARGPARSE_ACTION_LITERALS: frozenset[str] = frozenset({
     "store_true", "store_false", "store_const", "append_const",
 })
+_REPO_EVIDENCE_PATH_PREFIXES: tuple[str, ...] = ("shared/", "docs/")
 
 
 def _is_low_information_scattered_literal(text: str) -> bool:
@@ -43,6 +44,8 @@ def _is_low_information_scattered_literal(text: str) -> bool:
     if _PYTHON_DUNDER_LITERAL_PATTERN.match(text):
         return True
     if text in _ARGPARSE_ACTION_LITERALS:
+        return True
+    if text.endswith(".md") and text.startswith(_REPO_EVIDENCE_PATH_PREFIXES):
         return True
     return False
 

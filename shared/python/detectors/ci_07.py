@@ -32,33 +32,63 @@ def _is_private(name: str) -> bool:
     return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
 
 
+def _collect_named_loads(node: ast.AST, used: set[str]) -> bool:
+    if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+        used.add(node.id)
+        return True
+    if isinstance(node, ast.Attribute):
+        used.add(node.attr)
+        return True
+    return False
+
+
+def _collect_import_uses(node: ast.AST, used: set[str]) -> bool:
+    if isinstance(node, ast.ImportFrom):
+        for alias in node.names:
+            used.add(alias.name)
+            if alias.asname:
+                used.add(alias.asname)
+        return True
+    if isinstance(node, ast.Import):
+        for alias in node.names:
+            used.add((alias.asname or alias.name).split(".")[0])
+        return True
+    return False
+
+
+def _collect_string_protection(node: ast.AST, protected: set[str]) -> bool:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        protected.add(node.value)
+        return True
+    return False
+
+
+def _collect_all_exports(node: ast.AST, protected: set[str]) -> bool:
+    if not isinstance(node, ast.Assign):
+        return False
+    for target in node.targets:
+        if isinstance(target, ast.Name) and target.id == "__all__":
+            for elt in ast.walk(node.value):
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    protected.add(elt.value)
+            return True
+    return False
+
+
+def _collect_protected_exports(node: ast.AST, protected: set[str]) -> bool:
+    return _collect_string_protection(node, protected) or _collect_all_exports(node, protected)
+
+
 def _collect_uses(tree: ast.AST) -> tuple[set[str], set[str]]:
     """(referenced names, "protected" names that must never be flagged)."""
     used: set[str] = set()
     protected: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
-            used.add(node.id)
-        elif isinstance(node, ast.Attribute):
-            used.add(node.attr)
-        elif isinstance(node, ast.ImportFrom):
-            for alias in node.names:
-                used.add(alias.name)
-                if alias.asname:
-                    used.add(alias.asname)
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                used.add((alias.asname or alias.name).split(".")[0])
-        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-            # a string equal to a symbol could be a getattr/registry target
-            protected.add(node.value)
-        elif isinstance(node, ast.Assign):
-            # entries of `__all__ = [...]` are public exports
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "__all__":
-                    for elt in ast.walk(node.value):
-                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
-                            protected.add(elt.value)
+        if _collect_named_loads(node, used):
+            continue
+        if _collect_import_uses(node, used):
+            continue
+        _collect_protected_exports(node, protected)
     return used, protected
 
 

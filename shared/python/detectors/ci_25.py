@@ -1,7 +1,7 @@
 """CI-25 Nondeterminism (Environment Drift) detector."""
 from __future__ import annotations
 
-import re
+import ast
 from pathlib import Path
 
 try:
@@ -9,29 +9,49 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_MEDIUM, CONFIDENCE_LOW,
     )
-    from ._helpers import _relative_path, _line_excerpt, _line_number_from_index
+    from ._helpers import _relative_path, _line_excerpt, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         CONFIDENCE_MEDIUM, CONFIDENCE_LOW,
     )
-    from detectors._helpers import _relative_path, _line_excerpt, _line_number_from_index  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _line_excerpt, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS: frozenset[str] = frozenset({"CI25_ENVIRONMENT_DRIFT"})
 
-_NONDETERMINISTIC_CALL_PATTERN = re.compile(
-    r"\b(datetime\.now\(\s*\)|datetime\.today\(\s*\)"
-    r"|random\.(random|randint|choice|shuffle|uniform|sample)\s*\()"
-)
+_RANDOM_METHODS: frozenset[str] = frozenset({
+    "random", "randint", "choice", "shuffle", "uniform", "sample",
+})
+
+
+def _call_text(node: ast.Call) -> str | None:
+    func = node.func
+    if not isinstance(func, ast.Attribute) or not isinstance(func.value, ast.Name):
+        return None
+    if func.value.id == "datetime" and func.attr == "today" and not node.args and not node.keywords:
+        return "datetime.today()"
+    if func.value.id == "datetime" and func.attr == "now" and not node.args and not node.keywords:
+        return f"datetime.{func.attr}()"
+    if func.value.id == "random" and func.attr in _RANDOM_METHODS:
+        return f"random.{func.attr}"
+    return None
 
 
 def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     if path.suffix.lower() != ".py":
         return []
+    try:
+        tree = _cached_parse(text)
+    except SyntaxError:
+        return []
     findings: list[AciFinding] = []
-    for match in _NONDETERMINISTIC_CALL_PATTERN.finditer(text):
-        line = _line_number_from_index(text, match.start())
-        call_text = match.group(0).rstrip("(")
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        call_text = _call_text(node)
+        if call_text is None:
+            continue
+        line = node.lineno
         # Confidence reflects evidence quality, not certainty of a defect. A bare
         # naive datetime.now()/today() is a well-known timezone-and-replay smell
         # (medium). random.* is far more often deliberate -- jitter, sampling,

@@ -4,17 +4,19 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
+import aci.aci_analyzer_execution as execmod
+import aci.aci_scan as scanmod
 from aci.aci_automation import validate_report_payload
 from aci.aci_config import load_cli_config
 from aci.aci_domain_contract import CORE_ONLY_DOMAIN_ID
 from aci.aci_profiles import PROFILE_QUICK_GATE
 from aci.aci_sarif import build_sarif_report, validate_sarif_report
 from aci.aci_scan import scan_target
-
-
-def _write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+from shared.tests._aci_test_helpers import (
+    clean_startup_report,
+    insecure_http_fixture_line,
+    write_fixture as _write,
+)
 
 
 def test_scan_applies_operations_and_gate_controls(tmp_path: Path) -> None:
@@ -144,7 +146,7 @@ def test_ignore_file_excludes_targets(tmp_path: Path) -> None:
 def test_secrets_and_http_detectors_emit_findings(tmp_path: Path) -> None:
     _write(
         tmp_path / "secrets.py",
-        'API_KEY = "SECRET12345"\nENDPOINT = "http://api.acme-corp.com/v1/charge"\n',
+        'API_KEY = "SECRET12345"\n' + insecure_http_fixture_line(),
     )
 
     report = scan_target(
@@ -206,6 +208,70 @@ def test_generated_paths_are_skipped(tmp_path: Path) -> None:
     assert report["scope_rules"]["skip_generated_paths"] is True
 
 
+def test_source_only_scope_excludes_docs_examples_and_tests(tmp_path: Path) -> None:
+    _write(tmp_path / "src" / "main.py", "# TODO: runtime\n")
+    _write(tmp_path / "docs" / "note.py", "# TODO: docs\n")
+    _write(tmp_path / "examples" / "fixture.py", "# TODO: fixture\n")
+    _write(tmp_path / "tests" / "test_sample.py", "# TODO: test\n")
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        include_external_analyzers=False,
+        scope_mode="source-only",
+    )
+
+    target_files = {item["target_file"] for item in report["findings"]}
+    assert "src/main.py" in target_files
+    assert "docs/note.py" not in target_files
+    assert "examples/fixture.py" not in target_files
+    assert "tests/test_sample.py" not in target_files
+    assert report["scope_rules"]["scope_mode"] == "source-only"
+    assert report["scope_rules"]["gate_scope_classes"] == ["runtime-source"]
+
+
+def test_full_repo_reports_fixture_findings_without_blocking_gate(tmp_path: Path) -> None:
+    _write(tmp_path / "examples" / "danger.py", 'API_KEY = "SECRET12345"\n')
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        severity_threshold="critical",
+        include_external_analyzers=False,
+        scope_mode="full-repo",
+    )
+
+    fixtures = [f for f in report["findings"] if f["target_file"] == "examples/danger.py"]
+    assert fixtures
+    assert all(f["scope_class"] == "fixtures" for f in fixtures)
+    assert report["gate"]["decision"] == "pass"
+    assert report["blockers"] == []
+    assert report["summary"]["blocker_count"] == 0
+
+
+def test_dogfood_scope_focuses_common_source_and_tests(tmp_path: Path) -> None:
+    _write(tmp_path / "shared" / "python" / "tool.py", "# TODO: runtime\n")
+    _write(tmp_path / "shared" / "tests" / "test_tool.py", "# TODO: test\n")
+    _write(tmp_path / "docs" / "proof.py", "# TODO: docs\n")
+    _write(tmp_path / "examples" / "fixture.py", "# TODO: fixture\n")
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        include_external_analyzers=False,
+        scope_mode="dogfood",
+    )
+
+    target_files = {item["target_file"] for item in report["findings"]}
+    assert "shared/python/tool.py" in target_files
+    assert "shared/tests/test_tool.py" in target_files
+    assert "docs/proof.py" not in target_files
+    assert "examples/fixture.py" not in target_files
+
+
 def test_cli_config_loads_scan_gate_defaults(tmp_path: Path) -> None:
     _write(
         tmp_path / "aci.toml",
@@ -244,15 +310,47 @@ def test_gate_reason_details_list_triggering_findings(tmp_path: Path) -> None:
 
 
 def test_report_contains_tool_version(tmp_path: Path) -> None:
-    _write(tmp_path / "clean.py", "print('ok')\n")
-    report = scan_target(
-        tmp_path,
-        "startup",
-        "core-only",
-        include_external_analyzers=False,
-    )
+    report = clean_startup_report(tmp_path)
 
     assert report["tool_version"] == "0.1.0"
+
+
+def test_full_profile_runs_applicable_polyglot_analyzers(tmp_path: Path, monkeypatch) -> None:
+    _write(tmp_path / "index.js", "var x = 1;\n")
+    _write(tmp_path / "types.ts", "const y: any = 1;\n")
+    _write(tmp_path / "tsconfig.json", '{"compilerOptions": {"noEmit": true}}\n')
+    _write(tmp_path / "run.sh", 'echo "$HOME"\n')
+    _write(tmp_path / "query.sql", "select  *  from t;\n")
+
+    calls: list[str] = []
+
+    def _fake_run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> execmod.AnalyzerRunResult:
+        calls.append(analyzer_id)
+        return execmod.AnalyzerRunResult(
+            analyzer_id=analyzer_id,
+            ok=True,
+            exit_code=0,
+            runtime_state="executed",
+            stdout="",
+            stderr="",
+            findings=(),
+        )
+
+    monkeypatch.setattr(scanmod, "run_analyzer", _fake_run_analyzer)
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        include_external_analyzers=True,
+    )
+
+    assert calls == ["eslint", "tsc", "shellcheck", "sqlfluff"]
+    skipped = {item["path"]: item["reason"] for item in report["skipped_targets"]}
+    assert "index.js" not in skipped
+    assert "types.ts" not in skipped
+    assert "run.sh" not in skipped
+    assert "query.sql" not in skipped
 
 
 # ── diff-from tests ────────────────────────────────────────────────────────

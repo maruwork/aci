@@ -40,13 +40,14 @@ external-analyzer (E), human-judgment (H).
 |---|---|---|
 | `startup` | N | fastest orientation pass on a fresh checkout |
 | `quick-gate` | N + E | fast pre-commit / PR gate |
-| `state-change` | N + E + H | mid-work change review |
-| `wrap-up` | N + E + H | end-of-task review |
-| `full` | N + E + H | complete scan (all detectors + analyzers + human lane) |
-| `build-preflight` | N + E + H | before a build; adds mypy to the external lane |
-| `build-review` | N + E + H | release review; adds mypy + pytest |
+| `state-change` | N | mid-work change review |
+| `wrap-up` | N + H | end-of-task review |
+| `full` | N + E + H | complete scan (all detectors + applicable analyzers + human lane) |
+| `build-preflight` | N + E + H | before a build; runs the applicable analyzer set for the target |
+| `build-review` | N + E + H | release review; runs the applicable analyzer set for the target, including pytest on Python sources |
 
-External analyzers run only when installed and the lane is enabled; add
+External analyzers run only when installed, the lane is enabled, and the target
+contains files/config they can actually inspect; add
 `--no-external-analyzers` to force native-only. Check readiness with
 `aci show-analyzer-availability` and the per-profile plan with
 `aci show-profile-execution-plan`.
@@ -63,6 +64,12 @@ External analyzers run only when installed and the lane is enabled; add
 
 Generated paths (`.git`, `.venv`, `build`, `__pycache__`, `.claude`,
 `workspace`, …) are always skipped.
+
+`scan` also accepts `--scope-mode`:
+
+- `source-only` - default CLI mode; excludes common non-runtime shelves such as `docs/`, `examples/`, `fixtures/`, `dist/`, and local scratch shelves
+- `dogfood` - focuses on common source + test shelves for self-audit and maintainer verification
+- `full-repo` - scans the full tree; fixture and documentation findings remain visible, but blocker/gate decisions are limited to `runtime-source` findings
 
 ## Gate controls
 

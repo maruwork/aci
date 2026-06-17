@@ -16,8 +16,10 @@ from __future__ import annotations
 import sys
 import tempfile
 from pathlib import Path
+import shutil
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+_WORKSPACE_ROOT = _REPO_ROOT / "workspace"
 sys.path.insert(0, str(_REPO_ROOT / "shared" / "python"))
 
 try:
@@ -104,12 +106,17 @@ PROBES: list[tuple[str, str, dict[str, str], str | None]] = [
 
 
 def _signals(files: dict[str, str]) -> set[str]:
-    d = Path(tempfile.mkdtemp()) / "probe"
+    _WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+    scratch = Path(tempfile.mkdtemp(prefix="aci_recall_probe_", dir=_WORKSPACE_ROOT))
+    d = scratch / "probe"
     d.mkdir()
-    for name, body in files.items():
-        (d / name).write_text(body, encoding="utf-8")
-    report = scan_target(d, "full", "core-only", include_external_analyzers=False)
-    return {item["signal"] for item in report["findings"]}
+    try:
+        for name, body in files.items():
+            (d / name).write_text(body, encoding="utf-8")
+        report = scan_target(d, "full", "core-only", include_external_analyzers=False)
+        return {item["signal"] for item in report["findings"]}
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def run() -> dict:

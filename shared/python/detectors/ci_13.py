@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 # Stdlib top-level names. An absolute `import typing` is the stdlib module even
@@ -32,6 +33,16 @@ except ImportError:  # pragma: no cover - direct script/module import path
     from detectors._helpers import _relative_path, _cached_parse  # type: ignore[no-redef]
 
 SIGNALS: frozenset[str] = frozenset({"CI13_CIRCULAR_IMPORT"})
+
+
+@dataclass
+class _TarjanState:
+    index_of: dict[str, int]
+    low: dict[str, int]
+    on_stack: set[str]
+    stack: list[str]
+    result: list[list[str]]
+    counter: int = 0
 
 
 def _module_name(path: Path, root: Path) -> tuple[str, bool]:
@@ -83,56 +94,43 @@ def _module_imports(tree: ast.Module, current: str, is_init: bool) -> set[str]:
     return imports
 
 
-def _strongly_connected_components(graph: dict[str, set[str]]) -> list[list[str]]:
-    """Tarjan's SCC algorithm (iterative)."""
-    index_of: dict[str, int] = {}
-    low: dict[str, int] = {}
-    on_stack: set[str] = set()
-    stack: list[str] = []
-    result: list[list[str]] = []
-    counter = 0
+def _visit_scc(node: str, graph: dict[str, set[str]], state: _TarjanState) -> None:
+    state.index_of[node] = state.counter
+    state.low[node] = state.counter
+    state.counter += 1
+    state.stack.append(node)
+    state.on_stack.add(node)
 
-    for start in graph:
-        if start in index_of:
+    for neighbor in sorted(graph.get(node, ())):
+        if neighbor not in graph:
             continue
-        work: list[tuple[str, int]] = [(start, 0)]
-        while work:
-            node, pi = work[-1]
-            if pi == 0:
-                index_of[node] = low[node] = counter
-                counter += 1
-                stack.append(node)
-                on_stack.add(node)
-            recursed = False
-            neighbors = sorted(graph.get(node, ()))
-            for i in range(pi, len(neighbors)):
-                nxt = neighbors[i]
-                if nxt not in graph:
-                    continue
-                if nxt not in index_of:
-                    work[-1] = (node, i + 1)
-                    work.append((nxt, 0))
-                    recursed = True
-                    break
-                if nxt in on_stack:
-                    low[node] = min(low[node], index_of[nxt])
-            if recursed:
-                continue
-            if low[node] == index_of[node]:
-                comp: list[str] = []
-                while True:
-                    w = stack.pop()
-                    on_stack.discard(w)
-                    comp.append(w)
-                    if w == node:
-                        break
-                if len(comp) > 1:
-                    result.append(comp)
-            work.pop()
-            if work:
-                parent = work[-1][0]
-                low[parent] = min(low[parent], low[node])
-    return result
+        if neighbor not in state.index_of:
+            _visit_scc(neighbor, graph, state)
+            state.low[node] = min(state.low[node], state.low[neighbor])
+            continue
+        if neighbor in state.on_stack:
+            state.low[node] = min(state.low[node], state.index_of[neighbor])
+
+    if state.low[node] != state.index_of[node]:
+        return
+    component: list[str] = []
+    while True:
+        current = state.stack.pop()
+        state.on_stack.discard(current)
+        component.append(current)
+        if current == node:
+            break
+    if len(component) > 1:
+        state.result.append(component)
+
+
+def _strongly_connected_components(graph: dict[str, set[str]]) -> list[list[str]]:
+    """Tarjan's SCC algorithm."""
+    state = _TarjanState(index_of={}, low={}, on_stack=set(), stack=[], result=[])
+    for start in graph:
+        if start not in state.index_of:
+            _visit_scc(start, graph, state)
+    return state.result
 
 
 def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:

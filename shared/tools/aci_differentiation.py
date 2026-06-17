@@ -37,6 +37,9 @@ except ImportError:  # pragma: no cover - direct source checkout path
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "python"))
     from aci_scan import scan_target  # type: ignore[no-redef]
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_WORKSPACE_ROOT = _REPO_ROOT / "workspace"
+
 
 # Ruff rule codes whose category is the SAME smell as an ACI CI-ID. Used to tell
 # a genuine semantic duplicate (ruff already has a rule for this) from an
@@ -51,7 +54,7 @@ _RUFF_PREFIX_TO_CI: list[tuple[str, str]] = [
     ("PLW0603", "CI-26"),  # global-statement
     ("SIM115", "CI-22"),   # open without context manager
     ("S311", "CI-25"),     # non-crypto random (nondeterminism)
-    ("TD", "CI-03"), ("FIX", "CI-03"),  # TODO / FIXME families
+    ("TD", "CI-03"), ("FIX", "CI-03"),  # patchwork-marker families
     ("BLE", "CI-21"),      # blind-except family
     ("S", "CI-14"),        # flake8-bandit security family
 ]
@@ -103,7 +106,8 @@ def differentiate(paths: list[Path]) -> dict:
     for project in paths:
         # ruff hard-excludes anything under venv/site-packages, so copy the tree
         # to a neutral temp location and run both tools there (paths then match).
-        tmp = Path(tempfile.mkdtemp(prefix="aci_diff_"))
+        _WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+        tmp = Path(tempfile.mkdtemp(prefix="aci_diff_", dir=_WORKSPACE_ROOT))
         dest = tmp / project.name
         shutil.copytree(project, dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         try:

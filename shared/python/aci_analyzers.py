@@ -98,7 +98,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         purpose="JS/TS rule-based static analysis for code quality, import hygiene, and type contract violations",
         evidence_type="machine evidence",
         support_level="profile-default-catalog",
-        referenced_by_profiles=(),
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-02", "CI-07", "CI-13", "CI-14", "CI-21", "CI-23"),
         ownership_boundary=(
             "The common shelf catalogs `eslint` as a polyglot evidence source. "
@@ -111,7 +111,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         purpose="TypeScript compiler type checking for interface and contract drift",
         evidence_type="machine evidence",
         support_level="profile-default-catalog",
-        referenced_by_profiles=(),
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-23",),
         ownership_boundary=(
             "The common shelf catalogs `tsc` for TypeScript type evidence. "
@@ -124,7 +124,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         purpose="shell script static analysis for unsafe patterns, error-handling gaps, and portability issues",
         evidence_type="machine evidence",
         support_level="profile-default-catalog",
-        referenced_by_profiles=(),
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-02", "CI-21"),
         ownership_boundary=(
             "The common shelf catalogs `shellcheck` for shell script evidence. "
@@ -137,7 +137,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         purpose="SQL style and structure linting for query quality",
         evidence_type="machine evidence",
         support_level="profile-default-catalog",
-        referenced_by_profiles=(),
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
         typical_ci_ids=("CI-02",),
         ownership_boundary=(
             "The common shelf catalogs `sqlfluff` for SQL evidence. "

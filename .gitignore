@@ -15,6 +15,7 @@ venv/
 env/
 
 workspace/
+/domains/pier/
 
 # Internal-management shelves — not part of the public distribution
 /common/

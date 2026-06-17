@@ -7,7 +7,7 @@ adoption-facing summary.
 
 Lanes:
 - **native-static** — ACI's own AST/text detector (Python).
-- **external-analyzer** — produced by ruff / pyflakes / mypy / pytest (opt-in;
+- **external-analyzer** — produced by ruff / pyflakes / mypy / pytest / eslint / tsc / shellcheck / sqlfluff (opt-in;
   only when installed and the profile enables them).
 - **human-judgment** — surfaced for a human to decide; not auto-detected.
 
@@ -47,10 +47,14 @@ installed and the profile enables the external lane.
 
 | CI-ID | Name | Produced by |
 |---|---|---|
+| CI-02 | Spaghetti / style-quality proxy from external lint | eslint, shellcheck, sqlfluff |
 | CI-07 | Lava Flow (single-file unused) | ruff, pyflakes — complements ACI's native cross-file dead-private-symbol detector above |
 | CI-09 | Test Rot | pytest |
 | CI-13 | Dependency Rot (unused/outdated imports) | ruff, pyflakes — complements ACI's native circular-import detector above |
+| CI-14 | Security Neglect | eslint security-style rules |
 | CI-15 | Documentation Rot | ruff, mypy |
+| CI-21 | Error Handling Rot | shellcheck, ruff |
+| CI-23 | Interface / Contract Drift | mypy, eslint, tsc |
 
 ## Human-judgment lane (not auto-detected by design)
 
@@ -102,16 +106,20 @@ rule exists for them (see the `Human-judgment lane` table above).
 
 ## Language scope
 
-ACI is a **Python-only** tool. Every native-static detector checks `path.suffix == ".py"`
-and returns early for all other file types.
+ACI is **Python-first**. The native structural detectors are Python-only, but the
+scan surface also accepts supported non-Python text/code files so the text-scan
+detectors and applicable external analyzers can run.
 
 | File type | Coverage |
 |---|---|
-| `.py` | Full — all active CI-IDs via Python AST |
-| All other types | Not scanned by native-static lane |
+| `.py` | Full — native Python AST detectors, text scans, and Python external analyzers |
+| `.js` / `.jsx` / `.ts` / `.tsx` | Text scans + eslint (and `tsc` when `tsconfig.json` is present) |
+| `.sh` / `.bash` | Text scans + shellcheck |
+| `.sql` | Text scans + sqlfluff |
+| `.md` / `.txt` / `.toml` / `.yml` / `.yaml` / `.json` | Text scans only |
 
-The external-analyzer lane (ruff / pyflakes / mypy) inherits whatever language support
-those tools provide, but ACI itself makes no attempt to scan non-Python files.
+The external-analyzer lane inherits whatever language support those tools provide,
+but ACI's own structural analysis remains Python-native.
 
 If your codebase is primarily non-Python, the native lane will have no coverage — use
 dedicated tools for other languages.
