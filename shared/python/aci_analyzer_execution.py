@@ -65,6 +65,9 @@ MINIMUM_ANALYZER_VERSIONS: dict[str, tuple[int, ...]] = {
 }
 
 VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+_CATALOG_SUPPORT_LEVEL_BY_ANALYZER: dict[str, str] = {
+    entry.analyzer_id: entry.support_level for entry in ANALYZER_CATALOG
+}
 
 
 @dataclass(frozen=True)
@@ -159,6 +162,7 @@ def _probe_version(analyzer_id: str, executable_path: str) -> tuple[str | None, 
 
 
 def _readiness_for(entry_analyzer_id: str) -> AnalyzerReadiness:
+    support_level = _CATALOG_SUPPORT_LEVEL_BY_ANALYZER.get(entry_analyzer_id, "execution-ready")
     executable_path = which(entry_analyzer_id)
     if not executable_path:
         return AnalyzerReadiness(
@@ -168,14 +172,13 @@ def _readiness_for(entry_analyzer_id: str) -> AnalyzerReadiness:
             version_text=None,
             version_ok=False,
             minimum_version=_minimum_version_text(entry_analyzer_id),
+            execution_support_level=support_level,
         )
     version_text, version_ok = _probe_version(entry_analyzer_id, executable_path)
-    if entry_analyzer_id in {"codeql", "gitleaks", "osv-scanner", "trivy"}:
+    if support_level == "project-local-setup-required":
         availability_state = "project-local-setup-required" if version_ok else "version-or-runtime-problem"
-        support_level = "project-local-setup-required"
     else:
         availability_state = "ready" if version_ok else "version-or-runtime-problem"
-        support_level = "execution-ready"
     return AnalyzerReadiness(
         analyzer_id=entry_analyzer_id,
         executable_path=executable_path,

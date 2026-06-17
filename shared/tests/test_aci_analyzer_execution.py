@@ -85,6 +85,14 @@ def test_missing_analyzer_returns_not_installed(tmp_path: Path, monkeypatch) -> 
     assert result.runtime_state == "not-installed"
 
 
+def test_project_local_setup_analyzer_keeps_support_level_when_not_installed(monkeypatch) -> None:
+    monkeypatch.setattr(execmod, "which", lambda analyzer_id: None)
+    readiness = execmod._readiness_for("codeql")
+
+    assert readiness.availability_state == "not-installed"
+    assert readiness.execution_support_level == "project-local-setup-required"
+
+
 def test_sarif_ready_readiness_summary_contains_known_states() -> None:
     rows = execmod.profile_execution_plan()
     quick_gate = next(row for row in rows if row["profile_id"] == PROFILE_QUICK_GATE)
