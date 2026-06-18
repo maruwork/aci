@@ -150,4 +150,4 @@ def test_self_audit_check_passes_for_repo() -> None:
     assert checks["self_audit.profile_registered"]["ok"] is True
     assert checks["self_audit.required_ignore_patterns"]["ok"] is True
     assert checks["classification.shared/tools/aci_recall_probe.py"]["actual"] == "maintainer-probes"
-    assert checks["classification.docs/roadmap/ACI_AUDIT_TOOL_COMPLETION_INVENTORY_2026-06-18.md"]["actual"] == "roadmap-evidence"
+    assert checks["classification.docs/roadmap/ACI_1.0_WORKLIST.md"]["actual"] == "roadmap-evidence"

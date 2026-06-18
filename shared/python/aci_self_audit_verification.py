@@ -38,7 +38,7 @@ REQUIRED_IGNORE_PATTERNS: tuple[str, ...] = ("archive", "common", "workspace")
 EXPECTED_CLASSIFICATIONS: tuple[tuple[str, str], ...] = (
     ("shared/python/aci_cli.py", SCOPE_CLASS_RUNTIME_SOURCE),
     ("shared/tools/aci_recall_probe.py", SCOPE_CLASS_MAINTAINER_PROBES),
-    ("docs/roadmap/ACI_AUDIT_TOOL_COMPLETION_INVENTORY_2026-06-18.md", SCOPE_CLASS_ROADMAP_EVIDENCE),
+    ("docs/roadmap/ACI_1.0_WORKLIST.md", SCOPE_CLASS_ROADMAP_EVIDENCE),
 )
 
 

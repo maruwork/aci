@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-06-18
+
+### Fixed
+- point self-audit verification at a tracked `docs/roadmap/` file so CI does not depend on a locally ignored roadmap inventory artifact
+
+---
+
 ## [0.1.2] - 2026-06-18
 
 ### Fixed

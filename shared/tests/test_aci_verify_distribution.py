@@ -18,13 +18,13 @@ def test_build_distribution_uses_project_name_and_workspace_temp_env(tmp_path: P
         """
 [project]
 name = "ac-inspector"
-version = "0.1.2"
+version = "0.1.3"
 """.strip(),
         encoding="utf-8",
     )
     outdir = tmp_path / "workspace" / "dist"
     outdir.mkdir(parents=True, exist_ok=True)
-    artifact = outdir / "ac_inspector-0.1.2.whl"
+    artifact = outdir / "ac_inspector-0.1.3.whl"
     artifact.write_bytes(b"wheel")
 
     captured: dict[str, object] = {}
