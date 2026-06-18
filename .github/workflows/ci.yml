@@ -141,10 +141,10 @@ jobs:
     name: Release gate
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-  needs: [test-linux, platform-smoke]
-  permissions:
-    contents: read
-    id-token: write  # OIDC token for PyPI Trusted Publishing (no long-lived secrets)
+    needs: [test-linux, platform-smoke]
+    permissions:
+      contents: read
+      id-token: write  # OIDC token for PyPI Trusted Publishing (no long-lived secrets)
 
     steps:
       - uses: actions/checkout@v4

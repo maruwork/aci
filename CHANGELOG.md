@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.8] - 2026-06-18
+
+### Fixed
+- re-indent `release-gate.needs` and `release-gate.permissions` under the job itself so GitHub Actions can instantiate the tag workflow instead of failing with zero jobs
+
+---
+
 ## [0.1.7] - 2026-06-18
 
 ### Fixed
