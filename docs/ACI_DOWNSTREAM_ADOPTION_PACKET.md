@@ -11,9 +11,10 @@ Give a downstream maintainer one bounded packet that explains how to adopt `ACI`
 1. `README.md`
 2. `shared/core/aci-autonomous-code-inspection-tool-contract.md`
 3. `shared/core/aci-code-inspection-execution-spec.md`
-4. `shared/core/aci-downstream-adoption-contract.md`
-5. `shared/runtime/aci-generic-quickstart.md`
-6. `domains/README.md`
+4. `shared/core/aci-product-boundary-and-coverage-policy.md`
+5. `shared/core/aci-downstream-adoption-contract.md`
+6. `shared/runtime/aci-generic-quickstart.md`
+7. `domains/README.md`
 
 ## Carry From Common
 

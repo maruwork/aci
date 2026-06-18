@@ -7,13 +7,13 @@ from pathlib import Path
 try:
     from ..aci_findings import (
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW, CONFIDENCE_MEDIUM,
     )
     from ._helpers import _relative_path, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW, CONFIDENCE_MEDIUM,
     )
     from detectors._helpers import _relative_path, _cached_parse  # type: ignore[no-redef]
 
@@ -184,7 +184,7 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
                 ci_id="CI-02",
                 signal="CI02_LONG_FUNCTION",
-                severity="medium",
+                severity="low",
                 target_file=_relative_path(path, target_root),
                 line=node.lineno,
                 excerpt=f"def {node.name}(...) [{body_lines} lines, complexity {complexity}]",
@@ -195,10 +195,11 @@ def scan_long_functions(path: Path, text: str, target_root: Path, next_id: int) 
                 ),
                 evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                 recommended_action="Extract cohesive sub-operations into named helper functions.",
-                # medium, not high: a long function is a design-review prompt, not
-                # a confirmed defect (precision audit 2026-06-13).
-                confidence=CONFIDENCE_MEDIUM,
-                priority="P2",
+                # Long functions remain advisory even after the branch-complexity
+                # guard; the precision audit still ranked them as low-actionability
+                # design-review prompts rather than default defects.
+                confidence=CONFIDENCE_LOW,
+                priority="P3",
                 owner_lane=LANE_NATIVE_STATIC,
                 verification_status=VERIFICATION_EXECUTED,
             )

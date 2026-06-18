@@ -43,6 +43,7 @@ external-analyzer (E), human-judgment (H).
 | `state-change` | N | mid-work change review |
 | `wrap-up` | N + H | end-of-task review |
 | `full` | N + E + H | complete scan (all detectors + applicable analyzers + human lane) |
+| `self-audit` | N + E + H | dedicated ACI self-audit over runtime code, tests, maintainer probes, and roadmap evidence |
 | `build-preflight` | N + E + H | before a build; runs the applicable analyzer set for the target |
 | `build-review` | N + E + H | release review; runs the applicable analyzer set for the target, including pytest on Python sources |
 
@@ -51,6 +52,19 @@ contains files/config they can actually inspect; add
 `--no-external-analyzers` to force native-only. Check readiness with
 `aci show-analyzer-availability` and the per-profile plan with
 `aci show-profile-execution-plan`.
+
+`show-analyzer-availability` includes:
+
+- `default_policy` - whether the analyzer is a profile default or remains opt-in
+- `execution_support_level` - whether ACI can run it or only report readiness
+- `version_policy` / `install_spec` - pinned or minimum-version guidance
+- `setup_hint` / `remediation_hint` - what to do when the analyzer is absent or downstream-wired
+
+For the continuously verified Python analyzer set used in CI and maintainer flows:
+
+```bash
+python -m pip install -r requirements-dev-analyzers.txt
+```
 
 ## Scope controls
 
@@ -69,6 +83,7 @@ Generated paths (`.git`, `.venv`, `build`, `__pycache__`, `.claude`,
 
 - `source-only` - default CLI mode; excludes common non-runtime shelves such as `docs/`, `examples/`, `fixtures/`, `dist/`, and local scratch shelves
 - `dogfood` - focuses on common source + test shelves for self-audit and maintainer verification
+- `self-audit` - dedicated ACI self-audit scope for `shared/python/`, `shared/tests/`, `shared/tools/`, and `docs/roadmap/`
 - `full-repo` - scans the full tree; fixture and documentation findings remain visible, but blocker/gate decisions are limited to `runtime-source` findings
 
 ## Gate controls
@@ -125,8 +140,21 @@ aci scan --target . --profile full --ratchet
 
 ```bash
 aci scan --target . --profile full --output-format json > report.json
+aci scan --target . --profile full --scope-mode full-repo --report-scope-class runtime-source
 aci emit-sarif --report report.json > aci.sarif    # SARIF 2.1.0 for code scanning
 aci emit-annotations --report report.json          # GitHub Actions annotations
 aci emit-github-summary --report report.json       # GitHub markdown summary
 aci validate-report --report report.json           # check against the report contract
 ```
+
+Report-view filters are available on `scan`, `emit-sarif`, `emit-annotations`,
+and `emit-github-summary`:
+
+```bash
+--report-scope-class runtime-source
+--report-scope-class tests
+--report-owner-lane external-analyzer
+```
+
+These filters change the emitted report view, not the underlying source scan.
+For `scan`, exit status still follows the unfiltered source gate.

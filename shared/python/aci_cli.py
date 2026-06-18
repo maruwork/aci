@@ -12,7 +12,12 @@ try:
     from .aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from .aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
     from .aci_github_summary import build_github_summary_markdown
-    from .aci_profiles import PROFILE_QUICK_GATE
+    from .aci_report_view import (
+        apply_report_view,
+        SUPPORTED_REPORT_OWNER_LANES,
+        SUPPORTED_REPORT_SCOPE_CLASSES,
+    )
+    from .aci_profiles import PROFILE_QUICK_GATE, default_scope_mode
     from .aci_scan import (
         scan_target,
         ACI_TOOL_VERSION,
@@ -35,12 +40,19 @@ try:
     from .aci_profile_catalog import profile_catalog, profile_support_levels
     from .aci_public_smoke import build_public_smoke_result, detect_repo_root
     from .aci_ratchet import check_ratchet
+    from .aci_scale_verification import build_scale_check_result
+    from .aci_self_audit_verification import run_self_audit_check
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_config import AciCliConfig, config_schema, load_cli_config
     from aci_domain_contract import CORE_ONLY_DOMAIN_ID
     from aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
     from aci_github_summary import build_github_summary_markdown
-    from aci_profiles import PROFILE_QUICK_GATE
+    from aci_report_view import (  # type: ignore[no-redef]
+        apply_report_view,
+        SUPPORTED_REPORT_OWNER_LANES,
+        SUPPORTED_REPORT_SCOPE_CLASSES,
+    )
+    from aci_profiles import PROFILE_QUICK_GATE, default_scope_mode
     from aci_scan import (
         scan_target,
         ACI_TOOL_VERSION,
@@ -63,6 +75,8 @@ except ImportError:  # pragma: no cover - direct script/module import path
     from aci_profile_catalog import profile_catalog, profile_support_levels
     from aci_public_smoke import build_public_smoke_result, detect_repo_root
     from aci_ratchet import check_ratchet
+    from aci_scale_verification import build_scale_check_result
+    from aci_self_audit_verification import run_self_audit_check
 
 
 EXIT_OK = 0
@@ -116,6 +130,23 @@ def _sample_asset_relative_path(output_format: str) -> str:
     return f"report/examples/aci-core-sample-report.{suffix}"
 
 
+def _add_report_view_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--report-scope-class",
+        action="append",
+        default=[],
+        choices=list(SUPPORTED_REPORT_SCOPE_CLASSES),
+        help="Filter the report view to specific scope_class values; may be repeated.",
+    )
+    parser.add_argument(
+        "--report-owner-lane",
+        action="append",
+        default=[],
+        choices=list(SUPPORTED_REPORT_OWNER_LANES),
+        help="Filter the report view to specific owner_lane values; may be repeated.",
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aci", description="Common CLI for the ACI shelf")
     parser.add_argument("--version", action="version", version=f"aci {ACI_TOOL_VERSION}")
@@ -141,6 +172,22 @@ def _build_parser() -> argparse.ArgumentParser:
         "installed-package-check",
         help="Run the bounded installed-package verification surface and emit compact JSON",
     )
+    sub.add_parser(
+        "self-audit-check",
+        help="Run the dedicated self-audit verification surface and emit compact JSON",
+    )
+    scale = sub.add_parser(
+        "scale-check",
+        help="Run the bounded scale/platform verification surface and emit compact JSON",
+    )
+    scale.add_argument(
+        "--scratch-root",
+        type=Path,
+        help=(
+            "Optional writable scratch root for synthetic benchmark files. "
+            "When omitted, ACI prefers ./workspace/scale-check when available."
+        ),
+    )
 
     sample = sub.add_parser("show-sample-report", help="Print a built-in sample report")
     sample.add_argument(
@@ -161,6 +208,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Convert an ACI machine-readable report JSON file into SARIF 2.1.0",
     )
     sarif.add_argument("--report", type=Path, required=True, help="ACI report JSON file to convert")
+    _add_report_view_args(sarif)
     validate_sarif = sub.add_parser(
         "validate-sarif",
         help="Validate a SARIF 2.1.0 JSON file against the bounded hosted-ingestion-ready contract",
@@ -173,11 +221,13 @@ def _build_parser() -> argparse.ArgumentParser:
     annotations_cmd.add_argument(
         "--report", type=Path, required=True, help="ACI report JSON file to convert"
     )
+    _add_report_view_args(annotations_cmd)
     github_summary_cmd = sub.add_parser(
         "emit-github-summary",
         help="Convert an ACI machine-readable report JSON file into a GitHub-friendly markdown summary",
     )
     github_summary_cmd.add_argument("--report", type=Path, required=True, help="ACI report JSON file to summarize")
+    _add_report_view_args(github_summary_cmd)
 
     catalog = sub.add_parser(
         "show-analyzer-catalog",
@@ -244,10 +294,12 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument(
         "--scope-mode",
         choices=list(SUPPORTED_SCOPE_MODES),
-        default=SCOPE_MODE_SOURCE_ONLY,
+        default=None,
         help=(
             "Scope preset: source-only excludes common non-runtime shelves; "
-            "dogfood focuses on common source/test shelves; full-repo scans the full tree."
+            "dogfood focuses on common source/test shelves; "
+            "self-audit adds maintainer probes and roadmap evidence; "
+            "full-repo scans the full tree."
         ),
     )
     scan.add_argument(
@@ -336,7 +388,19 @@ def _build_parser() -> argparse.ArgumentParser:
             "Requires git to be available on PATH and the target to be inside a git repository."
         ),
     )
+    _add_report_view_args(scan)
     return parser
+
+
+def _project_report_view_from_args(
+    data: dict[str, object],
+    args: argparse.Namespace,
+) -> dict[str, object]:
+    return apply_report_view(
+        data,
+        scope_classes=getattr(args, "report_scope_class", ()),
+        owner_lanes=getattr(args, "report_owner_lane", ()),
+    )
 
 
 def _handle_report_command(args: argparse.Namespace) -> int | None:
@@ -352,7 +416,7 @@ def _handle_report_command(args: argparse.Namespace) -> int | None:
         data = _read_json_file(args.report)
         if not isinstance(data, dict):
             raise ValueError(f"Report file is not a JSON object: {args.report}")
-        _print_json(build_sarif_report(data), "pretty-json")
+        _print_json(build_sarif_report(_project_report_view_from_args(data, args)), "pretty-json")
         return EXIT_OK
     if args.command == "validate-sarif":
         data = _read_json_file(args.report)
@@ -363,21 +427,21 @@ def _handle_report_command(args: argparse.Namespace) -> int | None:
         data = _read_json_file(args.report)
         if not isinstance(data, dict):
             raise ValueError(f"Report file is not a JSON object: {args.report}")
-        for annotation_line in build_github_annotations(data):
+        for annotation_line in build_github_annotations(_project_report_view_from_args(data, args)):
             print(annotation_line)
         return EXIT_OK
     if args.command == "emit-github-summary":
         data = _read_json_file(args.report)
         if not isinstance(data, dict):
             raise ValueError(f"Report file is not a JSON object: {args.report}")
-        print(build_github_summary_markdown(data), end="")
+        print(build_github_summary_markdown(_project_report_view_from_args(data, args)), end="")
         return EXIT_OK
     return None
 
 
 def _handle_catalog_command(args: argparse.Namespace, cfg: AciCliConfig) -> int | None:
-    output_format = args.output_format or cfg.output_format
     if args.command == "show-analyzer-catalog":
+        output_format = getattr(args, "output_format", None) or cfg.output_format
         _print_json(
             {
                 "tool": "ACI",
@@ -389,6 +453,7 @@ def _handle_catalog_command(args: argparse.Namespace, cfg: AciCliConfig) -> int 
         )
         return EXIT_OK
     if args.command == "show-profile-catalog":
+        output_format = getattr(args, "output_format", None) or cfg.output_format
         _print_json(
             {
                 "tool": "ACI",
@@ -400,6 +465,7 @@ def _handle_catalog_command(args: argparse.Namespace, cfg: AciCliConfig) -> int 
         )
         return EXIT_OK
     if args.command == "show-analyzer-availability":
+        output_format = getattr(args, "output_format", None) or cfg.output_format
         _print_json(
             {
                 "tool": "ACI",
@@ -411,6 +477,7 @@ def _handle_catalog_command(args: argparse.Namespace, cfg: AciCliConfig) -> int 
         )
         return EXIT_OK
     if args.command == "show-profile-execution-plan":
+        output_format = getattr(args, "output_format", None) or cfg.output_format
         _print_json(
             {
                 "tool": "ACI",
@@ -453,6 +520,14 @@ def _handle_verification_command(args: argparse.Namespace, cfg: AciCliConfig) ->
         result = run_installed_package_check(_resolve_repo_root())
         _print_json(result, "json")
         return EXIT_OK if result["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
+    if args.command == "self-audit-check":
+        result = run_self_audit_check(_resolve_repo_root())
+        _print_json(result, "json")
+        return EXIT_OK if result["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
+    if args.command == "scale-check":
+        result = build_scale_check_result(_resolve_repo_root(), args.scratch_root)
+        _print_json(result, "json")
+        return EXIT_OK if result["ok"] else EXIT_AUTOMATION_VERIFICATION_FAILURE
     if args.command == "show-sample-report":
         fallback_root = Path(__file__).resolve().parent / "package_assets"
         sample_text = read_text_asset(_sample_asset_relative_path(args.format), fallback_root)
@@ -471,6 +546,7 @@ def _handle_scan_command(args: argparse.Namespace, cfg: AciCliConfig) -> int | N
     if args.command != "scan":
         return None
     output_format = args.output_format or cfg.output_format
+    scope_mode = args.scope_mode or default_scope_mode(args.profile) or SCOPE_MODE_SOURCE_ONLY
     result = scan_target(
         args.target,
         args.profile,
@@ -486,7 +562,7 @@ def _handle_scan_command(args: argparse.Namespace, cfg: AciCliConfig) -> int | N
         args.domain_file,
         args.fail_on_unreviewed_review_required or cfg.fail_on_unreviewed_review_required,
         diff_from=args.diff_from,
-        scope_mode=args.scope_mode,
+        scope_mode=scope_mode,
     )
     ratchet_result: dict[str, object] | None = None
     if args.ratchet:
@@ -494,12 +570,13 @@ def _handle_scan_command(args: argparse.Namespace, cfg: AciCliConfig) -> int | N
         findings: list[dict[str, object]] = result.get("findings", [])  # type: ignore[assignment]
         ratchet_result = check_ratchet(findings, state_path=ratchet_path)
         result["ratchet"] = ratchet_result
+    projected_result = _project_report_view_from_args(result, args)
 
     report_output = args.output or (Path(cfg.report_output) if cfg.report_output else None)
     if report_output is not None:
-        _write_report_file(result, report_output, output_format)
+        _write_report_file(projected_result, report_output, output_format)
     else:
-        _print_json(result, output_format)
+        _print_json(projected_result, output_format)
     gate = result.get("gate")
     summary = result.get("summary")
     if not isinstance(gate, dict) or not isinstance(summary, dict):

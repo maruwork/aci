@@ -5,11 +5,12 @@ Status: Active
 ## Header
 
 - `report_id`: `aci-core-sample-001`
-- `tool_id`: `aci_core_smoke`
-- `mode`: `aci core only`
+- `tool_id`: `aci_scan`
+- `mode`: `aci runtime scan`
+- `profile_id`: `full`
 - `domain`: `core-only`
 - `scan_scope`: `repo-root`
-- `generated_at`: `2026-06-04`
+- `generated_at`: `2026-06-18T00:00:00Z`
 - `verification_status`: `executed`
 
 ## Summary
@@ -29,31 +30,39 @@ Status: Active
   - `new`: `1`
 - by lifecycle state:
   - `in-review`: `1`
+- by owner lane:
+  - `native-static`: `1`
+- by scope class:
+  - `runtime-source`: `1`
+- by scope policy:
+  - `gated`: `1`
+  - `advisory`: `0`
 - waived finding count: `0`
 - suppressed finding count: `0`
 - new finding count: `1`
 - existing baseline count: `0`
+- resolved baseline count: `0`
 - blocker present: `no`
 - residual present: `no`
-- next action summary:
-  - review python/aci_scan.py:222 for god-class refactoring opportunity
 
 ## Highest Severity Findings
 
-| finding_id | ci_id | signal | severity | confidence | actor_label | triage_state | priority | fixability | baseline_status | waiver_status | lifecycle_state | owner_lane | target_file | line | reason | evidence_ref | recommended_action | verification_status |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|
-| `F-CORE-001` | `CI-04` | `CI04_GOD_CLASS` | `medium` | `medium` | `ACI-detected` | `review-first` | `P2` | `owner-decision` | `new` | `none` | `in-review` | `native-static` | `python/aci_scan.py` | 222 | `Class ScanSession has 16 methods across 3 responsibility clusters (LCOM ≈ 0.67).` | `core/aci-code-inspection-execution-spec.md` | split ScanSession into focused classes, one per responsibility cluster | `executed` |
+| finding_id | ci_id | signal | severity | confidence | owner_lane | scope_class | target_file | line | reason |
+|---|---|---|---|---|---|---|---|---:|---|
+| `F-CORE-001` | `CI-04` | `CI04_GOD_CLASS` | `medium` | `medium` | `native-static` | `runtime-source` | `shared/python/aci_scan.py` | 222 | `Class ScanSession has 16 methods across 3 responsibility clusters (LCOM >= 0.67).` |
 
-## Triage View
+## Advisory-Only Findings
 
-- `fix-now`
-  - none
-- `review-first`
-  - `F-CORE-001`
-- `accepted-residual`
-  - none
+- none
+
+## Known Limits
+
+- `KL-ACI-CI05-STRUCTURE-EXACT`
+- `KL-ACI-CI07-COMPILED-EXTENSIONS`
+- `KL-ACI-CI14-SUPPLY-CHAIN-SCOPE`
+- `KL-ACI-CI22-NONLOCAL-LIFECYCLE`
 
 ## Next Actions
 
-- review `python/aci_scan.py:222` for god-class refactoring opportunity
-- split ScanSession by responsibility cluster if coupling is not intentional
+- review `shared/python/aci_scan.py:222` for god-class refactoring opportunity
+- split `ScanSession` by responsibility cluster if coupling is not intentional

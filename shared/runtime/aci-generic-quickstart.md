@@ -50,6 +50,7 @@ python shared/python/aci_cli.py --config aci.example.toml smoke
 
 See:
 
+- `shared/core/aci-product-boundary-and-coverage-policy.md`
 - `shared/runtime/aci-cli-and-config-contract.md`
 - `shared/runtime/aci-ci-and-automation-contract.md`
 - `aci.example.toml`

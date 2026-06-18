@@ -8,17 +8,21 @@ Define the minimum stable field set for machine-readable ACI output.
 
 ## Minimum Top-Level Fields
 
+- `report_format_version`
 - `report_id`
 - `tool_id`
+- `tool_version`
 - `mode`
 - `domain`
 - `scan_scope`
 - `generated_at`
 - `verification_status`
+- `gate`
 - `summary`
 - `findings`
 - `blockers`
 - `residuals`
+- `resolved_baseline_entries`
 - `next_actions`
 
 ## Summary Fields
@@ -31,12 +35,17 @@ Define the minimum stable field set for machine-readable ACI output.
 - `by_priority`
 - `by_baseline_status`
 - `by_lifecycle_state`
+- `by_owner_lane`
+- `by_scope_class`
+- `by_scope_policy`
+- `advisory_by_scope_class`
 - `waived_count`
 - `suppressed_count`
 - `new_count`
 - `existing_baseline_count`
 - `blocker_count`
 - `residual_count`
+- `resolved_baseline_count`
 
 ## Finding Fields
 
@@ -59,6 +68,7 @@ Define the minimum stable field set for machine-readable ACI output.
 - `evidence_ref`
 - `recommended_action`
 - `owner_lane`
+- `scope_class`
 - `verification_status`
 
 ## Blocker Fields
@@ -74,6 +84,19 @@ Define the minimum stable field set for machine-readable ACI output.
 - `classification`
 - `reason`
 - `next_wave`
+
+## Optional View Fields
+
+- `report_view`
+  - filter metadata for `scope_class` / `owner_lane` projected views
+  - source vs visible finding counts
+  - source gate decision note when a filtered view is emitted
+
+## Known-Limit Fields
+
+- `known_limits`
+  - machine-readable blind spots, recall limits, and explicit coverage boundaries
+  - each entry should name the affected CI-ID or signal family and the operator impact
 
 ## Stability Rule
 

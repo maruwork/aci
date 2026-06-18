@@ -1,0 +1,59 @@
+name: Code Scanning
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  aci-sarif:
+    name: ACI SARIF upload
+    runs-on: ubuntu-latest
+    if: github.event.repository.private == false
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and analyzer dependencies
+        run: |
+          pip install -e .
+          pip install -r requirements-dev-analyzers.txt
+
+      - name: Generate runtime-source ACI report
+        run: |
+          mkdir -p workspace/code-scanning
+          status=0
+          aci scan \
+            --target . \
+            --profile full \
+            --scope-mode source-only \
+            --output workspace/code-scanning/aci-report.json \
+            --output-format json || status=$?
+          if [ "$status" -gt 1 ]; then
+            exit "$status"
+          fi
+
+      - name: Convert report to SARIF
+        run: |
+          aci emit-sarif \
+            --report workspace/code-scanning/aci-report.json \
+            --report-scope-class runtime-source > workspace/code-scanning/aci-runtime.sarif
+
+      - name: Validate SARIF contract
+        run: |
+          aci validate-sarif --report workspace/code-scanning/aci-runtime.sarif
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: workspace/code-scanning/aci-runtime.sarif

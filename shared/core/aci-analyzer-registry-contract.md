@@ -41,13 +41,21 @@ Each catalog entry must carry:
 
 ## Support Levels
 
-### `profile-default-catalog`
+### `profile-default`
 
 Meaning:
 
 - the common shelf knows that one or more ACI profiles reference the analyzer as a default evidence source
 - the common shelf may show that metadata in the CLI catalog
 - the common shelf does not claim that the analyzer is installed or runnable everywhere
+
+### `opt-in`
+
+Meaning:
+
+- the analyzer is cataloged, but it is not part of the bounded profile defaults
+- the common shelf may show it in the catalog and availability surfaces
+- downstream maintainers must explicitly decide whether to enable it
 
 ## Reading Rule
 
@@ -56,6 +64,7 @@ Use this contract together with:
 1. `shared/python/aci_analyzers.py`
 2. `shared/python/aci_profiles.py`
 3. `shared/runtime/aci-cli-and-config-contract.md`
+4. `aci-product-boundary-and-coverage-policy.md`
 
 ## Boundary Rule
 
@@ -68,3 +77,7 @@ If a future addition needs:
 - CI vendor wiring
 
 that addition belongs to a later execution or downstream integration shelf, not this registry contract.
+
+The registry contract also does not override the product boundary: cataloged
+opt-in analyzers are visible product surfaces, but they are not automatically
+part of the completed common executable baseline.

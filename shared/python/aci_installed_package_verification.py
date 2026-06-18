@@ -11,6 +11,30 @@ import sys
 import tomllib
 from pathlib import Path
 
+_FIXTURE_ASSET_RULE = "package_assets/fixtures/*.json"
+_REPORT_ASSET_JSON_RULE = "package_assets/report/examples/*.json"
+_REPORT_ASSET_MARKDOWN_RULE = "package_assets/report/examples/*.md"
+_ANALYZER_ASSET_RULE = "package_assets/analyzers/*.yml"
+_REPORT_HELPER_MODULE = "aci_github_summary.py"
+_ANALYZER_ASSET_FILE = "aci/package_assets/analyzers/aci-semgrep-rules.yml"
+_FIXTURE_ASSET_FILE = "aci/package_assets/fixtures/expected_smoke_contract.json"
+_REPORT_ASSET_JSON_FILE = "aci/package_assets/report/examples/aci-core-sample-report.json"
+_REPORT_ASSET_MARKDOWN_FILE = "aci/package_assets/report/examples/aci-core-sample-report.md"
+
+
+def _project_distribution_name(repo_root: Path) -> str:
+    pyproject_path = repo_root / "pyproject.toml"
+    if pyproject_path.exists():
+        data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+        name = str(data.get("project", {}).get("name") or "").strip()
+        if name:
+            return name
+    package_to_dist = importlib.metadata.packages_distributions()
+    candidates = package_to_dist.get("aci", [])
+    if candidates:
+        return str(candidates[0])
+    return "aci"
+
 
 def _detect_package_root(repo_root: Path) -> Path:
     standalone_package_root = repo_root / "shared" / "python"
@@ -41,6 +65,7 @@ def _load_package_root(package_root: Path) -> None:
 def _editable_install_checks(repo_root: Path) -> list[dict[str, object]]:
     package_root = _detect_package_root(repo_root)
     _load_package_root(package_root)
+    fallback_asset_root = package_root / "package_assets"
 
     checks: list[dict[str, object]] = []
 
@@ -65,10 +90,20 @@ def _editable_install_checks(repo_root: Path) -> list[dict[str, object]]:
         }
     )
 
+    github_summary = importlib.import_module("aci.aci_github_summary")
+    checks.append(
+        {
+            "check": "editable_import.aci_github_summary",
+            "ok": callable(getattr(github_summary, "build_github_summary_markdown", None)),
+            "expected": True,
+            "actual": callable(getattr(github_summary, "build_github_summary_markdown", None)),
+        }
+    )
+
     package_assets = importlib.import_module("aci.aci_package_assets")
     sample_text = package_assets.read_text_asset(
         "report/examples/aci-core-sample-report.json",
-        package_root.parent,
+        fallback_asset_root,
     )
     checks.append(
         {
@@ -79,7 +114,24 @@ def _editable_install_checks(repo_root: Path) -> list[dict[str, object]]:
         }
     )
 
+    analyzer_rules = package_assets.read_text_asset(
+        "analyzers/aci-semgrep-rules.yml",
+        fallback_asset_root,
+    )
+    checks.append(
+        {
+            "check": "editable_import.analyzer_asset",
+            "ok": "aci.ci14.unsafe-yaml-load" in analyzer_rules,
+            "expected": True,
+            "actual": "aci.ci14.unsafe-yaml-load" in analyzer_rules,
+        }
+    )
+
     return checks
+
+
+def _has_installed_file(package_files: list[str], suffix: str) -> bool:
+    return any(item.endswith(suffix) for item in package_files)
 
 
 def _built_artifact_contract_checks(repo_root: Path) -> list[dict[str, object]]:
@@ -100,26 +152,40 @@ def _built_artifact_contract_checks(repo_root: Path) -> list[dict[str, object]]:
             },
             {
                 "check": "built_contract.fixture_asset_rule",
-                "ok": "package_assets/fixtures/*.json" in package_data,
+                "ok": _FIXTURE_ASSET_RULE in package_data,
                 "expected": True,
-                "actual": "package_assets/fixtures/*.json" in package_data,
+                "actual": _FIXTURE_ASSET_RULE in package_data,
             },
             {
                 "check": "built_contract.report_asset_rule",
-                "ok": "package_assets/report/examples/*.json" in package_data
-                and "package_assets/report/examples/*.md" in package_data,
+                "ok": _REPORT_ASSET_JSON_RULE in package_data
+                and _REPORT_ASSET_MARKDOWN_RULE in package_data,
                 "expected": True,
-                "actual": "package_assets/report/examples/*.json" in package_data
-                and "package_assets/report/examples/*.md" in package_data,
+                "actual": _REPORT_ASSET_JSON_RULE in package_data
+                and _REPORT_ASSET_MARKDOWN_RULE in package_data,
+            },
+            {
+                "check": "built_contract.analyzer_asset_rule",
+                "ok": _ANALYZER_ASSET_RULE in package_data,
+                "expected": True,
+                "actual": _ANALYZER_ASSET_RULE in package_data,
+            },
+            {
+                "check": "built_contract.report_helper_module",
+                "ok": (repo_root / "shared" / "python" / _REPORT_HELPER_MODULE).exists(),
+                "expected": True,
+                "actual": (repo_root / "shared" / "python" / _REPORT_HELPER_MODULE).exists(),
             },
         ]
 
-    dist = importlib.metadata.distribution("aci")
+    dist = importlib.metadata.distribution(_project_distribution_name(repo_root))
     entry_points = [item for item in dist.entry_points if item.group == "console_scripts" and item.name == "aci"]
     package_files = [str(item) for item in (dist.files or [])]
-    has_fixture_asset = any(item.endswith("aci/package_assets/fixtures/expected_smoke_contract.json") for item in package_files)
-    has_core_report_json = any(item.endswith("aci/package_assets/report/examples/aci-core-sample-report.json") for item in package_files)
-    has_core_report_md = any(item.endswith("aci/package_assets/report/examples/aci-core-sample-report.md") for item in package_files)
+    has_fixture_asset = _has_installed_file(package_files, _FIXTURE_ASSET_FILE)
+    has_core_report_json = _has_installed_file(package_files, _REPORT_ASSET_JSON_FILE)
+    has_core_report_md = _has_installed_file(package_files, _REPORT_ASSET_MARKDOWN_FILE)
+    has_analyzer_asset = _has_installed_file(package_files, _ANALYZER_ASSET_FILE)
+    has_report_helper_module = _has_installed_file(package_files, f"aci/{_REPORT_HELPER_MODULE}")
     actual_entry = entry_points[0].value if entry_points else None
     return [
         {
@@ -140,30 +206,27 @@ def _built_artifact_contract_checks(repo_root: Path) -> list[dict[str, object]]:
             "expected": True,
             "actual": has_core_report_json and has_core_report_md,
         },
+        {
+            "check": "built_contract.analyzer_asset_rule",
+            "ok": has_analyzer_asset,
+            "expected": True,
+            "actual": has_analyzer_asset,
+        },
+        {
+            "check": "built_contract.report_helper_module",
+            "ok": has_report_helper_module,
+            "expected": True,
+            "actual": has_report_helper_module,
+        },
     ]
 
 
 def _release_gate_checks(repo_root: Path) -> list[dict[str, object]]:
     checks: list[dict[str, object]] = []
 
-    # Version string consistency: ACI_TOOL_VERSION in aci_scan.py vs pyproject.toml
-    pyproject_path = repo_root / "pyproject.toml"
-    scan_py_path = repo_root / "shared" / "python" / "aci_scan.py"
-    pyproject_version: str | None = None
-    scan_version: str | None = None
-    if pyproject_path.exists():
-        data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
-        pyproject_version = str(data.get("project", {}).get("version") or "")
-    if scan_py_path.exists():
-        m = re.search(r'ACI_TOOL_VERSION\s*=\s*"([^"]+)"', scan_py_path.read_text(encoding="utf-8"))
-        if m:
-            scan_version = m.group(1)
-    checks.append({
-        "check": "release_gate.version_consistency",
-        "ok": bool(pyproject_version and pyproject_version == scan_version),
-        "expected": pyproject_version,
-        "actual": scan_version,
-    })
+    # Version string consistency: repo-local metadata when available, otherwise
+    # installed distribution metadata plus the packaged module version surface.
+    checks.append(_release_version_consistency_check(repo_root))
 
     # Sample report schema validity
     try:
@@ -179,6 +242,32 @@ def _release_gate_checks(repo_root: Path) -> list[dict[str, object]]:
     })
 
     return checks
+
+
+def _release_version_consistency_check(repo_root: Path) -> dict[str, object]:
+    pyproject_path = repo_root / "pyproject.toml"
+    scan_py_path = repo_root / "shared" / "python" / "aci_scan.py"
+    expected_version: str | None = None
+    actual_version: str | None = None
+    if pyproject_path.exists() and scan_py_path.exists():
+        data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+        expected_version = str(data.get("project", {}).get("version") or "")
+        m = re.search(r'ACI_TOOL_VERSION\s*=\s*"([^"]+)"', scan_py_path.read_text(encoding="utf-8"))
+        if m:
+            actual_version = m.group(1)
+    else:
+        package_module = importlib.import_module("aci")
+        scan_module = importlib.import_module("aci.aci_scan")
+        expected_version = str(importlib.metadata.version(_project_distribution_name(repo_root)))
+        actual_version = str(
+            getattr(scan_module, "ACI_TOOL_VERSION", None) or getattr(package_module, "__version__", "")
+        )
+    return {
+        "check": "release_gate.version_consistency",
+        "ok": bool(expected_version and expected_version == actual_version),
+        "expected": expected_version,
+        "actual": actual_version,
+    }
 
 
 def run_installed_package_check(repo_root: Path) -> dict[str, object]:

@@ -11,7 +11,10 @@ Define the bounded proof surface for installed-package verification after packag
 - the package metadata names one reviewed CLI entrypoint
 - the current package root can be imported through a package-style route
 - reviewed package assets are reachable through the package asset helper
+- reviewed helper modules remain importable through the packaged route
 - reviewed domain-pack loading works through the package-safe import route
+- version consistency can be proved either from repo-local release metadata or
+  from installed package metadata when the source checkout is absent
 
 ## What This Contract Does Not Prove
 
@@ -27,8 +30,9 @@ Define the bounded proof surface for installed-package verification after packag
 This lane proves:
 
 - package-style import of `aci`
-- package-style import of reviewed helper modules
-- package-style access to reviewed assets
+- package-style import of reviewed helper modules such as `aci_github_summary`
+- package-style access to reviewed assets, including sample reports, fixtures,
+  and the bundled Semgrep baseline rules
 
 This lane does not claim:
 
@@ -40,7 +44,8 @@ This lane does not claim:
 This lane proves:
 
 - `pyproject.toml` declares the reviewed CLI entrypoint
-- reviewed package-data rules exist for sample reports and fixture assets
+- reviewed package-data rules exist for sample reports, fixture assets, and
+  bundled analyzer assets
 - package metadata remains aligned with the reviewed common shelf
 
 This lane does not claim:

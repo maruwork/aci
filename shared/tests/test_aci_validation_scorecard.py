@@ -23,4 +23,7 @@ def test_validation_suite_full_recall_zero_false_positives() -> None:
     assert result["recall"] == 1.0, f"recall gap: missed {result['missed']}"
     assert result["false_positives"] == [], f"false positives: {result['false_positives']}"
     assert result["clean_total_findings"] == 0, "clean suite should produce no findings"
+    assert result["per_signal"]["CI22_RESOURCE_CLEANUP_GAP"]["planted_detected"] is True
+    assert result["per_signal"]["CI22_FIRE_AND_FORGET_TASK"]["clean_detected"] is False
+    assert result["per_signal"]["CI14_UNSAFE_YAML_LOAD"]["planted_detected"] is True
     assert result["passed"]

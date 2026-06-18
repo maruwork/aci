@@ -24,6 +24,8 @@ python shared/python/aci_cli.py <command>
   - runs the bounded common-shelf fixture suite and emits compact JSON
 - `installed-package-check`
   - runs the bounded installed-package verification surface and emits compact JSON
+- `self-audit-check`
+  - runs the dedicated self-audit verification surface and emits compact JSON
 - `show-config-schema`
   - prints the supported config schema
 - `show-analyzer-catalog`
@@ -31,9 +33,9 @@ python shared/python/aci_cli.py <command>
 - `show-profile-catalog`
   - prints the bounded profile execution catalog known to the common shelf
 - `show-analyzer-availability`
-  - prints bounded analyzer availability checks from the current shell
+  - prints bounded analyzer availability checks from the current shell, including setup and version-policy hints
 - `show-profile-execution-plan`
-  - prints the bounded analyzer execution plan for supported profiles
+  - prints the bounded analyzer execution plan for supported profiles, plus opt-in analyzers that stay outside the defaults
 - `show-sample-report`
   - prints a built-in sample report
 - `validate-report`

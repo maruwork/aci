@@ -20,11 +20,26 @@ Fixture drift check:
 python shared/python/aci_cli.py fixture-check
 ```
 
+Self-audit surface check:
+
+```bash
+python shared/python/aci_cli.py self-audit-check
+```
+
+Scale and platform check:
+
+```bash
+python shared/python/aci_cli.py scale-check --scratch-root workspace/scale-check
+```
+
 ## What It Verifies
 
 - domain-pack loading for `core-only` and optional domain packs (such as `<domain>` when installed)
 - normalized finding emission
 - machine-readable sample report structure
+- dedicated self-audit scope and ignore-policy semantics
+- bounded scale/runtime budgets for synthetic large-repository scenarios
+- the continuously verified CI platform matrix
 
 ## Output Rule
 
@@ -57,3 +72,4 @@ This contract does not own:
 - CI provider workflow files
 - downstream repository wiring
 - fixture-suite guarantees beyond the bounded sample checks in this wave
+- arbitrary hardware-level performance guarantees

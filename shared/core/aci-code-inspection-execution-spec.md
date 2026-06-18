@@ -15,6 +15,7 @@ Use this file as a compact catalog.
 - Use severity and lane guidance to route findings.
 - Put project-specific trigger, owner, output path, and exception rules in a project-local overlay.
 - Do not turn examples, comments, or historical notes into live findings without checking the actual target file.
+- Read `aci-product-boundary-and-coverage-policy.md` before making broad product claims about language coverage, human-judgment lanes, CI-19, or CI-14 supply-chain depth.
 
 ## 2. Inspection Lanes
 

@@ -90,7 +90,19 @@ def test_project_local_setup_analyzer_keeps_support_level_when_not_installed(mon
     readiness = execmod._readiness_for("codeql")
 
     assert readiness.availability_state == "not-installed"
-    assert readiness.execution_support_level == "project-local-setup-required"
+    assert readiness.execution_support_level == "availability-check-only"
+    assert readiness.default_policy == "opt-in"
+
+
+def test_availability_only_analyzer_reports_downstream_setup_when_visible(monkeypatch) -> None:
+    monkeypatch.setattr(execmod, "which", lambda analyzer_id: f"C:/fake/{analyzer_id}.exe")
+    monkeypatch.setattr(execmod, "_probe_version", lambda analyzer_id, executable_path: ("CodeQL 2.0.0", True))
+
+    readiness = execmod._readiness_for("codeql")
+
+    assert readiness.availability_state == "downstream-setup-required"
+    assert readiness.execution_support_level == "availability-check-only"
+    assert readiness.remediation_hint
 
 
 def test_sarif_ready_readiness_summary_contains_known_states() -> None:
@@ -104,13 +116,29 @@ def test_full_profile_readiness_summary_includes_semgrep() -> None:
     rows = execmod.profile_execution_plan()
     full = next(row for row in rows if row["profile_id"] == "full")
     assert "semgrep" in full["readiness_summary"]
+    assert "codeql" in full["optional_opt_in_analyzers"]
 
 
 def test_optional_security_analyzers_are_cataloged() -> None:
     from aci.aci_analyzers import analyzer_catalog
 
-    ids = {entry["analyzer_id"] for entry in analyzer_catalog()}
+    catalog = {entry["analyzer_id"]: entry for entry in analyzer_catalog()}
+    ids = set(catalog)
     assert {"gitleaks", "osv-scanner", "trivy"} <= ids
+    assert catalog["codeql"]["support_level"] == "opt-in"
+    assert catalog["codeql"]["referenced_by_profiles"] == ()
+
+
+def test_analyzer_availability_exposes_setup_and_version_policy(monkeypatch) -> None:
+    monkeypatch.setattr(execmod, "which", lambda analyzer_id: None)
+
+    rows = {entry["analyzer_id"]: entry for entry in execmod.analyzer_availability()}
+
+    assert rows["ruff"]["setup_hint"]
+    assert rows["ruff"]["version_policy"] == "aci-maintained-pin"
+    assert rows["ruff"]["install_spec"] == "ruff==0.4.8"
+    assert rows["codeql"]["execution_support_level"] == "availability-check-only"
+    assert rows["codeql"]["support_level"] == "opt-in"
 
 
 def test_ruff_output_is_normalized_into_findings(tmp_path: Path) -> None:

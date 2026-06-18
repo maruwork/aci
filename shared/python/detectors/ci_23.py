@@ -77,7 +77,7 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
                 ci_id="CI-23",
                 signal="CI23_CONTRACT_FIELD_DRIFT",
-                severity="medium",
+                severity="low",
                 target_file=_relative_path(path, target_root),
                 line=node.lineno,
                 excerpt=_line_excerpt(text, node.lineno),
@@ -91,7 +91,7 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
                     "dataclass/TypedDict to make the field contract visible and checkable."
                 ),
                 confidence=CONFIDENCE_LOW,
-                priority="P2",
+                priority="P3",
                 owner_lane=LANE_NATIVE_STATIC,
                 verification_status=VERIFICATION_EXECUTED,
             )

@@ -1,0 +1,204 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+from aci.aci_cli import _handle_report_command
+
+
+def _sample_report() -> dict[str, object]:
+    return {
+        "command": "scan",
+        "gate": {"decision": "fail"},
+        "summary": {"total_findings": 2, "blocker_count": 1, "by_scope_policy": {"gated": 1, "advisory": 1}},
+        "review_brief": {
+            "scope_mode": "self-audit",
+            "blocker_headline": "1 blocking finding needs owner action.",
+            "advisory_headline": "1 advisory-only finding sits outside the gate in docs-evidence.",
+            "top_files": [{"name": "src/app.py", "count": 2}],
+            "top_signals": [{"name": "CI21_BROAD_EXCEPTION_SWALLOW", "count": 1}],
+            "advisory_scope_classes": [{"name": "docs-evidence", "count": 1}],
+            "analyzer_failures": [{"analyzer_id": "ruff", "runtime_state": "runtime-failure"}],
+            "analyzer_availability_notes": [{"analyzer_id": "codeql", "runtime_state": "downstream-setup-required"}],
+        },
+        "findings": [
+            {
+                "ci_id": "CI-21",
+                "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+                "severity": "high",
+                "confidence": "medium",
+                "target_file": "src/app.py",
+                "line": 7,
+                "reason": "broad except, tighten error routing",
+                "fingerprint": "fp-1",
+                "owner_lane": "native-static",
+                "scope_class": "runtime-source",
+            },
+            {
+                "ci_id": "CI-03",
+                "signal": "CI03_TODO_HACK",
+                "severity": "low",
+                "confidence": "low",
+                "target_file": "docs/note.py",
+                "line": 3,
+                "reason": "TODO line 1%2C line 2",
+                "fingerprint": "fp-2",
+                "owner_lane": "human-judgment",
+                "scope_class": "docs-evidence",
+            },
+        ],
+        "scope_rules": {"scope_mode": "self-audit", "gate_scope_classes": ["runtime-source"]},
+    }
+
+
+def _write_report(tmp_path: Path) -> Path:
+    report_path = tmp_path / "report.json"
+    report_path.write_text(json.dumps(_sample_report()), encoding="utf-8")
+    return report_path
+
+
+def test_emit_github_summary_cli_matches_golden_output(tmp_path: Path, capsys) -> None:
+    report_path = _write_report(tmp_path)
+
+    result = _handle_report_command(
+        SimpleNamespace(command="emit-github-summary", report=report_path, report_scope_class=[], report_owner_lane=[])
+    )
+
+    assert result == 0
+    assert capsys.readouterr().out == (
+        "## ACI Review Summary\n"
+        "\n"
+        "- Gate: `fail`\n"
+        "- Findings: `2`\n"
+        "- Blockers: `1`\n"
+        "- Visible view: `2` of `2` finding(s)\n"
+        "- Scope mode: `self-audit`\n"
+        "\n"
+        "1 blocking finding needs owner action.\n"
+        "\n"
+        "Advisory-only findings outside the gate: `1`\n"
+        "\n"
+        "1 advisory-only finding sits outside the gate in docs-evidence.\n"
+        "\n"
+        "### Hottest Files\n"
+        "\n"
+        "- `src/app.py`: 1 finding(s)\n"
+        "- `docs/note.py`: 1 finding(s)\n"
+        "\n"
+        "### Top Signals\n"
+        "\n"
+        "- `CI21_BROAD_EXCEPTION_SWALLOW`: 1\n"
+        "- `CI03_TODO_HACK`: 1\n"
+        "\n"
+        "### Advisory Scope Classes\n"
+        "\n"
+        "- `docs-evidence`: 1\n"
+        "\n"
+        "### Analyzer Failures\n"
+        "\n"
+        "- `ruff`: `runtime-failure`\n"
+        "\n"
+        "### Analyzer Availability Notes\n"
+        "\n"
+        "- `codeql`: `downstream-setup-required`\n"
+    )
+
+
+def test_emit_annotations_cli_matches_golden_output(tmp_path: Path, capsys) -> None:
+    report_path = _write_report(tmp_path)
+
+    result = _handle_report_command(
+        SimpleNamespace(command="emit-annotations", report=report_path, report_scope_class=[], report_owner_lane=[])
+    )
+
+    assert result == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "::error file=src/app.py,line=7,title=CI-21 CI21_BROAD_EXCEPTION_SWALLOW::broad except, tighten error routing",
+        "::notice file=docs/note.py,line=3,title=CI-03 CI03_TODO_HACK::TODO line 1%252C line 2",
+    ]
+
+
+def test_emit_sarif_cli_matches_golden_shape(tmp_path: Path, capsys) -> None:
+    report_path = _write_report(tmp_path)
+
+    result = _handle_report_command(
+        SimpleNamespace(command="emit-sarif", report=report_path, report_scope_class=[], report_owner_lane=[])
+    )
+
+    assert result == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["version"] == "2.1.0"
+    assert payload["runs"][0]["tool"]["driver"]["name"] == "ACI"
+    assert payload["runs"][0]["tool"]["driver"]["rules"] == [
+        {
+            "id": "CI21_BROAD_EXCEPTION_SWALLOW",
+            "name": "CI-21",
+            "shortDescription": {"text": "broad except, tighten error routing"},
+            "properties": {"precision": "medium", "problem.severity": "high"},
+        },
+        {
+            "id": "CI03_TODO_HACK",
+            "name": "CI-03",
+            "shortDescription": {"text": "TODO line 1%2C line 2"},
+            "properties": {"precision": "low", "problem.severity": "low"},
+        },
+    ]
+
+
+def test_emit_github_summary_cli_filters_scope_class(tmp_path: Path, capsys) -> None:
+    report_path = _write_report(tmp_path)
+
+    result = _handle_report_command(
+        SimpleNamespace(
+            command="emit-github-summary",
+            report=report_path,
+            report_scope_class=["docs-evidence"],
+            report_owner_lane=[],
+        )
+    )
+
+    assert result == 0
+    output = capsys.readouterr().out
+    assert "- Visible view: `1` of `2` finding(s)" in output
+    assert "- Findings: `1`" in output
+    assert "- Gate: `pass`" in output
+    assert "docs-evidence" in output
+
+
+def test_emit_annotations_cli_filters_owner_lane(tmp_path: Path, capsys) -> None:
+    report_path = _write_report(tmp_path)
+
+    result = _handle_report_command(
+        SimpleNamespace(
+            command="emit-annotations",
+            report=report_path,
+            report_scope_class=[],
+            report_owner_lane=["human-judgment"],
+        )
+    )
+
+    assert result == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "::notice file=docs/note.py,line=3,title=CI-03 CI03_TODO_HACK::TODO line 1%252C line 2",
+    ]
+
+
+def test_emit_sarif_cli_filters_scope_class(tmp_path: Path, capsys) -> None:
+    report_path = _write_report(tmp_path)
+
+    result = _handle_report_command(
+        SimpleNamespace(
+            command="emit-sarif",
+            report=report_path,
+            report_scope_class=["docs-evidence"],
+            report_owner_lane=[],
+        )
+    )
+
+    assert result == 0
+    payload = json.loads(capsys.readouterr().out)
+    results = payload["runs"][0]["results"]
+    assert len(results) == 1
+    assert results[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "docs/note.py"

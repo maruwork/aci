@@ -51,12 +51,12 @@ import re
 import subprocess
 from typing import cast, Protocol
 
-ACI_TOOL_VERSION = "0.1.0"
+ACI_TOOL_VERSION = "0.1.1"
 
 try:
     from .detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY
     from .detectors._helpers import _relative_path
-    from .aci_analyzer_execution import run_analyzer
+    from .aci_analyzer_execution import run_analyzer, _readiness_for
     from .aci_domain_contract import AciDomainRules, CORE_ONLY_DOMAIN_ID
     from .aci_domain_loader import load_domain_rules
     from .aci_findings import (
@@ -77,7 +77,8 @@ try:
     from .aci_profile_catalog import PROFILE_ENABLED_LANES
     from .aci_profiles import (
         build_profile_signals, PROFILE_REQUIRES_TARGETED_SCOPE,
-        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
+        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_SELF_AUDIT, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
+        default_external_analyzers,
     )
     from .aci_signals import (
         STRUCTURE_SIGNALS as _STRUCTURE_SIGNALS,
@@ -85,10 +86,11 @@ try:
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
+    from .aci_known_limits import known_limits
 except ImportError:  # pragma: no cover - direct script/module import path
     from detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY  # type: ignore[no-redef]
     from detectors._helpers import _relative_path  # type: ignore[no-redef]
-    from aci_analyzer_execution import run_analyzer
+    from aci_analyzer_execution import run_analyzer, _readiness_for
     from aci_domain_contract import AciDomainRules, CORE_ONLY_DOMAIN_ID
     from aci_domain_loader import load_domain_rules
     from aci_findings import (
@@ -109,7 +111,8 @@ except ImportError:  # pragma: no cover - direct script/module import path
     from aci_profile_catalog import PROFILE_ENABLED_LANES
     from aci_profiles import (
         build_profile_signals, PROFILE_REQUIRES_TARGETED_SCOPE,
-        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
+        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_SELF_AUDIT, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
+        default_external_analyzers,
     )
     from aci_signals import (
         STRUCTURE_SIGNALS as _STRUCTURE_SIGNALS,
@@ -117,6 +120,7 @@ except ImportError:  # pragma: no cover - direct script/module import path
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
+    from aci_known_limits import known_limits
 
 
 TEXT_SUFFIXES = {
@@ -176,16 +180,20 @@ DEFAULT_GENERATED_PATH_SEGMENTS = {
 SCOPE_MODE_FULL_REPO = "full-repo"
 SCOPE_MODE_SOURCE_ONLY = "source-only"
 SCOPE_MODE_DOGFOOD = "dogfood"
+SCOPE_MODE_SELF_AUDIT = "self-audit"
 SUPPORTED_SCOPE_MODES = (
     SCOPE_MODE_SOURCE_ONLY,
     SCOPE_MODE_FULL_REPO,
     SCOPE_MODE_DOGFOOD,
+    SCOPE_MODE_SELF_AUDIT,
 )
 
 SCOPE_CLASS_RUNTIME_SOURCE = "runtime-source"
 SCOPE_CLASS_TESTS = "tests"
 SCOPE_CLASS_FIXTURES = "fixtures"
 SCOPE_CLASS_DOCS_EVIDENCE = "docs-evidence"
+SCOPE_CLASS_ROADMAP_EVIDENCE = "roadmap-evidence"
+SCOPE_CLASS_MAINTAINER_PROBES = "maintainer-probes"
 SCOPE_CLASS_SUPPORT = "support"
 SCOPE_CLASS_GENERATED = "generated"
 
@@ -220,6 +228,14 @@ _DOGFOOD_INCLUDE_CANDIDATES = (
     "domains",
     "tests",
     "shared/tests",
+)
+_SELF_AUDIT_INCLUDE_CANDIDATES = (
+    "shared/python",
+    "domains",
+    "tests",
+    "shared/tests",
+    "shared/tools",
+    "docs/roadmap",
 )
 
 SEVERITY_RANK = {
@@ -261,6 +277,20 @@ _NATIVE_HYGIENE_SIGNALS: tuple[str, ...] = (
 )
 _EXTERNAL_EVIDENCE_SIGNALS: tuple[str, ...] = ("EXTERNAL_STATIC_ANALYSIS",)
 _HUMAN_JUDGMENT_SIGNALS: tuple[str, ...] = ()
+_RUFF_DELEGATED_SIGNALS: frozenset[str] = frozenset({
+    "CI02_LONG_FUNCTION",
+    "CI03_TODO_HACK",
+    "CI18_PARAMETER_CLUSTER",
+    "CI21_BROAD_EXCEPTION_SWALLOW",
+    "CI26_RACE_HAZARD",
+})
+_SUPPORT_ONLY_HTTP_SCOPE_CLASSES: frozenset[str] = frozenset({
+    SCOPE_CLASS_DOCS_EVIDENCE,
+    SCOPE_CLASS_ROADMAP_EVIDENCE,
+    SCOPE_CLASS_TESTS,
+    SCOPE_CLASS_MAINTAINER_PROBES,
+    SCOPE_CLASS_SUPPORT,
+})
 
 _PROFILE_SIGNALS: dict[str, tuple[str, ...]] = build_profile_signals(
     structure_signals=_STRUCTURE_SIGNALS,
@@ -378,6 +408,11 @@ def _resolve_scope_filters(
             return merged_include, merged_exclude
         return _resolve_scope_filters(target_root, SCOPE_MODE_SOURCE_ONLY, normalized_include, normalized_exclude)
 
+    if scope_mode == SCOPE_MODE_SELF_AUDIT:
+        preset_include = _existing_scope_paths(target_root, _SELF_AUDIT_INCLUDE_CANDIDATES)
+        merged_include = normalized_include or preset_include
+        return merged_include, normalized_exclude
+
     raise ValueError(f"Unsupported scope_mode: {scope_mode}")
 
 
@@ -389,6 +424,10 @@ def _classify_relative_path(relative_path: str) -> str:
 
     if parts & DEFAULT_GENERATED_PATH_SEGMENTS:
         return SCOPE_CLASS_GENERATED
+    if pure.parts[:2] == ("shared", "tools"):
+        return SCOPE_CLASS_MAINTAINER_PROBES
+    if pure.parts[:2] == ("docs", "roadmap"):
+        return SCOPE_CLASS_ROADMAP_EVIDENCE
     if parts & {"example", "examples", "fixture", "fixtures", "sample", "samples"}:
         return SCOPE_CLASS_FIXTURES
     if parts & {"docs", "doc", ".github"}:
@@ -414,29 +453,38 @@ def _select_external_analyzers(
     target_files: list[Path],
     target_root: Path,
 ) -> tuple[str, ...]:
-    has_runtime_source = any(_classify_relative_path(_relative_path(path, target_root)) == SCOPE_CLASS_RUNTIME_SOURCE for path in target_files)
-    if profile_id == PROFILE_QUICK_GATE:
-        return ("ruff", "pyflakes") if _has_suffix(target_files, ".py") else ()
+    has_runtime_source = any(
+        _classify_relative_path(_relative_path(path, target_root)) == SCOPE_CLASS_RUNTIME_SOURCE
+        for path in target_files
+    )
+    available_suffixes = {
+        ".py": _has_suffix(target_files, ".py"),
+        ".js-ts": _has_suffix(target_files, ".js", ".jsx", ".ts", ".tsx"),
+        ".ts": _has_suffix(target_files, ".ts", ".tsx"),
+        ".sh": _has_suffix(target_files, ".sh", ".bash"),
+        ".sql": _has_suffix(target_files, ".sql"),
+    }
 
-    if profile_id not in {PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL}:
-        return ()
+    def _is_applicable(analyzer_id: str) -> bool:
+        if analyzer_id in {"ruff", "pyflakes", "mypy", "pytest"}:
+            return available_suffixes[".py"]
+        if analyzer_id == "semgrep":
+            return has_runtime_source
+        if analyzer_id == "eslint":
+            return available_suffixes[".js-ts"]
+        if analyzer_id == "tsc":
+            return available_suffixes[".ts"] and (target_root / "tsconfig.json").is_file()
+        if analyzer_id == "shellcheck":
+            return available_suffixes[".sh"]
+        if analyzer_id == "sqlfluff":
+            return available_suffixes[".sql"]
+        return False
 
-    analyzers: list[str] = []
-    if _has_suffix(target_files, ".py"):
-        analyzers.extend(["ruff", "pyflakes", "mypy"])
-        if profile_id in {PROFILE_BUILD_REVIEW, PROFILE_FULL}:
-            analyzers.append("pytest")
-    if has_runtime_source:
-        analyzers.append("semgrep")
-    if _has_suffix(target_files, ".js", ".jsx", ".ts", ".tsx"):
-        analyzers.append("eslint")
-    if _has_suffix(target_files, ".ts", ".tsx") and (target_root / "tsconfig.json").is_file():
-        analyzers.append("tsc")
-    if _has_suffix(target_files, ".sh", ".bash"):
-        analyzers.append("shellcheck")
-    if _has_suffix(target_files, ".sql"):
-        analyzers.append("sqlfluff")
-    return tuple(analyzers)
+    return tuple(
+        analyzer_id
+        for analyzer_id in default_external_analyzers(profile_id)
+        if _is_applicable(analyzer_id)
+    )
 
 
 def _path_matches_filters(
@@ -618,11 +666,21 @@ def _build_summary(findings: list[AciFinding]) -> dict[str, object]:
     priority_counts = Counter(item.priority for item in findings)
     baseline_counts = Counter(item.baseline_status for item in findings)
     lifecycle_counts = Counter(item.lifecycle_state for item in findings)
+    owner_lane_counts = Counter(item.owner_lane for item in findings)
     scope_class_counts = Counter(_classify_relative_path(item.target_file) for item in findings)
+    gated_count = sum(
+        1 for item in findings if _classify_relative_path(item.target_file) == SCOPE_CLASS_RUNTIME_SOURCE
+    )
+    advisory_scope_class_counts = Counter(
+        _classify_relative_path(item.target_file)
+        for item in findings
+        if _classify_relative_path(item.target_file) != SCOPE_CLASS_RUNTIME_SOURCE
+    )
     blocking = [
         item
         for item in findings
         if item.severity in {SEVERITY_CRITICAL, SEVERITY_HIGH} and item.waiver_status == "none"
+        and _classify_relative_path(item.target_file) == SCOPE_CLASS_RUNTIME_SOURCE
     ]
     return {
         "total_findings": len(findings),
@@ -633,7 +691,13 @@ def _build_summary(findings: list[AciFinding]) -> dict[str, object]:
         "by_priority": dict(priority_counts),
         "by_baseline_status": dict(baseline_counts),
         "by_lifecycle_state": dict(lifecycle_counts),
+        "by_owner_lane": dict(owner_lane_counts),
         "by_scope_class": dict(scope_class_counts),
+        "by_scope_policy": {
+            "gated": gated_count,
+            "advisory": len(findings) - gated_count,
+        },
+        "advisory_by_scope_class": dict(advisory_scope_class_counts),
         "waived_count": sum(1 for item in findings if item.waiver_status != "none"),
         "suppressed_count": 0,
         "new_count": sum(1 for item in findings if item.baseline_status == "new"),
@@ -662,11 +726,18 @@ def _build_review_brief(
 ) -> dict[str, object]:
     top_files = _top_counts([finding.target_file for finding in findings])
     top_signals = _top_counts([finding.signal for finding in findings])
+    top_scope_classes = _top_counts([_classify_relative_path(finding.target_file) for finding in findings])
+    advisory_scope_classes = _top_counts(
+        [
+            _classify_relative_path(finding.target_file)
+            for finding in findings
+            if _classify_relative_path(finding.target_file) not in session.gate_scope_classes
+        ]
+    )
     availability_note_states = {
         "not-installed",
-        "unsupported-version",
-        "unsupported-in-common-shelf",
-        "project-local-setup-required",
+        "version-or-runtime-problem",
+        "downstream-setup-required",
     }
     analyzer_failures = [
         {
@@ -686,22 +757,45 @@ def _build_review_brief(
         if str(run.get("runtime_state") or "") in availability_note_states
     ]
     blocker_headline = (
-        f"{len(blockers)} blocking findings need owner action."
+        (
+            "1 blocking finding needs owner action."
+            if len(blockers) == 1
+            else f"{len(blockers)} blocking findings need owner action."
+        )
         if blockers
         else "No blocking findings remain in the gated scope."
+    )
+    advisory_count = sum(
+        1 for finding in findings if _classify_relative_path(finding.target_file) not in session.gate_scope_classes
+    )
+    advisory_headline = (
+        "No advisory-only findings remain outside the gate."
+        if advisory_count == 0
+        else (
+            f"{advisory_count} advisory-only finding{'s' if advisory_count != 1 else ''} "
+            f"{'sit' if advisory_count != 1 else 'sits'} outside the gate in "
+            f"{', '.join(str(item.get('name') or '') for item in advisory_scope_classes)}."
+        )
     )
     recommended_focus = ["Start with the hottest files and highest-severity signals."]
     if analyzer_failures:
         recommended_focus.append("Resolve analyzer runtime failures before trusting an all-clear.")
     elif analyzer_availability_notes:
         recommended_focus.append("Decide whether unavailable analyzers are required for this environment or CI lane.")
+    if advisory_count:
+        recommended_focus.append(
+            "Triage tests, fixtures, docs, roadmap, and support findings separately from runtime blockers."
+        )
     return {
         "gate_decision": gate.get("decision", "fail"),
         "scope_mode": session.scope_mode,
         "diff_from": session.diff_from,
         "blocker_headline": blocker_headline,
+        "advisory_headline": advisory_headline,
         "top_files": top_files,
         "top_signals": top_signals,
+        "top_scope_classes": top_scope_classes,
+        "advisory_scope_classes": advisory_scope_classes,
         "analyzer_failures": analyzer_failures,
         "analyzer_availability_notes": analyzer_availability_notes,
         "recommended_focus": recommended_focus,
@@ -871,6 +965,16 @@ def _deduplicate_findings(findings: list[AciFinding]) -> list[AciFinding]:
     return result
 
 
+def _filter_scope_noise(findings: list[AciFinding]) -> list[AciFinding]:
+    filtered: list[AciFinding] = []
+    for finding in findings:
+        scope_class = _classify_relative_path(finding.target_file)
+        if finding.signal == "CI14_INSECURE_HTTP" and scope_class in _SUPPORT_ONLY_HTTP_SCOPE_CLASSES:
+            continue
+        filtered.append(finding)
+    return filtered
+
+
 def _apply_operations(
     findings: list[AciFinding],
     operations: OperationsState,
@@ -1023,6 +1127,21 @@ def _external_target_files_for_session(session: ScanSession, target_files: list[
     ]
 
 
+def _delegated_native_signals(
+    session: ScanSession,
+    target_files: list[Path],
+    enabled_lanes: set[str],
+) -> frozenset[str]:
+    if not session.include_external_analyzers or LANE_EXTERNAL_ANALYZER not in enabled_lanes:
+        return frozenset()
+    analyzer_ids = _select_external_analyzers(session.profile_id, target_files, session.target_root)
+    if "ruff" not in analyzer_ids:
+        return frozenset()
+    if _readiness_for("ruff").availability_state != "ready":
+        return frozenset()
+    return _RUFF_DELEGATED_SIGNALS
+
+
 def _run_external_analyzers_for_session(
     session: ScanSession,
     target_files: list[Path],
@@ -1033,7 +1152,7 @@ def _run_external_analyzers_for_session(
     if (
         not session.include_external_analyzers
         or LANE_EXTERNAL_ANALYZER not in enabled_lanes
-        or session.profile_id not in {PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL}
+        or session.profile_id not in {PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT}
     ):
         return [], analyzer_runs, next_id
 
@@ -1054,7 +1173,6 @@ def _collect_scan_findings(
     session: ScanSession,
     domain_patterns: _DomainPatterns,
 ) -> tuple[list[Path], list[SkippedTarget], list[AciFinding], list[dict[str, object]]]:
-    active_signals = set(_PROFILE_SIGNALS.get(session.profile_id, _PROFILE_SIGNALS[PROFILE_FULL]))
     enabled_lanes = set(
         PROFILE_ENABLED_LANES.get(
             session.profile_id,
@@ -1062,6 +1180,8 @@ def _collect_scan_findings(
         )
     )
     target_files, skipped_targets = _target_files_for_session(session)
+    active_signals = set(_PROFILE_SIGNALS.get(session.profile_id, _PROFILE_SIGNALS[PROFILE_FULL]))
+    active_signals -= _delegated_native_signals(session, target_files, enabled_lanes)
     findings, next_id = _run_per_file_detectors(target_files, session, active_signals, 1)
     cross_file_findings, next_id = _run_cross_file_detectors(target_files, session.target_root, active_signals, next_id)
     findings.extend(cross_file_findings)
@@ -1142,6 +1262,7 @@ def _build_scan_report(session: ScanSession, operations_file: Path | None, artif
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "verification_status": "executed",
         "external_analyzer_runs": artifacts.analyzer_runs,
+        "known_limits": known_limits(),
         "operations_file": None if operations_file is None else operations_file.resolve().as_posix(),
         "summary": summary,
         "findings": _report_findings(artifacts.findings),
@@ -1199,6 +1320,7 @@ def scan_target(
     )
     target_files, skipped_targets, findings, analyzer_runs = _collect_scan_findings(session, domain_patterns)
     findings = _deduplicate_findings(findings)
+    findings = _filter_scope_noise(findings)
     resolved_baseline = find_resolved_baseline_entries(session.operations, findings)
     findings, suppressed_count = _apply_operations(findings, session.operations)
     findings = sorted(findings, key=lambda f: SEVERITY_RANK.get(f.severity, 0), reverse=True)

@@ -7,26 +7,23 @@ from dataclasses import asdict, dataclass
 
 try:
     from .aci_profiles import (
-        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
+        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_SELF_AUDIT, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
     )
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_profiles import (
-        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
+        PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_SELF_AUDIT, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
     )
 
 
 ANALYZER_SUPPORT_LEVELS: dict[str, str] = {
-    "profile-default-catalog": (
-        "Listed in the common shelf because one or more ACI profiles reference the analyzer "
-        "as a default evidence source. Installation, invocation, and version pinning remain "
-        "downstream responsibilities."
+    "profile-default": (
+        "This analyzer is part of the bounded default external-analyzer set for one or more ACI profiles. "
+        "The common shelf owns the catalog claim and profile-default policy only; installation and local tuning "
+        "still depend on the environment."
     ),
-    "execution-ready": (
-        "The common shelf can invoke this analyzer with bounded default wiring and normalize its findings."
-    ),
-    "project-local-setup-required": (
-        "The common shelf recognizes this analyzer, but execution still depends on repository-local setup "
-        "such as query packs, databases, or policy configuration."
+    "opt-in": (
+        "This analyzer is cataloged by the common shelf, but it stays opt-in and is never auto-selected by the "
+        "bounded profile defaults. Downstream projects must decide whether and how to enable it."
     ),
 }
 
@@ -52,8 +49,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="static-analysis",
         purpose="polyglot semantic rule matching and taint-style security evidence across common source languages",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-14", "CI-21", "CI-22", "CI-23", "CI-26"),
         ownership_boundary=(
             "The common shelf ships a bounded baseline Semgrep rule pack and normalizes its JSON output. "
@@ -65,8 +62,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="static-analysis",
         purpose="deep semantic and dataflow evidence when a repository-local CodeQL database and query pack exist",
         evidence_type="machine evidence",
-        support_level="project-local-setup-required",
-        referenced_by_profiles=(PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="opt-in",
+        referenced_by_profiles=(),
         typical_ci_ids=("CI-14", "CI-21", "CI-22", "CI-23", "CI-26"),
         ownership_boundary=(
             "The common shelf catalogs CodeQL and can report readiness, but CodeQL database creation, query pack "
@@ -78,7 +75,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="secret-scan",
         purpose="repository secret and credential leakage detection",
         evidence_type="machine evidence",
-        support_level="project-local-setup-required",
+        support_level="opt-in",
         referenced_by_profiles=(),
         typical_ci_ids=("CI-14",),
         ownership_boundary=(
@@ -91,7 +88,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="dependency-audit",
         purpose="dependency vulnerability evidence from lockfiles and manifests",
         evidence_type="machine evidence",
-        support_level="project-local-setup-required",
+        support_level="opt-in",
         referenced_by_profiles=(),
         typical_ci_ids=("CI-14", "CI-23"),
         ownership_boundary=(
@@ -104,7 +101,7 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="dependency-and-image-audit",
         purpose="dependency, container image, and IaC vulnerability evidence",
         evidence_type="machine evidence",
-        support_level="project-local-setup-required",
+        support_level="opt-in",
         referenced_by_profiles=(),
         typical_ci_ids=("CI-14",),
         ownership_boundary=(
@@ -117,8 +114,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="fast lint and rule-based static evidence for code hygiene and contract drift",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-07", "CI-13", "CI-14", "CI-15", "CI-21", "CI-23", "CI-25"),
         ownership_boundary=(
             "The common shelf only catalogs that `ruff` is a recognized external evidence source. "
@@ -130,8 +127,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="import, undefined-name, and dead-code style evidence for bounded Python review",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_QUICK_GATE, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-07", "CI-13", "CI-21", "CI-23", "CI-25"),
         ownership_boundary=(
             "The common shelf only catalogs `pyflakes` as an allowed evidence lane. "
@@ -143,8 +140,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="type-check",
         purpose="static type and interface mismatch evidence",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-15", "CI-23", "CI-25"),
         ownership_boundary=(
             "The common shelf catalogs `mypy` because some bounded profiles expect type evidence. "
@@ -156,8 +153,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="test",
         purpose="test execution evidence for regression and fixture behavior",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-09", "CI-23", "CI-25"),
         ownership_boundary=(
             "The common shelf catalogs `pytest` as a recognized external evidence source. "
@@ -169,8 +166,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="JS/TS rule-based static analysis for code quality, import hygiene, and type contract violations",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-02", "CI-07", "CI-13", "CI-14", "CI-21", "CI-23"),
         ownership_boundary=(
             "The common shelf catalogs `eslint` as a polyglot evidence source. "
@@ -182,8 +179,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="type-check",
         purpose="TypeScript compiler type checking for interface and contract drift",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-23",),
         ownership_boundary=(
             "The common shelf catalogs `tsc` for TypeScript type evidence. "
@@ -195,8 +192,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="shell script static analysis for unsafe patterns, error-handling gaps, and portability issues",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-02", "CI-21"),
         ownership_boundary=(
             "The common shelf catalogs `shellcheck` for shell script evidence. "
@@ -208,8 +205,8 @@ ANALYZER_CATALOG: tuple[AciAnalyzerCatalogEntry, ...] = (
         category="lint",
         purpose="SQL style and structure linting for query quality",
         evidence_type="machine evidence",
-        support_level="execution-ready",
-        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL),
+        support_level="profile-default",
+        referenced_by_profiles=(PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW, PROFILE_FULL, PROFILE_SELF_AUDIT),
         typical_ci_ids=("CI-02",),
         ownership_boundary=(
             "The common shelf catalogs `sqlfluff` for SQL evidence. "

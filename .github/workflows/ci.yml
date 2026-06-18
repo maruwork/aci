@@ -8,7 +8,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  test-linux:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
@@ -27,7 +27,7 @@ jobs:
       - name: Install package and analyzer dependencies
         run: |
           pip install -e .
-          pip install pytest ruff pyflakes mypy
+          pip install -r requirements-dev-analyzers.txt
 
       - name: Run test suite
         run: pytest shared/tests/ -v
@@ -44,15 +44,21 @@ jobs:
       - name: ACI automation smoke
         run: aci automation-smoke
 
+      - name: ACI self-audit surface check
+        run: aci self-audit-check
+
+      - name: ACI scale and platform check
+        run: aci scale-check --scratch-root workspace/ci-scale-check
+
       - name: Build wheel and verify in clean venv
         run: |
           pip install build
-          python -m build --wheel --outdir dist-ci/
-          python -m venv .venv-wheel-check
-          .venv-wheel-check/bin/pip install dist-ci/aci-*.whl
-          .venv-wheel-check/bin/aci automation-smoke
-          .venv-wheel-check/bin/aci installed-package-check
-          .venv-wheel-check/bin/aci fixture-check
+          python shared/tools/aci_verify_distribution.py --kind wheel --outdir dist-ci/
+
+      - name: Build sdist and verify in clean venv
+        run: |
+          pip install build
+          python shared/tools/aci_verify_distribution.py --kind sdist --outdir dist-ci/
 
       - name: Verify sample report assets are in sync
         run: |
@@ -85,11 +91,55 @@ jobs:
             --output-format json
         continue-on-error: true
 
+  platform-smoke:
+    name: Platform verification (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and analyzer dependencies
+        run: |
+          pip install -e .
+          pip install -r requirements-dev-analyzers.txt
+          pip install build
+
+      - name: Run test suite
+        run: pytest shared/tests/ -v
+
+      - name: Lint (ruff)
+        run: ruff check shared/python/ shared/tests/ shared/tools/
+
+      - name: Type check (mypy)
+        run: mypy shared/python/
+
+      - name: ACI automation smoke
+        run: aci automation-smoke
+
+      - name: ACI self-audit surface check
+        run: aci self-audit-check
+
+      - name: Build wheel and verify in clean venv
+        run: python shared/tools/aci_verify_distribution.py --kind wheel --outdir dist-ci/
+
+      - name: Build sdist and verify in clean venv
+        run: python shared/tools/aci_verify_distribution.py --kind sdist --outdir dist-ci/
+
   release-gate:
     name: Release gate
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: test
+    needs: [test-linux, platform-smoke]
     permissions:
       id-token: write  # OIDC token for PyPI Trusted Publishing (no long-lived secrets)
 
@@ -115,10 +165,15 @@ jobs:
       - name: Verify wheel and sdist were produced
         run: |
           python - <<'EOF'
+          import tomllib
+          import re
           from pathlib import Path
+          data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          distribution_name = str(data.get("project", {}).get("name") or "aci")
+          artifact_prefix = re.sub(r"[-_.]+", "_", distribution_name).lower()
           dist = Path("dist")
-          wheels = list(dist.glob("aci-*.whl"))
-          sdists = list(dist.glob("aci-*.tar.gz"))
+          wheels = list(dist.glob(f"{artifact_prefix}-*.whl"))
+          sdists = list(dist.glob(f"{artifact_prefix}-*.tar.gz"))
           assert wheels, f"No wheel found in {dist}: {list(dist.iterdir())}"
           assert sdists, f"No sdist found in {dist}: {list(dist.iterdir())}"
           print(f"wheel: {wheels[-1].name}")

@@ -14,6 +14,8 @@ def build_github_summary_markdown(report: dict[str, object]) -> str:
     gate = _report_map(report.get("gate"))
     summary = _report_map(report.get("summary"))
     review_brief = _report_map(report.get("review_brief"))
+    report_view = _report_map(report.get("report_view"))
+    scope_policy = _report_map(summary.get("by_scope_policy"))
     lines = [
         "## ACI Review Summary",
         "",
@@ -25,6 +27,21 @@ def build_github_summary_markdown(report: dict[str, object]) -> str:
         str(review_brief.get("blocker_headline", "No review headline available.")),
         "",
     ]
+    if report_view:
+        lines.insert(
+            5,
+            f"- Visible view: `{report_view.get('visible_total_findings', summary.get('total_findings', 0))}`"
+            f" of `{report_view.get('source_total_findings', summary.get('total_findings', 0))}` finding(s)",
+        )
+    if scope_policy:
+        lines.append(
+            f"Advisory-only findings outside the gate: `{scope_policy.get('advisory', 0)}`"
+        )
+        lines.append("")
+    advisory_headline = review_brief.get("advisory_headline")
+    if advisory_headline:
+        lines.append(str(advisory_headline))
+        lines.append("")
     top_files = review_brief.get("top_files", [])
     if isinstance(top_files, list) and top_files:
         lines.append("### Hottest Files")
@@ -39,6 +56,15 @@ def build_github_summary_markdown(report: dict[str, object]) -> str:
         lines.append("### Top Signals")
         lines.append("")
         for item in top_signals:
+            if not isinstance(item, dict):
+                continue
+            lines.append(f"- `{item.get('name', '')}`: {item.get('count', 0)}")
+        lines.append("")
+    advisory_scope_classes = review_brief.get("advisory_scope_classes", [])
+    if isinstance(advisory_scope_classes, list) and advisory_scope_classes:
+        lines.append("### Advisory Scope Classes")
+        lines.append("")
+        for item in advisory_scope_classes:
             if not isinstance(item, dict):
                 continue
             lines.append(f"- `{item.get('name', '')}`: {item.get('count', 0)}")

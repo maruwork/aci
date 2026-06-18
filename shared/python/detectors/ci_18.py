@@ -8,13 +8,13 @@ from pathlib import Path
 try:
     from ..aci_findings import (
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW,
     )
     from ._helpers import _relative_path, _build_parent_map, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW,
     )
     from detectors._helpers import _relative_path, _build_parent_map, _cached_parse  # type: ignore[no-redef]
 
@@ -157,15 +157,15 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                     finding_id=f"F-SCAN-{next_id + len(findings):04d}",
                     ci_id="CI-18",
                     signal="CI18_PARAMETER_CLUSTER",
-                    severity="medium",
+                    severity="low",
                     target_file=_relative_path(path, root),
                     line=node.lineno,
                     excerpt=f"def {node.name}({', '.join(arg_names[:6])}{'...' if len(arg_names) > 6 else ''})",
                     reason=f"Function takes {len(arg_names)} positional arguments; consider a named parameter object.",
                     evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
                     recommended_action="Group related parameters into a named data structure or configuration object.",
-                    confidence=CONFIDENCE_MEDIUM,
-                    priority="P2",
+                    confidence=CONFIDENCE_LOW,
+                    priority="P3",
                     owner_lane=LANE_NATIVE_STATIC,
                     verification_status=VERIFICATION_EXECUTED,
                 )

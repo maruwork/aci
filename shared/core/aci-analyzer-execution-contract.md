@@ -29,6 +29,10 @@ Each bounded analyzer execution surface must make these visible:
 - `availability_check`
 - `availability_state`
 - `execution_support_level`
+- `default_policy`
+- `version_policy`
+- `setup_hint`
+- `remediation_hint`
 - `profile_execution_plan`
 - `ownership_boundary`
 
@@ -37,6 +41,7 @@ Each bounded analyzer execution surface must make these visible:
 The common shelf may report:
 
 - whether the analyzer executable is visible from the current shell environment
+- whether the visible analyzer satisfies the bounded minimum-version check
 - whether a profile expects that analyzer by default
 
 The common shelf must not report:
@@ -52,7 +57,8 @@ The common shelf must not report:
 Meaning:
 
 - the common shelf can check whether the executable name is visible from the current shell
-- the common shelf can expose which profiles expect that analyzer
+- the common shelf can expose minimum-version readiness and setup guidance
+- the analyzer stays opt-in or downstream-wired; the common shelf does not claim runnable invocation
 - deeper runtime correctness remains downstream
 
 ### `execution-ready`
@@ -72,3 +78,8 @@ Use this contract together with:
 2. `shared/python/aci_profile_catalog.py`
 3. `shared/python/aci_analyzers.py`
 4. `shared/runtime/aci-cli-and-config-contract.md`
+5. `aci-product-boundary-and-coverage-policy.md`
+
+This contract explains execution readiness. It does not by itself widen the
+product boundary into a claim that every cataloged security analyzer is part of
+the completed common executable baseline.

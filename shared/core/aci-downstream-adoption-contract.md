@@ -47,6 +47,11 @@ The common shelf must not decide:
 - project-local trigger rules
 - downstream runtime command transport
 - project-specific owner routing
+- whether a downstream project may honestly claim broader native language coverage than the Python-first boundary defined by the common shelf
+
+Downstream adopters should read `aci-product-boundary-and-coverage-policy.md`
+before advertising language coverage, CI-19 completion, or CI-14 supply-chain
+breadth to their own users.
 
 ## Reading Rule
 

@@ -10,6 +10,7 @@ Reduce over-expectation for first-time readers.
 
 - `ACI` is not a full project runtime gate by itself
 - `ACI` is not a replacement for human approval
+- `ACI` is not a language-general native structural auditor across all languages
 - `ACI` is not a packaged downstream CLI distribution in this shelf
 - `ACI` does not own project-local trigger wiring
 - `ACI` does not own project-local DB writeback

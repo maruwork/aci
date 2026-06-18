@@ -40,14 +40,14 @@ ANALYZER_EXECUTION_SUPPORT_LEVELS: dict[str, str] = {
         "The common shelf can check executable visibility, attempt a version probe, and run a bounded invocation "
         "against a target directory for supported analyzers."
     ),
-    "project-local-setup-required": (
-        "The common shelf can recognize the analyzer and report readiness, but repository-local setup is still "
-        "required before execution becomes valid."
+    "availability-check-only": (
+        "The common shelf can check executable visibility and version readiness, but bounded invocation and finding "
+        "normalization are intentionally not claimed. Repository-local setup and execution remain downstream."
     ),
 }
 
 VERSION_PROBE_TIMEOUT_SECONDS: int = 10
-ANALYZER_TIMEOUT_SECONDS: int = 30
+ANALYZER_TIMEOUT_SECONDS: int = 60
 ANALYZER_MAX_OUTPUT_CHARS: int = 10 * 1024 * 1024  # 10 M chars per stream (≈10 MB for ASCII output)
 
 MINIMUM_ANALYZER_VERSIONS: dict[str, tuple[int, ...]] = {
@@ -65,8 +65,122 @@ MINIMUM_ANALYZER_VERSIONS: dict[str, tuple[int, ...]] = {
 }
 
 VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
-_CATALOG_SUPPORT_LEVEL_BY_ANALYZER: dict[str, str] = {
+_CATALOG_DEFAULT_POLICY_BY_ANALYZER: dict[str, str] = {
     entry.analyzer_id: entry.support_level for entry in ANALYZER_CATALOG
+}
+_ANALYZER_PURPOSE_BY_ID: dict[str, str] = {
+    entry.analyzer_id: entry.purpose for entry in ANALYZER_CATALOG
+}
+_ANALYZER_CATEGORY_BY_ID: dict[str, str] = {
+    entry.analyzer_id: entry.category for entry in ANALYZER_CATALOG
+}
+_ANALYZER_TYPICAL_CI_IDS_BY_ID: dict[str, tuple[str, ...]] = {
+    entry.analyzer_id: entry.typical_ci_ids for entry in ANALYZER_CATALOG
+}
+_ANALYZER_OWNERSHIP_BOUNDARY_BY_ID: dict[str, str] = {
+    entry.analyzer_id: entry.ownership_boundary for entry in ANALYZER_CATALOG
+}
+_EXECUTION_READY_ANALYZERS: frozenset[str] = frozenset({
+    "semgrep",
+    "ruff",
+    "pyflakes",
+    "mypy",
+    "pytest",
+    "eslint",
+    "tsc",
+    "shellcheck",
+    "sqlfluff",
+})
+_ANALYZER_VERSION_POLICY: dict[str, dict[str, str]] = {
+    "codeql": {
+        "policy": "repo-local-pin-required",
+        "ecosystem": "binary",
+        "install_spec": "Install the CodeQL CLI and pin a repository-local release before enabling it.",
+    },
+    "gitleaks": {
+        "policy": "repo-local-pin-required",
+        "ecosystem": "binary",
+        "install_spec": "Install gitleaks and pin an explicit repository-local version before enabling it.",
+    },
+    "osv-scanner": {
+        "policy": "repo-local-pin-required",
+        "ecosystem": "binary",
+        "install_spec": "Install osv-scanner and pin an explicit repository-local version before enabling it.",
+    },
+    "trivy": {
+        "policy": "repo-local-pin-required",
+        "ecosystem": "binary",
+        "install_spec": "Install Trivy and pin an explicit repository-local version before enabling it.",
+    },
+    "semgrep": {
+        "policy": "minimum-only",
+        "ecosystem": "pip",
+        "install_spec": "python -m pip install \"semgrep>=1.0.0\"",
+    },
+    "ruff": {
+        "policy": "aci-maintained-pin",
+        "ecosystem": "pip",
+        "tested_version": "0.4.8",
+        "install_spec": "ruff==0.4.8",
+    },
+    "pyflakes": {
+        "policy": "aci-maintained-pin",
+        "ecosystem": "pip",
+        "tested_version": "3.2.0",
+        "install_spec": "pyflakes==3.2.0",
+    },
+    "mypy": {
+        "policy": "aci-maintained-pin",
+        "ecosystem": "pip",
+        "tested_version": "1.10.0",
+        "install_spec": "mypy==1.10.0",
+    },
+    "pytest": {
+        "policy": "aci-maintained-pin",
+        "ecosystem": "pip",
+        "tested_version": "8.2.2",
+        "install_spec": "pytest==8.2.2",
+    },
+    "eslint": {
+        "policy": "repo-local-pin-required",
+        "ecosystem": "npm",
+        "install_spec": "npm install --save-dev eslint@<pin>",
+    },
+    "tsc": {
+        "policy": "repo-local-pin-required",
+        "ecosystem": "npm",
+        "install_spec": "npm install --save-dev typescript@<pin>",
+    },
+    "shellcheck": {
+        "policy": "repo-local-pin-required",
+        "ecosystem": "binary",
+        "install_spec": "Install a pinned ShellCheck release from your platform package manager or upstream archive.",
+    },
+    "sqlfluff": {
+        "policy": "minimum-only",
+        "ecosystem": "pip",
+        "install_spec": "python -m pip install \"sqlfluff>=2.0.0\"",
+    },
+}
+_ANALYZER_SETUP_HINTS: dict[str, str] = {
+    "codeql": "Requires a repository-local CodeQL database and query pack; the common shelf only reports availability.",
+    "gitleaks": "Optional secret-scanning lane; add a repository-local config and allowlist policy before enabling it.",
+    "osv-scanner": "Optional dependency audit lane; choose the manifest or lockfile scope in the consuming repository.",
+    "trivy": "Optional dependency, container, and IaC audit lane; define repo-local targets and policy thresholds first.",
+    "semgrep": "Install Semgrep if this environment should run the bundled baseline rule pack.",
+    "ruff": "Install the pinned maintainer analyzer set with `python -m pip install -r requirements-dev-analyzers.txt`.",
+    "pyflakes": "Install the pinned maintainer analyzer set with `python -m pip install -r requirements-dev-analyzers.txt`.",
+    "mypy": "Install the pinned maintainer analyzer set with `python -m pip install -r requirements-dev-analyzers.txt`.",
+    "pytest": "Install the pinned maintainer analyzer set with `python -m pip install -r requirements-dev-analyzers.txt`.",
+    "eslint": "Install ESLint in the target repository and keep its config/plugins pinned locally.",
+    "tsc": "Install TypeScript in the target repository and keep `typescript` pinned next to `tsconfig.json`.",
+    "shellcheck": "Install ShellCheck from a pinned OS package or upstream release before expecting shell evidence.",
+    "sqlfluff": "Install sqlfluff if SQL lint evidence is required in this environment.",
+}
+_ANALYZER_REMEDIATION_HINTS: dict[str, str] = {
+    "not-installed": "Install the analyzer if this lane is required here, or keep it out of the profile defaults for this environment.",
+    "version-or-runtime-problem": "Align the analyzer version with the advertised minimum or pinned maintainer spec, then retry the readiness check.",
+    "downstream-setup-required": "The analyzer is visible, but the common shelf does not claim runnable wiring; finish repository-local setup before relying on it.",
 }
 
 
@@ -78,16 +192,30 @@ class AnalyzerReadiness:
     version_text: str | None
     version_ok: bool
     minimum_version: str | None
+    availability_check: str = "path-and-version-probe"
+    tested_version: str | None = None
+    version_policy: str = "minimum-only"
+    install_spec: str | None = None
+    setup_hint: str = ""
+    remediation_hint: str = ""
+    default_policy: str = "opt-in"
     execution_support_level: str = "execution-ready"
 
     def as_dict(self) -> dict[str, object]:
         return {
             "analyzer_id": self.analyzer_id,
             "executable_path": self.executable_path,
+            "availability_check": self.availability_check,
             "availability_state": self.availability_state,
             "version_text": self.version_text,
             "version_ok": self.version_ok,
             "minimum_version": self.minimum_version,
+            "tested_version": self.tested_version,
+            "version_policy": self.version_policy,
+            "install_spec": self.install_spec,
+            "setup_hint": self.setup_hint,
+            "remediation_hint": self.remediation_hint,
+            "default_policy": self.default_policy,
             "execution_support_level": self.execution_support_level,
         }
 
@@ -121,6 +249,28 @@ def _minimum_version_text(analyzer_id: str) -> str | None:
     if version is None:
         return None
     return ".".join(str(part) for part in version)
+
+
+def analyzer_version_policy() -> dict[str, dict[str, str]]:
+    return {analyzer_id: dict(policy) for analyzer_id, policy in _ANALYZER_VERSION_POLICY.items()}
+
+
+def _version_policy_for(analyzer_id: str) -> dict[str, str]:
+    return dict(_ANALYZER_VERSION_POLICY.get(analyzer_id, {}))
+
+
+def _execution_support_level_for(analyzer_id: str) -> str:
+    if analyzer_id in _EXECUTION_READY_ANALYZERS:
+        return "execution-ready"
+    return "availability-check-only"
+
+
+def _setup_hint_for(analyzer_id: str) -> str:
+    return _ANALYZER_SETUP_HINTS.get(analyzer_id, "Install and configure this analyzer in the local environment before depending on its evidence.")
+
+
+def _remediation_hint_for(state: str) -> str:
+    return _ANALYZER_REMEDIATION_HINTS.get(state, "Inspect the analyzer environment and retry once the runtime surface is stable.")
 
 
 def _parse_version(version_text: str | None) -> tuple[int, ...] | None:
@@ -162,31 +312,50 @@ def _probe_version(analyzer_id: str, executable_path: str) -> tuple[str | None, 
 
 
 def _readiness_for(entry_analyzer_id: str) -> AnalyzerReadiness:
-    support_level = _CATALOG_SUPPORT_LEVEL_BY_ANALYZER.get(entry_analyzer_id, "execution-ready")
+    execution_support_level = _execution_support_level_for(entry_analyzer_id)
+    default_policy = _CATALOG_DEFAULT_POLICY_BY_ANALYZER.get(entry_analyzer_id, "opt-in")
+    version_policy = _version_policy_for(entry_analyzer_id)
+    tested_version = version_policy.get("tested_version")
+    install_spec = version_policy.get("install_spec")
     executable_path = which(entry_analyzer_id)
     if not executable_path:
+        availability_state = "not-installed"
         return AnalyzerReadiness(
             analyzer_id=entry_analyzer_id,
             executable_path=None,
-            availability_state="not-installed",
+            availability_check="path-and-version-probe",
+            availability_state=availability_state,
             version_text=None,
             version_ok=False,
             minimum_version=_minimum_version_text(entry_analyzer_id),
-            execution_support_level=support_level,
+            tested_version=tested_version,
+            version_policy=version_policy.get("policy", "minimum-only"),
+            install_spec=install_spec,
+            setup_hint=_setup_hint_for(entry_analyzer_id),
+            remediation_hint=_remediation_hint_for(availability_state),
+            default_policy=default_policy,
+            execution_support_level=execution_support_level,
         )
     version_text, version_ok = _probe_version(entry_analyzer_id, executable_path)
-    if support_level == "project-local-setup-required":
-        availability_state = "project-local-setup-required" if version_ok else "version-or-runtime-problem"
+    if execution_support_level == "availability-check-only":
+        availability_state = "downstream-setup-required" if version_ok else "version-or-runtime-problem"
     else:
         availability_state = "ready" if version_ok else "version-or-runtime-problem"
     return AnalyzerReadiness(
         analyzer_id=entry_analyzer_id,
         executable_path=executable_path,
+        availability_check="path-and-version-probe",
         availability_state=availability_state,
         version_text=version_text,
         version_ok=version_ok,
         minimum_version=_minimum_version_text(entry_analyzer_id),
-        execution_support_level=support_level,
+        tested_version=tested_version,
+        version_policy=version_policy.get("policy", "minimum-only"),
+        install_spec=install_spec,
+        setup_hint=_setup_hint_for(entry_analyzer_id),
+        remediation_hint=_remediation_hint_for(availability_state),
+        default_policy=default_policy,
+        execution_support_level=execution_support_level,
     )
 
 
@@ -197,11 +366,12 @@ def analyzer_availability() -> list[dict[str, object]]:
         rows.append(
             readiness.as_dict()
             | {
+                "category": _ANALYZER_CATEGORY_BY_ID.get(entry.analyzer_id, ""),
+                "purpose": _ANALYZER_PURPOSE_BY_ID.get(entry.analyzer_id, ""),
+                "support_level": entry.support_level,
                 "referenced_by_profiles": entry.referenced_by_profiles,
-                "ownership_boundary": (
-                    "The common shelf checks executable visibility, version readiness, and bounded invocation support. "
-                    "Project-local flags and deeper repository tuning still belong downstream."
-                ),
+                "typical_ci_ids": _ANALYZER_TYPICAL_CI_IDS_BY_ID.get(entry.analyzer_id, ()),
+                "ownership_boundary": _ANALYZER_OWNERSHIP_BOUNDARY_BY_ID.get(entry.analyzer_id, ""),
             }
         )
     return rows
@@ -209,22 +379,35 @@ def analyzer_availability() -> list[dict[str, object]]:
 
 def profile_execution_plan() -> list[dict[str, object]]:
     readiness_map = {entry["analyzer_id"]: entry for entry in analyzer_availability()}
+    opt_in_analyzers = [
+        entry.analyzer_id
+        for entry in ANALYZER_CATALOG
+        if entry.support_level == "opt-in"
+    ]
     rows: list[dict[str, object]] = []
     for entry in profile_catalog():
         analyzers = cast("list[str]", entry["default_external_analyzers"])
+        execution_support_level = "execution-ready"
+        if any(
+            readiness_map[analyzer_id]["execution_support_level"] != "execution-ready"
+            for analyzer_id in analyzers
+        ):
+            execution_support_level = "availability-check-only"
         rows.append(
             {
                 "profile_id": entry["profile_id"],
                 "enabled_lanes": entry["enabled_lanes"],
                 "default_external_analyzers": analyzers,
-                "execution_support_level": "execution-ready",
+                "optional_opt_in_analyzers": opt_in_analyzers,
+                "execution_support_level": execution_support_level,
                 "readiness_summary": {
                     analyzer_id: readiness_map[analyzer_id]["availability_state"]
                     for analyzer_id in analyzers
                 },
                 "execution_plan": (
                     "Use the common profile defaults as a bounded runtime surface: verify analyzer readiness, then run "
-                    "supported analyzers against the chosen target directory."
+                    "supported analyzers against the chosen target directory. Optional security analyzers remain "
+                    "opt-in and are not auto-selected by these defaults."
                 ),
                 "ownership_boundary": (
                     "The common shelf can execute bounded analyzer defaults. Repository-specific rule tuning remains local."
@@ -921,12 +1104,12 @@ def _no_source_result(analyzer_id: str, no_source: bool) -> AnalyzerRunResult:
         analyzer_id=analyzer_id,
         ok=False,
         exit_code=None,
-        runtime_state="no-applicable-source" if no_source else "unsupported-in-common-shelf",
+        runtime_state="no-applicable-source" if no_source else "downstream-setup-required",
         stdout="",
         stderr=(
             "No applicable source files or configuration found for this analyzer."
             if no_source
-            else "Analyzer is cataloged but not yet runnable from the common shelf."
+            else "Analyzer is cataloged, but runnable execution remains a downstream responsibility."
         ),
         findings=(),
     )
@@ -1025,7 +1208,7 @@ def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerR
             exit_code=None,
             runtime_state=readiness.availability_state,
             stdout="",
-            stderr=readiness.version_text or "",
+            stderr=readiness.version_text or readiness.remediation_hint,
             findings=(),
         )
     command, skipped_source_count, no_source = _resolve_analyzer_command(analyzer_id, target_root)

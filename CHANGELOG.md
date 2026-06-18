@@ -17,6 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1] - 2026-06-18
+
+### Added
+- `aci_report_view.py`, `aci_self_audit_verification.py`, and `aci_scale_verification.py` as stable operator-facing surfaces for triage, self-audit, and scale/platform verification
+- owner-gated release evidence capture via `shared/tools/aci_capture_owner_release_state.py`
+- public-repo-ready SARIF upload workflow in `.github/workflows/code-scanning.yml`
+
+### Changed
+- PyPI distribution name to `ac-inspector` while keeping the end-user CLI command `aci`
+- release/distribution verification to normalize artifact prefixes from PyPI distribution names
+- self-audit scope contracts, analyzer catalog surfacing, and detector/report boundaries for stricter code-audit use
+
+### Fixed
+- mypy type gaps in review-brief/report-view projection logic
+- workspace-safe distribution verification and release readiness evidence flow
+
+---
+
 ## [0.1.0] - 2026-06-17
 
 ### Added

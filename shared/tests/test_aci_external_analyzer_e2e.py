@@ -66,11 +66,12 @@ def test_external_lane_records_per_analyzer_runtime_state(tmp_path: Path) -> Non
         "not-installed",
         "no-tests-collected",
         "no-applicable-source",
-        "project-local-setup-required",
+        "downstream-setup-required",
         "runtime-failure",
         "parse-failure",
         "spawn-failure",
         "timeout",
+        "version-or-runtime-problem",
     }
     for run in runs.values():
         assert run["runtime_state"] in valid_states, run

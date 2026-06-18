@@ -1,9 +1,14 @@
 # ACI
 
-**Python-first static structure inspector.**
+**Auto Code Inspector.**
 
-Finds cross-file and structural code quality issues that single-file linters miss.
-Install from source (`git clone` + `pip install -e .`); scan any Python project in one command.
+ACI (Auto Code Inspector) is a Python-first code audit and structure inspection tool.
+Install from PyPI with `pip install ac-inspector`; run scans with the `aci` CLI.
+
+```bash
+pip install ac-inspector
+aci scan --target .
+```
 
 ## What is this
 
@@ -11,14 +16,28 @@ ACI is a Python code inspection tool focused on cross-file structure:
 
 - **Native static detectors** — 17 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
 - **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest, semgrep, eslint, tsc, shellcheck, and sqlfluff when installed and applicable
+- **Cataloged opt-in security analyzers** — tracks `codeql`, `gitleaks`, `osv-scanner`, and `trivy` as availability-only lanes until a consuming repository wires them locally
 - **Optional domain packs** — add project-specific vocabulary and exclusion rules without touching core
 
 `ACI` provides a normalized finding format, configurable severity gate, suppression/baseline/waiver contract, SARIF and annotation output, and a machine-readable report schema.
 
-The `scan` CLI supports three scope presets:
+Exhaustive scans can now be projected into first-class report views by
+`scope_class` and `owner_lane`, so runtime, tests, fixtures, docs, and support
+shelves can be triaged without post-processing.
+
+The common shelf now also ships a bounded `scale-check` surface plus continuous
+CI verification on Linux, Windows, and macOS.
+
+Product-boundary claim for this common shelf: `ACI` is a **Python-first**
+native audit tool with polyglot text-scan and external-analyzer evidence lanes,
+not a language-general native structural auditor. See
+`shared/core/aci-product-boundary-and-coverage-policy.md`.
+
+The `scan` CLI supports four scope presets:
 
 - `source-only` - default; excludes common non-runtime shelves such as `docs/`, `examples/`, `fixtures/`, and scratch/output shelves
 - `dogfood` - focuses on common source + test shelves for self-audit
+- `self-audit` - dedicated ACI self-audit surface for runtime code, tests, maintainer probes, and roadmap evidence
 - `full-repo` - scans the full tree, but blocker decisions stay limited to `runtime-source` findings
 
 ## What this is not
@@ -50,6 +69,19 @@ ACI is **Python-first**. Be aware of the scope before adopting:
 Non-Python codebases do not get the Python-native structure detectors. They can
 still use the supported text scans plus any applicable external analyzers.
 
+## Product Boundary
+
+The completed common-shelf product claim is intentionally bounded:
+
+- Python gets the full native structural lane
+- non-Python files get text scans plus applicable external analyzers
+- `CI-08`, `CI-11`, and `CI-24` remain human-judgment-only
+- deep security analyzers such as `codeql`, `gitleaks`, `osv-scanner`, and `trivy` stay opt-in/cataloged until the common shelf owns execution-ready adapters
+- `CI-19` is only substantively complete when a downstream domain pack provides its vocabulary and tests
+- CI-14 supply-chain drift currently covers only `requirements*.txt`, `package.json`, `Dockerfile` / `Containerfile`, and GitHub workflow `uses:` refs
+
+This boundary is defined canonically in `shared/core/aci-product-boundary-and-coverage-policy.md`.
+
 ## Relationship to ruff and other single-file linters
 
 ACI **complements** a fast single-file linter like ruff; it is not a replacement.
@@ -76,8 +108,9 @@ For a first look on GitHub, start here:
 
 1. `docs/QUICKSTART.md`
 2. `docs/CI_REFERENCE.md`
-3. `docs/USER_EVALUATION_INDEX.md`
-4. `docs/ACI_SHELF_CLASSIFICATION.md`
+3. `shared/core/aci-product-boundary-and-coverage-policy.md`
+4. `docs/USER_EVALUATION_INDEX.md`
+5. `docs/ACI_SHELF_CLASSIFICATION.md`
 
 Minimum smoke check:
 
@@ -87,6 +120,9 @@ python shared/python/aci_cli.py smoke
 
 Public sample reports are in `shared/report/examples/`.
 Triage guide is in `shared/report/README.md` and `shared/report/aci-generic-report-contract.md`.
+Maintainer mode selection is in `docs/MAINTAINER_SCAN_MODE_RUNBOOK.md`.
+Advisory-only non-runtime triage flow is in `docs/NON_RUNTIME_TRIAGE_WORKFLOW.md`.
+Contributor hook and verification workflow is in `docs/CONTRIBUTOR_WORKFLOW.md`.
 Generic baseline/suppression/waiver contract is in `shared/core/aci-baseline-suppression-waiver-contract.md`.
 Analyzer catalog bounded contract is in `shared/core/aci-analyzer-registry-contract.md`.
 Profile catalog bounded contract is in `shared/core/aci-profile-execution-contract.md`.
@@ -114,6 +150,12 @@ python shared/python/aci_cli.py show-analyzer-availability
 python shared/python/aci_cli.py show-profile-execution-plan
 ```
 
+Maintainers who want the continuously verified Python analyzer set should install:
+
+```bash
+python -m pip install -r requirements-dev-analyzers.txt
+```
+
 ```bash
 python shared/python/aci_cli.py emit-github-summary --report report.json
 ```
@@ -122,12 +164,18 @@ python shared/python/aci_cli.py emit-github-summary --report report.json
 python shared/python/aci_cli.py installed-package-check
 ```
 
+```bash
+python shared/python/aci_cli.py self-audit-check
+```
+
 This smoke check verifies only:
 
 - `aci core only` (domain packs are optional — load with `--domain <id>`)
 - normalized finding emission
 
 For full install verification (automation-smoke, fixture-check, installed-package-check), see `shared/runtime/aci-ci-and-automation-contract.md`.
+For the dedicated ACI self-audit surface, see `shared/runtime/aci-self-audit-contract.md`.
+For scale budgets and multi-OS verification, see `shared/runtime/aci-scale-and-platform-contract.md`.
 
 ### 2. Next reading
 

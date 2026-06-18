@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "aci"
-version = "0.1.0"
-description = "Autonomous Code Inspection common shelf"
+name = "ac-inspector"
+version = "0.1.1"
+description = "Auto Code Inspector: Python-first code audit and structure inspection"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -19,14 +19,22 @@ classifiers = [
   "Operating System :: MacOS :: MacOS X",
   "Operating System :: Microsoft :: Windows"
 ]
-# CI verification is on Ubuntu (ubuntu-latest). Linux/macOS/Windows are expected to work
-# as the package is pure Python, but only Linux is continuously verified.
+# CI continuously verifies Ubuntu, Windows, and macOS. Linux keeps the wider
+# Python-version matrix; Windows/macOS run the bounded platform-verification lane.
 
 [project.scripts]
 aci = "aci.aci_cli:main"
 
 [tool.setuptools]
-packages = ["aci", "aci.detectors"]
+packages = [
+  "aci",
+  "aci.detectors",
+  "aci.package_assets",
+  "aci.package_assets.analyzers",
+  "aci.package_assets.fixtures",
+  "aci.package_assets.report",
+  "aci.package_assets.report.examples"
+]
 include-package-data = true
 
 [tool.setuptools.package-dir]
@@ -34,6 +42,7 @@ aci = "shared/python"
 
 [tool.setuptools.package-data]
 aci = [
+  "package_assets/analyzers/*.yml",
   "package_assets/fixtures/*.json",
   "package_assets/report/examples/*.md",
   "package_assets/report/examples/*.json"

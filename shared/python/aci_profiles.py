@@ -21,6 +21,7 @@ PROFILE_QUICK_GATE = "quick-gate"
 PROFILE_STATE_CHANGE = "state-change"
 PROFILE_WRAP_UP = "wrap-up"
 PROFILE_FULL = "full"
+PROFILE_SELF_AUDIT = "self-audit"
 PROFILE_BUILD_PREFLIGHT = "build-preflight"
 PROFILE_BUILD_REVIEW = "build-review"
 
@@ -30,6 +31,7 @@ SUPPORTED_PROFILES = (
     PROFILE_STATE_CHANGE,
     PROFILE_WRAP_UP,
     PROFILE_FULL,
+    PROFILE_SELF_AUDIT,
     PROFILE_BUILD_PREFLIGHT,
     PROFILE_BUILD_REVIEW,
 )
@@ -53,6 +55,10 @@ PROFILE_DEFAULT_SCOPE_REFS: dict[str, tuple[str, ...]] = {
         "{project_current_state_shelf}",
         "{project_entry_shelf}",
     ),
+}
+
+PROFILE_DEFAULT_SCOPE_MODES: dict[str, str] = {
+    PROFILE_SELF_AUDIT: "self-audit",
 }
 
 STRUCTURE_SIGNAL_SET: tuple[str, ...] = PROJECT_STRUCTURE_SIGNALS
@@ -102,6 +108,12 @@ def build_profile_signals(
             *human_judgment_signals,
             *native_hygiene_signals,
         ),
+        PROFILE_SELF_AUDIT: (
+            *structure_signals,
+            *external_evidence_signals,
+            *human_judgment_signals,
+            *native_hygiene_signals,
+        ),
         PROFILE_BUILD_PREFLIGHT: (
             SIGNAL_RESPONSIBILITY_SPROUT,
             SIGNAL_STATE_DUPLICATION,
@@ -125,14 +137,19 @@ def build_profile_signals(
 def default_external_analyzers(profile: str) -> tuple[str, ...]:
     return {
         PROFILE_QUICK_GATE: ("ruff", "pyflakes"),
+        PROFILE_SELF_AUDIT: ("ruff", "pyflakes", "mypy", "pytest", "semgrep", "eslint", "tsc", "shellcheck", "sqlfluff"),
         PROFILE_BUILD_PREFLIGHT: ("ruff", "pyflakes", "mypy", "semgrep", "eslint", "tsc", "shellcheck", "sqlfluff"),
         PROFILE_BUILD_REVIEW: ("ruff", "pyflakes", "mypy", "pytest", "semgrep", "eslint", "tsc", "shellcheck", "sqlfluff"),
         PROFILE_FULL: ("ruff", "pyflakes", "mypy", "pytest", "semgrep", "eslint", "tsc", "shellcheck", "sqlfluff"),
     }.get(profile, ())
 
 
+def default_scope_mode(profile: str) -> str | None:
+    return PROFILE_DEFAULT_SCOPE_MODES.get(profile)
+
+
 def default_control_lane(profile: str) -> str:
-    if profile in {PROFILE_STARTUP, PROFILE_STATE_CHANGE, PROFILE_WRAP_UP}:
+    if profile in {PROFILE_STARTUP, PROFILE_STATE_CHANGE, PROFILE_WRAP_UP, PROFILE_SELF_AUDIT}:
         return "workflow-controlled"
     if profile == PROFILE_QUICK_GATE:
         return "background-controlled"

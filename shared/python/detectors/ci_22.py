@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 from pathlib import Path
+import re
 
 try:
     from ..aci_findings import (
@@ -22,10 +23,28 @@ SIGNALS: frozenset[str] = frozenset({"CI22_RESOURCE_CLEANUP_GAP"})
 
 _RESOURCE_OPENER_NAMES: frozenset[str] = frozenset({
     "open",
+    "io.open",
+    "codecs.open",
+    "os.open",
     "Popen",
+    "subprocess.Popen",
     "NamedTemporaryFile",
+    "tempfile.NamedTemporaryFile",
     "TemporaryFile",
+    "tempfile.TemporaryFile",
     "SpooledTemporaryFile",
+    "tempfile.SpooledTemporaryFile",
+})
+_PATHLIKE_NAME_PATTERN = re.compile(r"(?:^|_)(?:path|paths|file|files|filename|filepath|dir|directory)(?:$|_)")
+_PATHLIKE_CONSTRUCTORS: frozenset[str] = frozenset({
+    "Path",
+    "PurePath",
+    "PurePosixPath",
+    "PureWindowsPath",
+    "pathlib.Path",
+    "pathlib.PurePath",
+    "pathlib.PurePosixPath",
+    "pathlib.PureWindowsPath",
 })
 
 
@@ -46,9 +65,76 @@ def _enclosing_function(node: ast.AST, parent_map: dict[ast.AST, ast.AST]) -> as
     return None
 
 
+def _attribute_chain_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        base = _attribute_chain_name(node.value)
+        if base is None:
+            return None
+        return f"{base}.{node.attr}"
+    return None
+
+
+def _name_looks_pathlike(name: str) -> bool:
+    return bool(_PATHLIKE_NAME_PATTERN.search(name.lower()))
+
+
+def _expr_looks_pathlike(node: ast.AST) -> bool:
+    if isinstance(node, ast.Name):
+        return _name_looks_pathlike(node.id)
+    if isinstance(node, ast.Attribute):
+        return _name_looks_pathlike(node.attr) or _expr_looks_pathlike(node.value)
+    if isinstance(node, ast.Call):
+        call_name = _attribute_chain_name(node.func)
+        return call_name in _PATHLIKE_CONSTRUCTORS
+    if isinstance(node, ast.Subscript):
+        return _expr_looks_pathlike(node.value)
+    return False
+
+
+def _is_close_call(node: ast.Call, varname: str) -> bool:
+    if (
+        isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == varname
+        and node.func.attr in {"close", "__exit__"}
+    ):
+        return True
+    if (
+        isinstance(node.func, ast.Attribute)
+        and node.func.attr == "close"
+        and _attribute_chain_name(node.func.value) == "os"
+        and node.args
+        and isinstance(node.args[0], ast.Name)
+        and node.args[0].id == varname
+    ):
+        return True
+    if (
+        isinstance(node.func, ast.Name)
+        and node.func.id == "close"
+        and node.args
+        and isinstance(node.args[0], ast.Name)
+        and node.args[0].id == varname
+    ):
+        return True
+    return False
+
+
+def _has_exception_safe_close(func: ast.AST, varname: str) -> bool:
+    for node in ast.walk(func):
+        if not isinstance(node, ast.Try) or not node.finalbody:
+            continue
+        for stmt in node.finalbody:
+            for child in ast.walk(stmt):
+                if isinstance(child, ast.Call) and _is_close_call(child, varname):
+                    return True
+    return False
+
+
 def _name_is_managed(func: ast.AST, varname: str) -> bool:
-    """True when a handle bound to `varname` is returned, closed, stored on the
-    instance, used in a `with`, or handed to another call that takes ownership."""
+    """True when a handle bound to `varname` is returned, exception-safely
+    closed, or transferred to an owning attribute."""
     for node in ast.walk(func):
         if isinstance(node, ast.Return):
             value = node.value
@@ -57,18 +143,6 @@ def _name_is_managed(func: ast.AST, varname: str) -> bool:
             if isinstance(value, (ast.Tuple, ast.List)):
                 if any(isinstance(item, ast.Name) and item.id == varname for item in value.elts):
                     return True
-        if isinstance(node, ast.Call):
-            if (
-                isinstance(node.func, ast.Attribute)
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == varname
-                and node.func.attr in {"close", "__exit__"}
-            ):
-                return True
-            if any(isinstance(arg, ast.Name) and arg.id == varname for arg in node.args):
-                return True
-            if any(isinstance(kw.value, ast.Name) and kw.value.id == varname for kw in node.keywords):
-                return True
         if isinstance(node, (ast.With, ast.AsyncWith)):
             for item in node.items:
                 if isinstance(item.context_expr, ast.Name) and item.context_expr.id == varname:
@@ -76,17 +150,21 @@ def _name_is_managed(func: ast.AST, varname: str) -> bool:
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Name) and node.value.id == varname:
             if any(isinstance(target, ast.Attribute) for target in node.targets):
                 return True
-    return False
+    return _has_exception_safe_close(func, varname)
 
 
 def _is_managed_open(call_node: ast.Call, parent_map: dict[ast.AST, ast.AST]) -> bool:
     """Approximate dataflow: is the opened handle's lifecycle managed?"""
     parent = parent_map.get(call_node)
-    if isinstance(parent, (ast.Return, ast.Call, ast.Lambda, ast.withitem)):
+    if isinstance(parent, (ast.Return, ast.withitem)):
         return True
-    if not isinstance(parent, ast.Assign):
+    if isinstance(parent, ast.Assign):
+        targets = parent.targets
+    elif isinstance(parent, ast.AnnAssign):
+        targets = [parent.target]
+    else:
         return False
-    for target in parent.targets:
+    for target in targets:
         if isinstance(target, ast.Attribute):
             return True
         if isinstance(target, ast.Name):
@@ -111,9 +189,13 @@ def _with_wrapped_nodes(tree: ast.AST) -> set[int]:
 
 def _opened_resource_name(node: ast.Call) -> str | None:
     if isinstance(node.func, ast.Name):
-        return node.func.id
+        return node.func.id if node.func.id in _RESOURCE_OPENER_NAMES else None
     if isinstance(node.func, ast.Attribute):
-        return node.func.attr
+        full_name = _attribute_chain_name(node.func)
+        if full_name in _RESOURCE_OPENER_NAMES:
+            return full_name
+        if node.func.attr == "open" and _expr_looks_pathlike(node.func.value):
+            return "open"
     return None
 
 

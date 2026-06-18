@@ -489,6 +489,82 @@ def test_ci22_clean_on_open_with_context_manager(tmp_path: Path) -> None:
     assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
 
 
+def test_ci22_clean_on_try_finally_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "clean_finally.py",
+        "\n".join([
+            'def read_data(path):',
+            '    handle = open(path)',
+            '    try:',
+            '        return handle.read()',
+            '    finally:',
+            '        handle.close()',
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_triggers_when_close_exists_only_on_success_path(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "partial_close.py",
+        "\n".join([
+            'def read_data(path):',
+            '    handle = open(path)',
+            '    data = handle.read()',
+            '    handle.close()',
+            '    return data',
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_os_open_closed_in_finally(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "fd_clean.py",
+        "\n".join([
+            "import os",
+            "",
+            "def read_fd(path):",
+            "    fd = os.open(path, os.O_RDONLY)",
+            "    try:",
+            "        return os.read(fd, 8)",
+            "    finally:",
+            "        os.close(fd)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_ignores_non_pathlike_open_method_names(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "progress.py",
+        "\n".join([
+            "class Progress:",
+            "    def open(self, total):",
+            "        return total",
+            "",
+            "progress = Progress()",
+            "value = progress.open(3)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_triggers_on_pathlike_open_method_without_management(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "pathlib_leak.py",
+        "\n".join([
+            "from pathlib import Path",
+            "",
+            "def read_data() -> str:",
+            '    file_path = Path("data.txt")',
+            "    handle = file_path.open()",
+            "    return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" in _signals(_scan(tmp_path))
+
+
 def test_ci22_triggers_on_fire_and_forget_task(tmp_path: Path) -> None:
     _write(
         tmp_path / "tasks.py",

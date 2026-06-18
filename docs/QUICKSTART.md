@@ -5,19 +5,35 @@ ACI is Python-first (see the Language Support section in `README.md`).
 
 ## 1. Install
 
+Standard install:
+
+```bash
+pip install ac-inspector
+```
+
+This installs the `aci` CLI.
+
+Source install for local development:
+
 ```bash
 git clone https://github.com/maruwork/aci.git
 cd aci
 pip install -e .
 ```
 
-This installs the `aci` CLI from source. Verify the shelf and sample report contract:
+Verify the shelf and sample report contract:
 
 ```bash
 aci automation-smoke
 ```
 
 (`aci smoke` is a lightweight common-shelf check only; use `aci automation-smoke` to verify the installed package.)
+
+If you want the same pinned Python analyzer set that CI uses:
+
+```bash
+python -m pip install -r requirements-dev-analyzers.txt
+```
 
 ## 2. Scan your project
 
@@ -33,8 +49,17 @@ aci scan --target . --profile full --domain core-only --output-format pretty-jso
   `--domain <id> --domain-file <path>`.
 - `--scope-mode source-only` - default preset; excludes common non-runtime shelves such as `docs/` and `examples/`.
 - `--scope-mode dogfood` - focuses on common source + test shelves for self-audit.
+- `--scope-mode self-audit` - dedicated ACI self-audit scope; includes runtime code, tests, maintainer probes, and `docs/roadmap/`.
 - `--scope-mode full-repo` - scans the full tree but only `runtime-source` findings can block the gate.
-- `--no-external-analyzers` — skip ruff/pyflakes/mypy/pytest/semgrep/eslint/tsc/shellcheck/sqlfluff (native lane only).
+- `--no-external-analyzers` - skip ruff/pyflakes/mypy/pytest/semgrep/eslint/tsc/shellcheck/sqlfluff (native lane only).
+
+ACI itself should prefer:
+
+```bash
+aci self-audit-check
+aci scan --target . --profile self-audit
+aci scale-check --scratch-root workspace/scale-check
+```
 
 The exit code is non-zero when findings are present (including waived ones) or the
 gate fails. If you want to rely only on the gate decision, check
@@ -61,9 +86,21 @@ Each finding is normalized with a stable shape, e.g.:
   (high/medium/low) tells you how much to trust the signal before acting.
 - `owner_lane` says who decides: `native-static`, `external-analyzer`, or
   `human-judgment`.
+- `scope_class` says where the finding lives: `runtime-source`, `tests`,
+  `fixtures`, `docs-evidence`, `roadmap-evidence`, `maintainer-probes`,
+  `support`, or `generated`.
 
 The top-level `summary`, `gate`, and `blockers` fields give the roll-up and the
 pass/fail decision.
+
+Use report-view filters when the scan is intentionally exhaustive but the triage
+question is narrower:
+
+```bash
+aci emit-github-summary --report report.json --report-scope-class runtime-source
+aci emit-github-summary --report report.json --report-scope-class tests
+aci emit-github-summary --report report.json --report-scope-class fixtures --report-owner-lane human-judgment
+```
 
 ## 4. Scan only what changed (fast CI)
 
@@ -104,6 +141,7 @@ aci scan --target . --profile full --output-format json > report.json
 aci emit-sarif --report report.json > aci.sarif        # upload to code scanning
 aci emit-annotations --report report.json              # GitHub Actions annotations
 aci emit-github-summary --report report.json           # Markdown summary for PRs / step summary
+aci emit-github-summary --report report.json --report-scope-class runtime-source
 ```
 
 ## Where next
@@ -112,3 +150,5 @@ aci emit-github-summary --report report.json           # Markdown summary for PR
 - `README.md` — components, language support, profiles overview
 - `shared/report/examples/` — full sample reports
 - `shared/report/aci-generic-report-contract.md` — the report contract
+- `docs/MAINTAINER_SCAN_MODE_RUNBOOK.md` — when to use each scan mode
+- `docs/NON_RUNTIME_TRIAGE_WORKFLOW.md` — how to handle advisory-only findings

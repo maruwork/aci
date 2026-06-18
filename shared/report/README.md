@@ -66,3 +66,24 @@ Repeated-operation meaning is split this way:
 
 - lifecycle
   - the current visible handling state of a finding
+
+## Report Views
+
+The CLI now supports first-class projected report views by `scope_class` and
+`owner_lane`.
+
+Examples:
+
+```bash
+aci emit-github-summary --report report.json --report-scope-class runtime-source
+aci emit-github-summary --report report.json --report-scope-class fixtures
+aci emit-annotations --report report.json --report-owner-lane external-analyzer
+```
+
+Projected views recompute `summary`, `gate`, `blockers`, and `review_brief` for
+the visible findings while preserving source-scan context in `report_view`.
+
+See also:
+
+- `docs/MAINTAINER_SCAN_MODE_RUNBOOK.md`
+- `docs/NON_RUNTIME_TRIAGE_WORKFLOW.md`

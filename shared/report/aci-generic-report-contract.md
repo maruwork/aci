@@ -31,10 +31,15 @@ Define a domain-independent, human-readable ACI report format that lets an opera
 - findings by priority
 - findings by baseline status
 - findings by lifecycle state
+- findings by owner lane
+- findings by scope class
+- findings split into gated vs advisory-only scope policy buckets
+- advisory-only findings by scope class
 - waived finding count
 - suppressed finding count
 - new finding count
 - existing baseline count
+- resolved baseline count
 - blocker present or not
 - residual present or not
 - next action summary
@@ -56,6 +61,7 @@ Each finding should expose:
 - `waiver_status`
 - `lifecycle_state`
 - `owner_lane`
+- `scope_class`
 - `target_file`
 - `line`
 - `reason`
@@ -66,10 +72,17 @@ Each finding should expose:
 ## Required Operator Sections
 
 - `Blockers`
+- `Advisory-Only Findings`
 - `Highest Severity Findings`
 - `Triage View`
 - `Residuals`
 - `Next Actions`
+
+Filtered report views may also include a `Report View` note that shows:
+
+- which `scope_class` / `owner_lane` filters were applied
+- how many findings are visible vs hidden
+- whether the source scan gate was stricter than the projected view
 
 ## Actor Label Rule
 
@@ -137,6 +150,7 @@ Use one of:
 - blocker information must appear before long finding tables
 - severity ordering must be descending
 - triage information must make `fix-now`, `review-first`, and `accepted-residual` visible without guessing
+- advisory-only findings from tests / fixtures / docs / support shelves must be visibly distinct from gated runtime findings
 - baseline, suppression, and waiver meaning must not be conflated
 - lifecycle meaning must be visible without inferring it from triage or waiver fields
 - next action must name the file, owner lane, or next report to read

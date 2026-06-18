@@ -11,6 +11,7 @@ This file defines the generic tool contract. It does not define project-specific
 Primary companion:
 
 - `aci-code-inspection-execution-spec.md`: compact 22 active inspection patterns catalog and report contract
+- `aci-product-boundary-and-coverage-policy.md`: explicit completion boundary for language scope, human-judgment lanes, CI-19, and CI-14 supply-chain breadth
 - `aci-analyzer-registry-contract.md`: bounded external-analyzer catalog contract
 - `aci-profile-execution-contract.md`: bounded profile execution catalog contract
 - `aci-analyzer-execution-contract.md`: bounded analyzer execution contract
@@ -28,9 +29,11 @@ ACI can:
 - normalize evidence into one finding format
 - separate baseline / waiver / suppression / ranking
 - return human-readable and machine-readable reports
+- provide full native structural/code-smell coverage for Python targets
 
 ACI does not:
 
+- claim language-general native structural coverage outside Python
 - replace human approval
 - judge product requirements or business correctness by itself
 - solve runner supervision, shell transport, or terminal encoding failures

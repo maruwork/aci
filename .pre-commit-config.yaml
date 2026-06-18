@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: aci-ruff
+        name: aci ruff
+        entry: python -m ruff check shared/python shared/tests
+        language: system
+        pass_filenames: false
+      - id: aci-core-report-surfaces
+        name: aci core report surfaces
+        entry: python -m pytest shared/tests/test_aci_report_surface_contracts.py shared/tests/test_aci_report_view.py shared/tests/test_aci_runtime_scan.py --basetemp workspace/pre-commit-pytest
+        language: system
+        pass_filenames: false

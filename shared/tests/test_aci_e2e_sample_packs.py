@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aci.aci_scan import scan_target
+from aci.aci_signal_collection import scan_signals
 
 _EXAMPLES = Path(__file__).parent.parent.parent / "examples"
 _FN_PACK = _EXAMPLES / "aci-false-negative-challenge-pack"
@@ -16,8 +16,7 @@ _PR_PACK = _EXAMPLES / "aci-precision-replay-pack"
 
 
 def _signals(pack: Path) -> set[str]:
-    report = scan_target(pack, "full", "core-only", include_external_analyzers=False)
-    return {item["signal"] for item in report["findings"]}
+    return scan_signals(pack)
 
 
 # ── False-negative challenge pack ─────────────────────────────────────────
@@ -62,6 +61,34 @@ def test_fn_pack_detects_supply_chain_drift() -> None:
     assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_FN_PACK)
 
 
+def test_fn_pack_detects_long_function() -> None:
+    assert "CI02_LONG_FUNCTION" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_god_class() -> None:
+    assert "CI04_GOD_CLASS" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_copy_paste_code() -> None:
+    assert "CI05_COPY_PASTE_CODE" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_unused_private_symbol() -> None:
+    assert "CI07_UNUSED_PRIVATE_SYMBOL" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_circular_import() -> None:
+    assert "CI13_CIRCULAR_IMPORT" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_resource_cleanup_gap() -> None:
+    assert "CI22_RESOURCE_CLEANUP_GAP" in _signals(_FN_PACK)
+
+
+def test_fn_pack_detects_contract_field_drift() -> None:
+    assert "CI23_CONTRACT_FIELD_DRIFT" in _signals(_FN_PACK)
+
+
 # ── Precision replay pack ─────────────────────────────────────────────────
 
 def test_pr_pack_no_false_positive_parameter_cluster() -> None:
@@ -98,3 +125,31 @@ def test_pr_pack_no_false_positive_fire_and_forget_task() -> None:
 
 def test_pr_pack_no_false_positive_supply_chain_drift() -> None:
     assert "CI14_SUPPLY_CHAIN_DRIFT" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_long_function() -> None:
+    assert "CI02_LONG_FUNCTION" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_god_class() -> None:
+    assert "CI04_GOD_CLASS" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_copy_paste_code() -> None:
+    assert "CI05_COPY_PASTE_CODE" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_unused_private_symbol() -> None:
+    assert "CI07_UNUSED_PRIVATE_SYMBOL" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_circular_import() -> None:
+    assert "CI13_CIRCULAR_IMPORT" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_resource_cleanup_gap() -> None:
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_PR_PACK)
+
+
+def test_pr_pack_no_false_positive_contract_field_drift() -> None:
+    assert "CI23_CONTRACT_FIELD_DRIFT" not in _signals(_PR_PACK)

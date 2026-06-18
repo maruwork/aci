@@ -31,14 +31,9 @@ _SUITE = _REPO_ROOT / "examples" / "aci-validation-suite"
 sys.path.insert(0, str(_REPO_ROOT / "shared" / "python"))
 
 try:
-    from aci.aci_scan import scan_target  # type: ignore[import-not-found]
+    from aci.aci_signal_collection import scan_signals  # type: ignore[import-not-found]
 except ImportError:  # pragma: no cover - direct-source layout
-    from aci_scan import scan_target  # type: ignore[no-redef]
-
-
-def _signals(target: Path) -> set[str]:
-    report = scan_target(target, "full", "core-only", include_external_analyzers=False)
-    return {item["signal"] for item in report["findings"]}
+    from aci_signal_collection import scan_signals  # type: ignore[no-redef]
 
 
 def score(suite: Path = _SUITE) -> dict:
@@ -46,12 +41,22 @@ def score(suite: Path = _SUITE) -> dict:
     expected = set(manifest["planted_expected_signals"])
     forbidden = set(manifest["clean_forbidden_signals"])
 
-    planted_signals = _signals(suite / "planted")
-    clean_signals = _signals(suite / "clean")
+    planted_signals = scan_signals(suite / "planted")
+    clean_signals = scan_signals(suite / "clean")
 
     detected = expected & planted_signals
     missed = sorted(expected - planted_signals)
     false_positives = sorted(forbidden & clean_signals)
+    tracked_signals = sorted(expected | forbidden)
+    per_signal = {
+        signal: {
+            "planted_expected": signal in expected,
+            "planted_detected": signal in planted_signals,
+            "clean_forbidden": signal in forbidden,
+            "clean_detected": signal in clean_signals,
+        }
+        for signal in tracked_signals
+    }
 
     recall = len(detected) / len(expected) if expected else 1.0
     return {
@@ -61,6 +66,7 @@ def score(suite: Path = _SUITE) -> dict:
         "recall": recall,
         "false_positives": false_positives,
         "clean_total_findings": len(clean_signals),
+        "per_signal": per_signal,
         "passed": not missed and not false_positives,
     }
 
@@ -76,6 +82,7 @@ def main() -> int:
         print(f"  MISSED (recall gap): {', '.join(result['missed'])}")
     if result["false_positives"]:
         print(f"  FALSE POSITIVES    : {', '.join(result['false_positives'])}")
+    print(f"tracked signals : {len(result['per_signal'])}")
     print(f"clean-suite signals total : {result['clean_total_findings']} (target 0)")
     print("=" * 48)
     print("PASS" if result["passed"] else "FAIL")

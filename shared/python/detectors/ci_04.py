@@ -7,13 +7,13 @@ from pathlib import Path
 try:
     from ..aci_findings import (
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW,
     )
     from ._helpers import _relative_path, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW,
     )
     from detectors._helpers import _relative_path, _cached_parse  # type: ignore[no-redef]
 
@@ -106,7 +106,7 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
                 ci_id="CI-04",
                 signal="CI04_GOD_CLASS",
-                severity="medium",
+                severity="low",
                 target_file=_relative_path(path, target_root),
                 line=node.lineno,
                 excerpt=f"class {node.name}",
@@ -119,8 +119,8 @@ def scan(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFind
                     "Split the class along its cohesion groups: methods that share no "
                     "instance state belong in separate, focused classes."
                 ),
-                confidence=CONFIDENCE_MEDIUM,
-                priority="P2",
+                confidence=CONFIDENCE_LOW,
+                priority="P3",
                 owner_lane=LANE_NATIVE_STATIC,
                 verification_status=VERIFICATION_EXECUTED,
             )

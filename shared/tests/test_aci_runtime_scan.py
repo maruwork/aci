@@ -253,6 +253,33 @@ def test_full_repo_reports_fixture_findings_without_blocking_gate(tmp_path: Path
     assert report["summary"]["blocker_count"] == 0
 
 
+def test_insecure_http_support_noise_is_suppressed_outside_runtime_and_fixtures(tmp_path: Path) -> None:
+    _write(tmp_path / "shared" / "python" / "runtime.py", 'URL = "http://api.acme-corp.com/v1"\n')
+    _write(tmp_path / "docs" / "roadmap" / "evidence.md", "See `http://api.acme-corp.com/v1`\n")
+    _write(tmp_path / "shared" / "tests" / "test_fixture.py", 'URL = "http://api.acme-corp.com/v1"\n')
+    _write(tmp_path / "shared" / "tools" / "aci_recall_probe.py", 'URL = "http://api.acme-corp.com/v1"\n')
+    _write(tmp_path / "examples" / "fixture.py", 'URL = "http://api.acme-corp.com/v1"\n')
+
+    report = scan_target(
+        tmp_path,
+        "full",
+        "core-only",
+        include_external_analyzers=False,
+        scope_mode="full-repo",
+    )
+
+    http_targets = {
+        item["target_file"]
+        for item in report["findings"]
+        if item["signal"] == "CI14_INSECURE_HTTP"
+    }
+    assert "shared/python/runtime.py" in http_targets
+    assert "examples/fixture.py" in http_targets
+    assert "docs/roadmap/evidence.md" not in http_targets
+    assert "shared/tests/test_fixture.py" not in http_targets
+    assert "shared/tools/aci_recall_probe.py" not in http_targets
+
+
 def test_full_repo_external_lane_ignores_fixture_only_findings(tmp_path: Path, monkeypatch) -> None:
     _write(tmp_path / "src" / "main.py", "x = 1\n")
     _write(tmp_path / "examples" / "fixture.py", "y = 2\n")
@@ -368,7 +395,7 @@ def test_gate_reason_details_list_triggering_findings(tmp_path: Path) -> None:
 def test_report_contains_tool_version(tmp_path: Path) -> None:
     report = clean_startup_report(tmp_path)
 
-    assert report["tool_version"] == "0.1.0"
+    assert report["tool_version"] == "0.1.1"
 
 
 def test_report_includes_review_brief_and_github_summary(tmp_path: Path) -> None:
@@ -422,6 +449,151 @@ def test_full_profile_runs_applicable_polyglot_analyzers(tmp_path: Path, monkeyp
     assert "query.sql" not in skipped
     assert "Dockerfile" not in skipped
     assert "main.tf" not in skipped
+
+
+def test_self_audit_profile_runs_its_default_python_analyzers(tmp_path: Path, monkeypatch) -> None:
+    _write(tmp_path / "shared" / "python" / "main.py", "print('ok')\n")
+    _write(tmp_path / "shared" / "tests" / "test_main.py", "def test_ok():\n    assert True\n")
+
+    calls: list[str] = []
+
+    def _fake_run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> execmod.AnalyzerRunResult:
+        calls.append(analyzer_id)
+        return execmod.AnalyzerRunResult(
+            analyzer_id=analyzer_id,
+            ok=True,
+            exit_code=0,
+            runtime_state="executed",
+            stdout="",
+            stderr="",
+            findings=(),
+        )
+
+    monkeypatch.setattr(scanmod, "run_analyzer", _fake_run_analyzer)
+
+    scan_target(
+        tmp_path,
+        "self-audit",
+        "core-only",
+        include_external_analyzers=True,
+        scope_mode="self-audit",
+    )
+
+    assert calls == ["ruff", "pyflakes", "mypy", "pytest", "semgrep"]
+
+
+def test_ruff_ready_suppresses_overlapping_native_signals(tmp_path: Path, monkeypatch) -> None:
+    _write(tmp_path / "todo.py", "# TODO: remove this\n")
+    _write(tmp_path / "params.py", "def process(name, value, kind, source, target, limit):\n    return None\n")
+    _write(
+        tmp_path / "exceptions.py",
+        "try:\n    pass\nexcept Exception:\n    pass\n",
+    )
+    _write(
+        tmp_path / "race.py",
+        "\n".join([
+            "_counter = 0",
+            "",
+            "def increment():",
+            "    global _counter",
+            "    _counter += 1",
+        ]),
+    )
+    long_lines = ["def process(n):"]
+    for i in range(15):
+        long_lines.append(f"    if n == {i}:")
+        long_lines.append(f"        x = {i}")
+    long_lines += ["    y = 1" for _ in range(55)]
+    _write(tmp_path / "long.py", "\n".join(long_lines))
+
+    monkeypatch.setattr(scanmod, "_readiness_for", lambda analyzer_id: execmod.AnalyzerReadiness(
+        analyzer_id=analyzer_id,
+        executable_path="C:/fake/ruff.exe",
+        availability_state="ready",
+        version_text="ruff 0.4.8",
+        version_ok=True,
+        minimum_version="0.4.8",
+    ))
+    monkeypatch.setattr(scanmod, "run_analyzer", lambda analyzer_id, target_root, next_id: execmod.AnalyzerRunResult(
+        analyzer_id=analyzer_id,
+        ok=True,
+        exit_code=0,
+        runtime_state="executed",
+        stdout="",
+        stderr="",
+        findings=(),
+    ))
+
+    report = scan_target(
+        tmp_path,
+        PROFILE_QUICK_GATE,
+        CORE_ONLY_DOMAIN_ID,
+        include_external_analyzers=True,
+    )
+
+    signals = {item["signal"] for item in report["findings"]}
+    assert "CI03_TODO_HACK" not in signals
+    assert "CI18_PARAMETER_CLUSTER" not in signals
+    assert "CI21_BROAD_EXCEPTION_SWALLOW" not in signals
+    assert "CI26_RACE_HAZARD" not in signals
+    assert "CI02_LONG_FUNCTION" not in signals
+
+
+def test_ruff_unavailable_keeps_overlapping_native_signals(tmp_path: Path, monkeypatch) -> None:
+    _write(tmp_path / "todo.py", "# TODO: remove this\n")
+    _write(tmp_path / "params.py", "def process(name, value, kind, source, target, limit):\n    return None\n")
+    _write(
+        tmp_path / "exceptions.py",
+        "try:\n    pass\nexcept Exception:\n    pass\n",
+    )
+    _write(
+        tmp_path / "race.py",
+        "\n".join([
+            "_counter = 0",
+            "",
+            "def increment():",
+            "    global _counter",
+            "    _counter += 1",
+        ]),
+    )
+    long_lines = ["def process(n):"]
+    for i in range(15):
+        long_lines.append(f"    if n == {i}:")
+        long_lines.append(f"        x = {i}")
+    long_lines += ["    y = 1" for _ in range(55)]
+    _write(tmp_path / "long.py", "\n".join(long_lines))
+
+    monkeypatch.setattr(scanmod, "_readiness_for", lambda analyzer_id: execmod.AnalyzerReadiness(
+        analyzer_id=analyzer_id,
+        executable_path=None,
+        availability_state="not-installed",
+        version_text=None,
+        version_ok=False,
+        minimum_version="0.4.8",
+    ))
+    monkeypatch.setattr(scanmod, "run_analyzer", lambda analyzer_id, target_root, next_id: execmod.AnalyzerRunResult(
+        analyzer_id=analyzer_id,
+        ok=False,
+        exit_code=127,
+        runtime_state="not-installed",
+        stdout="",
+        stderr="missing",
+        findings=(),
+    ))
+
+    report = scan_target(
+        tmp_path,
+        PROFILE_QUICK_GATE,
+        CORE_ONLY_DOMAIN_ID,
+        include_external_analyzers=True,
+    )
+
+    signals = {item["signal"] for item in report["findings"]}
+    assert "CI03_TODO_HACK" in signals
+    assert "CI18_PARAMETER_CLUSTER" in signals
+    assert "CI21_BROAD_EXCEPTION_SWALLOW" in signals
+    assert "CI26_RACE_HAZARD" in signals
+    assert "CI02_LONG_FUNCTION" in signals
 
 
 # ── diff-from tests ────────────────────────────────────────────────────────
