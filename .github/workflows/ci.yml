@@ -26,6 +26,7 @@ jobs:
 
       - name: Install package and analyzer dependencies
         run: |
+          pip install setuptools==79.0.1
           pip install -e .
           pip install -r requirements-dev-analyzers.txt
 
@@ -110,6 +111,7 @@ jobs:
 
       - name: Install package and analyzer dependencies
         run: |
+          pip install setuptools==79.0.1
           pip install -e .
           pip install -r requirements-dev-analyzers.txt
           pip install build
@@ -152,7 +154,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install package
-        run: pip install -e .
+        run: |
+          pip install setuptools==79.0.1
+          pip install -e .
 
       - name: Verify installed package (release gate lane)
         run: aci installed-package-check

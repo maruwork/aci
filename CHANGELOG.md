@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.6] - 2026-06-18
+
+### Fixed
+- pin `setuptools==79.0.1` in CI so editable install and packaging-artifact verification use a consistent hosted build backend
+
+---
+
 ## [0.1.5] - 2026-06-18
 
 ### Fixed
