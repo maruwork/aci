@@ -4,7 +4,7 @@
   "report_format_version": "1.0.0",
   "report_id": "aci-core-sample-001",
   "tool_id": "aci_scan",
-  "tool_version": "0.1.4",
+  "tool_version": "0.1.5",
   "mode": "aci runtime scan",
   "profile_id": "full",
   "domain": "core-only",

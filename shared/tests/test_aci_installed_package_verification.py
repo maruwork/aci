@@ -70,8 +70,8 @@ def test_built_contract_checks_installed_distribution_branch_covers_assets_and_h
 
 
 def test_release_gate_checks_fall_back_to_installed_metadata(monkeypatch, tmp_path: Path) -> None:
-    fake_package_module = SimpleNamespace(__version__="0.1.4")
-    fake_scan_module = SimpleNamespace(ACI_TOOL_VERSION="0.1.4")
+    fake_package_module = SimpleNamespace(__version__="0.1.5")
+    fake_scan_module = SimpleNamespace(ACI_TOOL_VERSION="0.1.5")
     real_import_module = verify.importlib.import_module
     version_calls: list[str] = []
 
@@ -91,7 +91,7 @@ def test_release_gate_checks_fall_back_to_installed_metadata(monkeypatch, tmp_pa
     monkeypatch.setattr(
         verify.importlib.metadata,
         "version",
-        lambda name: version_calls.append(name) or "0.1.4",
+        lambda name: version_calls.append(name) or "0.1.5",
     )
 
     check = verify._release_version_consistency_check(tmp_path)

@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.5] - 2026-06-18
+
+### Fixed
+- make the CI-18 detector's ancestor-docstring helper type-check cleanly under the CI-pinned `mypy==1.10.0`
+
+---
+
 ## [0.1.4] - 2026-06-18
 
 ### Fixed

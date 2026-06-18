@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import re
 from pathlib import Path
+from typing import cast
 
 try:
     from ..aci_findings import (
@@ -38,11 +39,11 @@ def _get_ancestor_docstring(
     parent_map: dict[ast.AST, ast.AST],
     target_type: type,
 ) -> str | None:
-    current = parent_map.get(node)
+    current = cast(ast.AST | None, parent_map.get(node))
     while current is not None:
         if isinstance(current, target_type):
-            return _get_node_docstring(current)
-        current = parent_map.get(current)
+            return _get_node_docstring(cast(ast.AST, current))
+        current = cast(ast.AST | None, parent_map.get(current))
     return None
 
 
