@@ -138,8 +138,8 @@ _ANALYZER_VERSION_POLICY: dict[str, dict[str, str]] = {
     "pytest": {
         "policy": "aci-maintained-pin",
         "ecosystem": "pip",
-        "tested_version": "8.2.2",
-        "install_spec": "pytest==8.2.2",
+        "tested_version": "9.0.3",
+        "install_spec": "pytest==9.0.3",
     },
     "eslint": {
         "policy": "repo-local-pin-required",

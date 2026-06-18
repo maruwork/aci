@@ -24,12 +24,12 @@ def test_pinned_python_analyzer_requirements_match_version_policy() -> None:
     specs = _requirements_specs(REPO_ROOT / "requirements-dev-analyzers.txt")
 
     assert specs == {
-        "pytest": "8.2.2",
+        "pytest": "9.0.3",
         "ruff": "0.4.8",
         "pyflakes": "3.2.0",
         "mypy": "1.10.0",
     }
-    assert policy["pytest"]["install_spec"] == "pytest==8.2.2"
+    assert policy["pytest"]["install_spec"] == "pytest==9.0.3"
     assert policy["ruff"]["install_spec"] == "ruff==0.4.8"
     assert policy["pyflakes"]["install_spec"] == "pyflakes==3.2.0"
     assert policy["mypy"]["install_spec"] == "mypy==1.10.0"

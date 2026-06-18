@@ -365,7 +365,7 @@ def test_ci14_supply_chain_triggers_on_unpinned_requirement(tmp_path: Path) -> N
 
 
 def test_ci14_supply_chain_clean_on_pinned_requirement(tmp_path: Path) -> None:
-    _write(tmp_path / "requirements.txt", "requests==2.31.0\n")
+    _write(tmp_path / "requirements.txt", "requests==2.33.0\n")
     assert "CI14_SUPPLY_CHAIN_DRIFT" not in _signals(_scan(tmp_path))
 
 
