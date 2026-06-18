@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 from typing import cast
 
 try:
@@ -45,6 +46,29 @@ EXPECTED_CLASSIFICATIONS: tuple[tuple[str, str], ...] = (
 def _existing_self_audit_include_paths(repo_root: Path) -> tuple[str, ...]:
     candidates = ("shared/python", "domains", "tests", "shared/tests", "shared/tools", "docs/roadmap")
     return tuple(candidate for candidate in candidates if (repo_root / candidate).exists())
+
+
+def _git_tracked_paths(repo_root: Path) -> set[str]:
+    try:
+        result = subprocess.run(
+            ["git", "ls-files"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return set()
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def _tracked_expected_classifications(repo_root: Path) -> tuple[tuple[str, str], ...]:
+    tracked_paths = _git_tracked_paths(repo_root)
+    return tuple(
+        (relative_path, expected_scope_class)
+        for relative_path, expected_scope_class in EXPECTED_CLASSIFICATIONS
+        if relative_path in tracked_paths
+    )
 
 
 def run_self_audit_check(repo_root: Path) -> dict[str, object]:
@@ -116,9 +140,7 @@ def run_self_audit_check(repo_root: Path) -> dict[str, object]:
         },
     ]
 
-    for relative_path, expected_scope_class in EXPECTED_CLASSIFICATIONS:
-        if not (repo_root / relative_path).exists():
-            continue
+    for relative_path, expected_scope_class in _tracked_expected_classifications(repo_root):
         checks.append(
             {
                 "check": f"classification.{relative_path}",

@@ -395,7 +395,7 @@ def test_gate_reason_details_list_triggering_findings(tmp_path: Path) -> None:
 def test_report_contains_tool_version(tmp_path: Path) -> None:
     report = clean_startup_report(tmp_path)
 
-    assert report["tool_version"] == "0.1.3"
+    assert report["tool_version"] == "0.1.4"
 
 
 def test_report_includes_review_brief_and_github_summary(tmp_path: Path) -> None:

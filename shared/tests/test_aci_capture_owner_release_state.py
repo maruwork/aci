@@ -33,7 +33,7 @@ def test_parse_httpish_output_extracts_status_and_error_message() -> None:
 
 def test_release_blockers_include_pypi_conflict_and_missing_release() -> None:
     snapshot = {
-        "project": {"distribution_name": "ac-inspector", "version": "0.1.3"},
+        "project": {"distribution_name": "ac-inspector", "version": "0.1.4"},
         "pypi": {"exists": True, "latest_version": "1.3"},
         "github": {
             "latest_release": {"status_code": 404},
@@ -44,7 +44,7 @@ def test_release_blockers_include_pypi_conflict_and_missing_release() -> None:
 
     blockers = owner_release_state._release_blockers(snapshot)
 
-    assert "PyPI package name 'ac-inspector' exists but latest version is '1.3', not the local release version '0.1.3'." in blockers
+    assert "PyPI package name 'ac-inspector' exists but latest version is '1.3', not the local release version '0.1.4'." in blockers
     assert "No GitHub latest release object exists yet." in blockers
     assert "GitHub code scanning is not enabled on the hosted repository." in blockers
     assert "GitHub secret scanning is disabled on the hosted repository." in blockers
@@ -52,8 +52,8 @@ def test_release_blockers_include_pypi_conflict_and_missing_release() -> None:
 
 def test_release_blockers_treat_matching_pypi_version_as_release_evidence() -> None:
     snapshot = {
-        "project": {"distribution_name": "ac-inspector", "version": "0.1.3"},
-        "pypi": {"exists": True, "latest_version": "0.1.3"},
+        "project": {"distribution_name": "ac-inspector", "version": "0.1.4"},
+        "pypi": {"exists": True, "latest_version": "0.1.4"},
         "github": {
             "latest_release": {"status_code": 200},
             "code_scanning": {"status_code": 200},
@@ -66,7 +66,7 @@ def test_release_blockers_treat_matching_pypi_version_as_release_evidence() -> N
 
 def test_release_blockers_report_fixed_package_name_not_yet_published() -> None:
     snapshot = {
-        "project": {"distribution_name": "ac-inspector", "version": "0.1.3"},
+        "project": {"distribution_name": "ac-inspector", "version": "0.1.4"},
         "pypi": {"exists": False, "latest_version": None},
         "github": {
             "latest_release": {"status_code": 404},
@@ -83,7 +83,7 @@ def test_release_blockers_report_fixed_package_name_not_yet_published() -> None:
 
 def test_release_readiness_reports_item_statuses_for_current_blockers() -> None:
     snapshot = {
-        "project": {"distribution_name": "ac-inspector", "version": "0.1.3"},
+        "project": {"distribution_name": "ac-inspector", "version": "0.1.4"},
         "pypi": {"exists": False, "latest_version": None},
         "github": {
             "vulnerability_alerts": {"status_code": 204, "ok": True},
@@ -107,8 +107,8 @@ def test_release_readiness_reports_item_statuses_for_current_blockers() -> None:
 
 def test_release_readiness_passes_when_all_snapshot_verifiable_items_and_owner_decisions_are_complete() -> None:
     snapshot = {
-        "project": {"distribution_name": "ac-inspector", "version": "0.1.3"},
-        "pypi": {"exists": True, "latest_version": "0.1.3"},
+        "project": {"distribution_name": "ac-inspector", "version": "0.1.4"},
+        "pypi": {"exists": True, "latest_version": "0.1.4"},
         "github": {
             "vulnerability_alerts": {"status_code": 204, "ok": True},
             "dependabot_alerts": {"status_code": 200, "ok": True},
@@ -141,8 +141,8 @@ def test_build_markdown_summary_renders_key_statuses() -> None:
         {
             "captured_at": "2026-06-18T03:00:00Z",
             "repo_slug": "maruwork/aci",
-            "project": {"distribution_name": "ac-inspector", "version": "0.1.3"},
-            "git": {"tags": ["v0.1.3"]},
+            "project": {"distribution_name": "ac-inspector", "version": "0.1.4"},
+            "git": {"tags": ["v0.1.4"]},
             "github": {
                 "repository": {"visibility": "private", "default_branch": "main"},
                 "vulnerability_alerts": {"status_code": 204, "ok": True},

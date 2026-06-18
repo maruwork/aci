@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.4] - 2026-06-18
+
+### Fixed
+- make self-audit roadmap-evidence verification depend on git-tracked files so CI and local checkouts use the same evidence surface
+
+---
+
 ## [0.1.3] - 2026-06-18
 
 ### Fixed

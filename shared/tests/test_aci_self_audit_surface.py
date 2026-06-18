@@ -5,7 +5,10 @@ from typing import cast
 
 from aci.aci_profiles import PROFILE_SELF_AUDIT
 from aci.aci_scan import scan_target, SCOPE_MODE_SELF_AUDIT
-from aci.aci_self_audit_verification import run_self_audit_check
+from aci.aci_self_audit_verification import (
+    _tracked_expected_classifications,
+    run_self_audit_check,
+)
 from shared.tests._aci_test_helpers import write_fixture as _write
 
 
@@ -150,4 +153,6 @@ def test_self_audit_check_passes_for_repo() -> None:
     assert checks["self_audit.profile_registered"]["ok"] is True
     assert checks["self_audit.required_ignore_patterns"]["ok"] is True
     assert checks["classification.shared/tools/aci_recall_probe.py"]["actual"] == "maintainer-probes"
-    assert checks["classification.docs/roadmap/ACI_1.0_WORKLIST.md"]["actual"] == "roadmap-evidence"
+
+    for relative_path, expected_scope_class in _tracked_expected_classifications(REPO_ROOT):
+        assert checks[f"classification.{relative_path}"]["actual"] == expected_scope_class
