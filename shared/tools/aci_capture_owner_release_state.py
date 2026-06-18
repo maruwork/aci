@@ -198,6 +198,11 @@ def _release_blockers(snapshot: dict[str, Any]) -> list[str]:
     release = snapshot["github"]["latest_release"]
     if release.get("status_code") == 404:
         blockers.append("No GitHub latest release object exists yet.")
+    dependabot_open_alert_count = int(snapshot["github"]["dependabot_alerts"].get("open_alert_count") or 0)
+    if dependabot_open_alert_count > 0:
+        blockers.append(
+            f"GitHub Dependabot still reports {dependabot_open_alert_count} open alert(s) on the hosted repository."
+        )
     if snapshot["github"]["code_scanning"].get("status_code") == 403:
         blockers.append("GitHub code scanning is not enabled on the hosted repository.")
     if snapshot["github"]["secret_scanning"].get("status_code") == 404:
@@ -219,6 +224,21 @@ def _owner_action(reason: str) -> dict[str, str]:
     }
 
 
+def _dependabot_alert_counts(entry: dict[str, Any]) -> dict[str, int]:
+    json_body = entry.get("json_body")
+    if not isinstance(json_body, list):
+        return {}
+    counts: dict[str, int] = {}
+    for alert in json_body:
+        if not isinstance(alert, dict):
+            continue
+        state = alert.get("state")
+        if not isinstance(state, str) or not state:
+            continue
+        counts[state] = counts.get(state, 0) + 1
+    return counts
+
+
 def _load_owner_evidence(path: Path | None) -> dict[str, Any]:
     if path is None:
         return {}
@@ -238,6 +258,11 @@ def _release_readiness(snapshot: dict[str, Any]) -> dict[str, Any]:
     pypi_matches_local = pypi.get("exists") is True and pypi.get("latest_version") == project.get("version")
     trusted_publisher_registered = owner_evidence.get("trusted_publisher_registered") is True
     public_history_policy_decided = owner_evidence.get("public_history_policy_decided") is True
+    dependabot_reachable = (
+        github["vulnerability_alerts"].get("status_code") == 204
+        and bool(github["dependabot_alerts"].get("ok"))
+    )
+    dependabot_open_alert_count = int(github["dependabot_alerts"].get("open_alert_count") or 0)
     item_statuses = {
         "35_trusted_publisher_oidc": _complete_when(
             trusted_publisher_registered,
@@ -250,10 +275,13 @@ def _release_readiness(snapshot: dict[str, Any]) -> dict[str, Any]:
             incomplete="GitHub code scanning and/or secret scanning are not enabled on the hosted repository.",
         ),
         "37_dependabot_alerts": _complete_when(
-            github["vulnerability_alerts"].get("status_code") == 204
-            and bool(github["dependabot_alerts"].get("ok")),
-            complete="Vulnerability alerts are enabled and Dependabot alerts are reachable.",
-            incomplete="Vulnerability alerts or Dependabot alerts are not proven reachable.",
+            dependabot_reachable and dependabot_open_alert_count == 0,
+            complete="Vulnerability alerts are enabled, Dependabot alerts are reachable, and no open Dependabot alerts remain.",
+            incomplete=(
+                "Vulnerability alerts or Dependabot alerts are not proven reachable."
+                if not dependabot_reachable
+                else f"Dependabot alerts remain open on the hosted repository ({dependabot_open_alert_count} open)."
+            ),
         ),
         "38_public_history_policy": _complete_when(
             public_history_policy_decided,
@@ -292,6 +320,12 @@ def capture_owner_release_state(
         raise RuntimeError(f"GitHub repository lookup failed for {repo_slug}: {repo_response.error_summary or repo_response.body}")
     default_branch = str(repo_response.json_body.get("default_branch") or "main")
 
+    dependabot_alerts = _gh_api(repo_root, f"repos/{repo_slug}/dependabot/alerts?per_page=100", include_headers=True).__dict__
+    dependabot_counts = _dependabot_alert_counts(dependabot_alerts)
+    dependabot_alerts["alert_counts"] = dependabot_counts
+    dependabot_alerts["open_alert_count"] = dependabot_counts.get("open", 0)
+    dependabot_alerts["fixed_alert_count"] = dependabot_counts.get("fixed", 0)
+
     snapshot: dict[str, Any] = {
         "captured_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "repo_slug": repo_slug,
@@ -304,7 +338,7 @@ def capture_owner_release_state(
                 "html_url": repo_response.json_body.get("html_url"),
             },
             "vulnerability_alerts": _gh_api(repo_root, f"repos/{repo_slug}/vulnerability-alerts", include_headers=True).__dict__,
-            "dependabot_alerts": _gh_api(repo_root, f"repos/{repo_slug}/dependabot/alerts?per_page=1", include_headers=True).__dict__,
+            "dependabot_alerts": dependabot_alerts,
             "code_scanning": _gh_api(repo_root, f"repos/{repo_slug}/code-scanning/alerts?per_page=1", include_headers=True).__dict__,
             "secret_scanning": _gh_api(repo_root, f"repos/{repo_slug}/secret-scanning/alerts?per_page=1", include_headers=True).__dict__,
             "branch_protection": _gh_api(repo_root, f"repos/{repo_slug}/branches/{default_branch}/protection", include_headers=True).__dict__,
@@ -343,6 +377,11 @@ def build_markdown_summary(snapshot: dict[str, Any]) -> str:
     pypi_state = snapshot["pypi"]
     blockers = snapshot.get("external_blockers", [])
     owner_evidence = snapshot.get("owner_evidence", {})
+    dependabot_open = snapshot["github"]["dependabot_alerts"].get("open_alert_count")
+    dependabot_fixed = snapshot["github"]["dependabot_alerts"].get("fixed_alert_count")
+    dependabot_suffix = ""
+    if dependabot_open is not None or dependabot_fixed is not None:
+        dependabot_suffix = f" (open={dependabot_open or 0}, fixed={dependabot_fixed or 0})"
     lines = [
         "# Owner-Gated Release Snapshot",
         "",
@@ -357,7 +396,7 @@ def build_markdown_summary(snapshot: dict[str, Any]) -> str:
         "## Hosted State",
         "",
         f"- Vulnerability alerts: `{_status_summary(snapshot['github']['vulnerability_alerts'])}`",
-        f"- Dependabot alerts: `{_status_summary(snapshot['github']['dependabot_alerts'])}`",
+        f"- Dependabot alerts: `{_status_summary(snapshot['github']['dependabot_alerts'])}{dependabot_suffix}`",
         f"- Code scanning: `{_status_summary(snapshot['github']['code_scanning'])}`",
         f"- Secret scanning: `{_status_summary(snapshot['github']['secret_scanning'])}`",
         f"- Branch protection: `{_status_summary(snapshot['github']['branch_protection'])}`",

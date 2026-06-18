@@ -37,6 +37,7 @@ def test_release_blockers_include_pypi_conflict_and_missing_release() -> None:
         "pypi": {"exists": True, "latest_version": "1.3"},
         "github": {
             "latest_release": {"status_code": 404},
+            "dependabot_alerts": {"open_alert_count": 2},
             "code_scanning": {"status_code": 403},
             "secret_scanning": {"status_code": 404},
         },
@@ -46,6 +47,7 @@ def test_release_blockers_include_pypi_conflict_and_missing_release() -> None:
 
     assert "PyPI package name 'ac-inspector' exists but latest version is '1.3', not the local release version '0.1.8'." in blockers
     assert "No GitHub latest release object exists yet." in blockers
+    assert "GitHub Dependabot still reports 2 open alert(s) on the hosted repository." in blockers
     assert "GitHub code scanning is not enabled on the hosted repository." in blockers
     assert "GitHub secret scanning is disabled on the hosted repository." in blockers
 
@@ -56,6 +58,7 @@ def test_release_blockers_treat_matching_pypi_version_as_release_evidence() -> N
         "pypi": {"exists": True, "latest_version": "0.1.8"},
         "github": {
             "latest_release": {"status_code": 200},
+            "dependabot_alerts": {"open_alert_count": 0},
             "code_scanning": {"status_code": 200},
             "secret_scanning": {"status_code": 200},
         },
@@ -70,6 +73,7 @@ def test_release_blockers_report_fixed_package_name_not_yet_published() -> None:
         "pypi": {"exists": False, "latest_version": None},
         "github": {
             "latest_release": {"status_code": 404},
+            "dependabot_alerts": {"open_alert_count": 0},
             "code_scanning": {"status_code": 200},
             "secret_scanning": {"status_code": 200},
         },
@@ -87,7 +91,7 @@ def test_release_readiness_reports_item_statuses_for_current_blockers() -> None:
         "pypi": {"exists": False, "latest_version": None},
         "github": {
             "vulnerability_alerts": {"status_code": 204, "ok": True},
-            "dependabot_alerts": {"status_code": 200, "ok": True},
+            "dependabot_alerts": {"status_code": 200, "ok": True, "open_alert_count": 1},
             "latest_release": {"status_code": 404, "ok": False},
             "code_scanning": {"status_code": 403, "ok": False},
             "secret_scanning": {"status_code": 404, "ok": False},
@@ -98,7 +102,8 @@ def test_release_readiness_reports_item_statuses_for_current_blockers() -> None:
     readiness = owner_release_state._release_readiness(snapshot)
 
     assert readiness["decision"] == "blocked"
-    assert readiness["item_statuses"]["37_dependabot_alerts"]["state"] == "complete"
+    assert readiness["item_statuses"]["37_dependabot_alerts"]["state"] == "incomplete"
+    assert readiness["item_statuses"]["37_dependabot_alerts"]["reason"] == "Dependabot alerts remain open on the hosted repository (1 open)."
     assert readiness["item_statuses"]["36_hosted_code_and_secret_scanning"]["state"] == "incomplete"
     assert readiness["item_statuses"]["39_first_public_release"]["state"] == "incomplete"
     assert readiness["item_statuses"]["35_trusted_publisher_oidc"]["state"] == "incomplete"
@@ -111,7 +116,7 @@ def test_release_readiness_passes_when_all_snapshot_verifiable_items_and_owner_d
         "pypi": {"exists": True, "latest_version": "0.1.8"},
         "github": {
             "vulnerability_alerts": {"status_code": 204, "ok": True},
-            "dependabot_alerts": {"status_code": 200, "ok": True},
+            "dependabot_alerts": {"status_code": 200, "ok": True, "open_alert_count": 0},
             "latest_release": {"status_code": 200, "ok": True},
             "code_scanning": {"status_code": 200, "ok": True},
             "secret_scanning": {"status_code": 200, "ok": True},
@@ -146,7 +151,7 @@ def test_build_markdown_summary_renders_key_statuses() -> None:
             "github": {
                 "repository": {"visibility": "private", "default_branch": "main"},
                 "vulnerability_alerts": {"status_code": 204, "ok": True},
-                "dependabot_alerts": {"status_code": 200, "ok": True},
+                "dependabot_alerts": {"status_code": 200, "ok": True, "open_alert_count": 0, "fixed_alert_count": 7},
                 "code_scanning": {"status_code": 403, "ok": False, "error_summary": "disabled"},
                 "secret_scanning": {"status_code": 404, "ok": False, "error_summary": "disabled"},
                 "branch_protection": {"status_code": 403, "ok": False, "error_summary": "upgrade required"},
@@ -172,12 +177,30 @@ def test_build_markdown_summary_renders_key_statuses() -> None:
 
     assert "# Owner-Gated Release Snapshot" in markdown
     assert "- Distribution name: `ac-inspector`" in markdown
+    assert "- Dependabot alerts: `200 (open=0, fixed=7)`" in markdown
     assert "- Code scanning: `403 (disabled)`" in markdown
     assert "- Exists: `False`" in markdown
     assert "- Matches local version: `False`" in markdown
     assert "- Decision: `blocked`" in markdown
     assert "35_trusted_publisher_oidc" in markdown
     assert "- example blocker" in markdown
+
+
+def test_dependabot_alert_counts_groups_states() -> None:
+    counts = owner_release_state._dependabot_alert_counts(
+        {
+            "json_body": [
+                {"state": "fixed"},
+                {"state": "fixed"},
+                {"state": "open"},
+                {"state": "dismissed"},
+                {"state": None},
+                {},
+            ]
+        }
+    )
+
+    assert counts == {"fixed": 2, "open": 1, "dismissed": 1}
 
 
 def test_fetch_pypi_project_tolerates_network_unavailability(monkeypatch) -> None:
