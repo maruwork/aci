@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.2] - 2026-06-18
+
+### Fixed
+- add explicit `shared` and `shared.tests` package markers so CI can import `shared.tests._aci_test_helpers` reliably during pytest collection on GitHub runners
+
+---
+
 ## [0.1.1] - 2026-06-18
 
 ### Added
