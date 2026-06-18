@@ -51,7 +51,7 @@ import re
 import subprocess
 from typing import cast, Protocol
 
-ACI_TOOL_VERSION = "0.1.6"
+ACI_TOOL_VERSION = "0.1.7"
 
 try:
     from .detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY

@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.7] - 2026-06-18
+
+### Fixed
+- restore `contents: read` on the tag-only release gate so `actions/checkout@v4` can fetch this private repository before Trusted Publisher release steps run
+
+---
+
 ## [0.1.6] - 2026-06-18
 
 ### Fixed

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ac-inspector"
-version = "0.1.6"
+version = "0.1.7"
 description = "Auto Code Inspector: Python-first code audit and structure inspection"
 readme = "README.md"
 requires-python = ">=3.11"
