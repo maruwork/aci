@@ -90,6 +90,11 @@ _EXECUTION_READY_ANALYZERS: frozenset[str] = frozenset({
     "tsc",
     "shellcheck",
     "sqlfluff",
+    # Deep dependency/vulnerability scanners with a single JSON-on-stdout model.
+    # gitleaks (file-report output) and codeql (requires a prebuilt database) do
+    # not fit the bounded single-invocation contract and stay availability-only.
+    "osv-scanner",
+    "trivy",
 })
 _ANALYZER_VERSION_POLICY: dict[str, dict[str, str]] = {
     "codeql": {
@@ -652,6 +657,104 @@ def _sqlfluff_command(target_root: Path) -> list[str]:
     return ["sqlfluff", "lint", "--format", "json", str(target_root)]
 
 
+def _osv_scanner_command(target_root: Path) -> list[str]:
+    # osv-scanner writes its JSON report to stdout with --format json.
+    return ["osv-scanner", "--format", "json", "-r", str(target_root)]
+
+
+def _trivy_command(target_root: Path) -> list[str]:
+    # trivy fs scans a directory tree for vulnerable dependencies; --quiet keeps
+    # the progress UI off stdout so only the JSON report remains.
+    return ["trivy", "fs", "--quiet", "--format", "json", str(target_root)]
+
+
+def _external_relative(filename: str, target_root: Path) -> str:
+    path = Path(filename)
+    try:
+        return path.resolve().relative_to(target_root.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix() if filename else ""
+
+
+def _osv_scanner_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    payload = json.loads(stdout or "{}")
+    for result in payload.get("results", []) or []:
+        source_path = (result.get("source") or {}).get("path", "")
+        relative = _external_relative(source_path, target_root)
+        for package in result.get("packages", []) or []:
+            info = package.get("package", {}) or {}
+            name = info.get("name", "?")
+            version = info.get("version", "?")
+            for vuln in package.get("vulnerabilities", []) or []:
+                vuln_id = vuln.get("id", "unknown")
+                summary = vuln.get("summary") or vuln.get("details") or vuln_id
+                findings.append(
+                    build_finding(
+                        finding_id=f"F-EXT-{next_id + len(findings):04d}",
+                        ci_id="CI-14",
+                        signal="EXT_OSV_SCANNER",
+                        severity="high",
+                        confidence="medium",
+                        actor_label=LANE_EXTERNAL_ANALYZER,
+                        triage_state="review-first",
+                        priority="P1",
+                        fixability="owner-decision",
+                        baseline_status="new",
+                        waiver_status="none",
+                        lifecycle_state="open",
+                        owner_lane=LANE_EXTERNAL_ANALYZER,
+                        target_file=relative,
+                        line=1,
+                        excerpt=f"{name} {version}: {vuln_id}",
+                        reason=f"{name} {version} is affected by {vuln_id}: {str(summary)[:160]}",
+                        evidence_ref=f"osv-scanner:{vuln_id}",
+                        recommended_action="Upgrade or patch the dependency to a version without the reported advisory.",
+                        verification_status=VERIFICATION_EXECUTED,
+                    )
+                )
+    return findings
+
+
+def _trivy_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    payload = json.loads(stdout or "{}")
+    for result in payload.get("Results", []) or []:
+        relative = _external_relative(result.get("Target", ""), target_root)
+        for vuln in result.get("Vulnerabilities", []) or []:
+            vuln_id = vuln.get("VulnerabilityID", "unknown")
+            pkg_name = vuln.get("PkgName", "?")
+            version = vuln.get("InstalledVersion", "?")
+            raw_severity = (vuln.get("Severity") or "MEDIUM").lower()
+            severity = "high" if raw_severity in ("high", "critical") else "medium"
+            title = vuln.get("Title") or vuln.get("Description") or vuln_id
+            findings.append(
+                build_finding(
+                    finding_id=f"F-EXT-{next_id + len(findings):04d}",
+                    ci_id="CI-14",
+                    signal="EXT_TRIVY",
+                    severity=severity,
+                    confidence="medium",
+                    actor_label=LANE_EXTERNAL_ANALYZER,
+                    triage_state="review-first",
+                    priority="P1" if severity == "high" else "P2",
+                    fixability="owner-decision",
+                    baseline_status="new",
+                    waiver_status="none",
+                    lifecycle_state="open",
+                    owner_lane=LANE_EXTERNAL_ANALYZER,
+                    target_file=relative,
+                    line=1,
+                    excerpt=f"{pkg_name} {version}: {vuln_id}",
+                    reason=f"{pkg_name} {version} is affected by {vuln_id}: {str(title)[:160]}",
+                    evidence_ref=f"trivy:{vuln_id}",
+                    recommended_action="Upgrade the affected dependency or apply the vendor-provided fix.",
+                    verification_status=VERIFICATION_EXECUTED,
+                )
+            )
+    return findings
+
+
 def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
     """Return the subprocess command for directory-level analyzers.
 
@@ -670,414 +773,23 @@ def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
         return _eslint_command(target_root)
     if analyzer_id == "sqlfluff":
         return _sqlfluff_command(target_root)
+    if analyzer_id == "osv-scanner":
+        return _osv_scanner_command(target_root)
+    if analyzer_id == "trivy":
+        return _trivy_command(target_root)
     return None
 
 
-def _ruff_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    for item in payload:
-        filename = Path(item["filename"])
-        try:
-            relative = filename.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filename.as_posix()
-        location = item.get("location", {})
-        line = location.get("row")
-        code = item.get("code", "")
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_ruff_ci_id(code),
-                signal="EXT_RUFF",
-                severity=_ruff_severity(code),
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=line,
-                excerpt=item.get("message", ""),
-                reason=item.get("message", "ruff reported a finding"),
-                evidence_ref=f"ruff:{code or 'unknown'}",
-                recommended_action="Review the analyzer message and align code or rule configuration.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _pyflakes_findings(stdout: str, stderr: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in (stdout + "\n" + stderr).splitlines():
-        match = re.match(r"(.+?):(\d+):\s*(.+)", raw_line.strip())
-        if not match:
-            continue
-        filename, line_text, message = match.groups()
-        path = Path(filename)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_pyflakes_ci_id(message),
-                signal="EXT_PYFLAKES",
-                severity="medium",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=int(line_text),
-                excerpt=message,
-                reason=message,
-                evidence_ref="pyflakes",
-                recommended_action="Review the analyzer message and align code or imports accordingly.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _mypy_findings(stdout: str, stderr: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in (stdout + "\n" + stderr).splitlines():
-        match = re.match(r"(.+?):(\d+):(?:(\d+):)?\s*(error|note):\s*(.+)", raw_line.strip())
-        if not match:
-            continue
-        filename, line_text, _column_text, level_text, message = match.groups()
-        path = Path(filename)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        code_match = re.search(r"\[([^\]]+)\]$", message.strip())
-        mypy_code = code_match.group(1) if code_match else None
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id="CI-23",
-                signal="EXT_MYPY",
-                severity="high" if level_text == "error" else "low",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=int(line_text),
-                excerpt=message,
-                reason=message,
-                evidence_ref=f"mypy:{mypy_code}" if mypy_code else "mypy",
-                recommended_action="Align declared and actual interfaces so the type contract stays explicit.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _pytest_findings(stdout: str, stderr: str, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in stdout.splitlines():
-        stripped = raw_line.strip()
-        if not stripped.startswith("FAILED "):
-            continue
-        message = stripped.removeprefix("FAILED ").strip()
-        target_file = message.split("::", 1)[0]
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id="CI-09",
-                signal="EXT_PYTEST",
-                severity="high",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=target_file,
-                line=None,
-                excerpt=message,
-                reason=message,
-                evidence_ref="pytest",
-                recommended_action="Inspect the failing test and restore the broken behavior or fixture contract.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    if findings:
-        return findings
-    if "failed" in stdout.lower():
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id:04d}",
-                ci_id="CI-09",
-                signal="EXT_PYTEST",
-                severity="high",
-                confidence="low",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file="pytest-session",
-                line=None,
-                excerpt="pytest reported failing tests",
-                reason="pytest reported failing tests but the failure lines were not individually parsed.",
-                evidence_ref="pytest",
-                recommended_action="Open the pytest session output and repair the failing test or fixture contract.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _eslint_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    for file_result in payload:
-        filepath = Path(file_result["filePath"])
-        try:
-            relative = filepath.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filepath.as_posix()
-        for msg in file_result.get("messages", []):
-            rule_id = msg.get("ruleId")
-            severity_level = msg.get("severity", 1)
-            findings.append(
-                build_finding(
-                    finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                    ci_id=_eslint_ci_id(rule_id),
-                    signal="EXT_ESLINT",
-                    severity="high" if severity_level == 2 else "medium",
-                    confidence="medium",
-                    actor_label=LANE_EXTERNAL_ANALYZER,
-                    triage_state="review-first",
-                    priority="P2",
-                    fixability="owner-decision",
-                    baseline_status="new",
-                    waiver_status="none",
-                    lifecycle_state="open",
-                    owner_lane=LANE_EXTERNAL_ANALYZER,
-                    target_file=relative,
-                    line=msg.get("line"),
-                    excerpt=msg.get("message", ""),
-                    reason=msg.get("message", "eslint reported a finding"),
-                    evidence_ref=f"eslint:{rule_id or 'unknown'}",
-                    recommended_action="Review the ESLint rule violation and align code or rule configuration.",
-                    verification_status=VERIFICATION_EXECUTED,
-                )
-            )
-    return findings
-
-
-def _semgrep_ci_id(check_id: str) -> str:
-    lowered = check_id.lower()
-    if ".ci22." in lowered:
-        return "CI-22"
-    if ".ci23." in lowered:
-        return "CI-23"
-    if ".ci26." in lowered:
-        return "CI-26"
-    if ".ci21." in lowered:
-        return "CI-21"
-    return "CI-14"
-
-
-def _semgrep_severity(value: str) -> str:
-    severity = value.upper()
-    if severity == "ERROR":
-        return "high"
-    if severity == "INFO":
-        return "low"
-    return "medium"
-
-
-def _semgrep_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "{}")
-    for item in payload.get("results", []):
-        raw_path = item.get("path", "")
-        if not raw_path:
-            continue
-        path = Path(raw_path)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        extra = item.get("extra", {})
-        check_id = str(item.get("check_id", "semgrep.unknown"))
-        message = str(extra.get("message", "semgrep reported a finding"))
-        line = ((item.get("start") or {}) if isinstance(item.get("start"), dict) else {}).get("line")
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_semgrep_ci_id(check_id),
-                signal="EXT_SEMGREP",
-                severity=_semgrep_severity(str(extra.get("severity", "WARNING"))),
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1" if _semgrep_severity(str(extra.get("severity", "WARNING"))) == "high" else "P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=line if isinstance(line, int) else None,
-                excerpt=message,
-                reason=message,
-                evidence_ref=f"semgrep:{check_id}",
-                recommended_action="Review the Semgrep finding and either harden the code path or narrow the rule scope.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _tsc_findings(stdout: str, stderr: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in (stdout + "\n" + stderr).splitlines():
-        match = _TSC_LINE_PATTERN.match(raw_line.strip())
-        if not match:
-            continue
-        filename, line_text, _col, ts_code, message = match.groups()
-        path = Path(filename)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id="CI-23",
-                signal="EXT_TSC",
-                severity="high",
-                confidence="high",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=int(line_text),
-                excerpt=message,
-                reason=f"{ts_code}: {message}",
-                evidence_ref=f"tsc:{ts_code}",
-                recommended_action="Resolve the TypeScript type error to maintain type contract integrity.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _shellcheck_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    for item in payload:
-        filepath = Path(item["file"])
-        try:
-            relative = filepath.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filepath.as_posix()
-        level = item.get("level", "style")
-        code = item.get("code", 0)
-        message = item.get("message", "")
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_shellcheck_ci_id(level),
-                signal="EXT_SHELLCHECK",
-                severity="high" if level == "error" else "medium",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=item.get("line"),
-                excerpt=message,
-                reason=message,
-                evidence_ref=f"shellcheck:SC{code}",
-                recommended_action="Review the ShellCheck finding and fix the shell script issue.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _sqlfluff_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    file_list = payload.get("files", payload) if isinstance(payload, dict) else payload
-    for file_result in file_list:
-        raw_path = file_result.get("filepath", "")
-        if not raw_path:
-            continue
-        filepath = Path(raw_path)
-        try:
-            relative = filepath.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filepath.as_posix()
-        for violation in file_result.get("violations", []):
-            code = violation.get("code", "")
-            description = violation.get("description", "")
-            is_warning = violation.get("warning", False)
-            findings.append(
-                build_finding(
-                    finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                    ci_id="CI-02",
-                    signal="EXT_SQLFLUFF",
-                    severity="low" if is_warning else "medium",
-                    confidence="medium",
-                    actor_label=LANE_EXTERNAL_ANALYZER,
-                    triage_state="review-first",
-                    priority="P2",
-                    fixability="owner-decision",
-                    baseline_status="new",
-                    waiver_status="none",
-                    lifecycle_state="open",
-                    owner_lane=LANE_EXTERNAL_ANALYZER,
-                    target_file=relative,
-                    line=violation.get("line_no"),
-                    excerpt=description,
-                    reason=description,
-                    evidence_ref=f"sqlfluff:{code}",
-                    recommended_action="Review the SQL style violation and align with SQL best practices.",
-                    verification_status=VERIFICATION_EXECUTED,
-                )
-            )
-    return findings
+try:
+    from ._analyzer_parsers import (
+        _ruff_findings, _pyflakes_findings, _mypy_findings, _pytest_findings,
+        _eslint_findings, _semgrep_findings, _tsc_findings, _shellcheck_findings, _sqlfluff_findings,
+    )
+except ImportError:  # pragma: no cover - direct script/module import path
+    from _analyzer_parsers import (  # type: ignore[no-redef]
+        _ruff_findings, _pyflakes_findings, _mypy_findings, _pytest_findings,
+        _eslint_findings, _semgrep_findings, _tsc_findings, _shellcheck_findings, _sqlfluff_findings,
+    )
 
 
 def _resolve_analyzer_command(analyzer_id: str, target_root: Path) -> tuple[list[str] | None, int, bool]:
@@ -1181,6 +893,10 @@ def _parse_analyzer_findings(
             return _shellcheck_findings(stdout, target_root, next_id), True
         if analyzer_id == "sqlfluff":
             return _sqlfluff_findings(stdout, target_root, next_id), True
+        if analyzer_id == "osv-scanner":
+            return _osv_scanner_findings(stdout, target_root, next_id), True
+        if analyzer_id == "trivy":
+            return _trivy_findings(stdout, target_root, next_id), True
     except json.JSONDecodeError:
         return [], False
     return [], True

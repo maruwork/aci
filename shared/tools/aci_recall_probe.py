@@ -97,6 +97,18 @@ PROBES: list[tuple[str, str, dict[str, str], str | None]] = [
     ("CI14 genuine plaintext endpoint", "CI14_INSECURE_HTTP",
      {"s.py": "URL='http://api.acme-corp.com/v1'\ndef e(): return URL\n"}, None),
 
+    # ── Import-alias / nested-call resolution (KL-ACI-CI14-CI25-IMPORT-ALIAS) ──
+    # These are the obfuscation forms that used to evade the literal-name match.
+    # They are untagged: the name-resolution pass MUST detect them.
+    ("CI14 aliased pickle import", "CI14_UNSAFE_DESERIALIZATION",
+     {"s.py": "import pickle as p\ndef f(b): return p.loads(b)\n"}, None),
+    ("CI14 from-import pickle loads", "CI14_UNSAFE_DESERIALIZATION",
+     {"s.py": "from pickle import loads\ndef f(b): return loads(b)\n"}, None),
+    ("CI14 subprocess shell=True with nested call arg", "CI14_SUBPROCESS_SHELL_TRUE",
+     {"s.py": "import subprocess\ndef f(make): subprocess.run(make(), shell=True)\n"}, None),
+    ("CI25 aliased datetime.datetime.now", "CI25_ENVIRONMENT_DRIFT",
+     {"d.py": "import datetime as dt\ndef s(): return dt.datetime.now()\n"}, None),
+
     # ── CI-04 god class: composition ─────────────────────────────────────
     ("CI04 god class via many methods, two clusters", "CI04_GOD_CLASS",
      {"g.py": "class M:\n    def __init__(self):\n        self.a=0\n        self.b=0\n"
@@ -126,10 +138,16 @@ def run() -> dict:
         rows.append({"label": label, "expected": expected, "detected": detected,
                      "known_limit": known_limit})
     # A probe tagged known-limit is EXPECTED to miss; an untagged miss is a gap.
+    # The pass/fail gate stays on untagged probes (intentional limits must not
+    # fail CI), but known-limit coverage is REPORTED, not silently dropped from
+    # the headline — so a regression that newly breaks a documented limit, or a
+    # limit that quietly starts passing, stays visible.
     real = [r for r in rows if r["known_limit"] is None]
     detected_real = [r for r in real if r["detected"]]
     gaps = [r for r in real if not r["detected"]]
-    surprises = [r for r in rows if r["known_limit"] and r["detected"]]
+    known = [r for r in rows if r["known_limit"] is not None]
+    known_detected = [r for r in known if r["detected"]]
+    surprises = known_detected  # known-limit probes that unexpectedly DID detect
     return {
         "rows": rows,
         "real_total": len(real),
@@ -137,6 +155,9 @@ def run() -> dict:
         "recall": len(detected_real) / len(real) if real else 1.0,
         "gaps": gaps,
         "surprises": surprises,
+        "known_total": len(known),
+        "known_detected": len(known_detected),
+        "known_coverage": len(known_detected) / len(known) if known else 0.0,
     }
 
 
@@ -153,10 +174,16 @@ def main() -> int:
     print("=" * 60)
     print(f"recall on real (untagged) variants: {res['real_detected']}/{res['real_total']} "
           f"({res['recall'] * 100:.0f}%)")
+    print(f"known-limit coverage (reported, not gated): {res['known_detected']}/{res['known_total']} "
+          f"detected — the rest are documented, intentional misses")
     if res["gaps"]:
         print("RECALL GAPS:")
         for g in res["gaps"]:
             print(f"  - {g['label']} ({g['expected']})")
+    if res["surprises"]:
+        print("KNOWN-LIMIT PROBES THAT NOW DETECT (revisit the documented limit):")
+        for s in res["surprises"]:
+            print(f"  - {s['label']} ({s['expected']})")
     return 1 if res["gaps"] else 0
 
 

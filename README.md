@@ -14,9 +14,9 @@ aci scan --target .
 
 ACI is a Python code inspection tool focused on cross-file structure:
 
-- **Native static detectors** — 17 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
+- **Native static detectors** — 16 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
 - **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest, semgrep, eslint, tsc, shellcheck, and sqlfluff when installed and applicable
-- **Cataloged opt-in security analyzers** — tracks `codeql`, `gitleaks`, `osv-scanner`, and `trivy` as availability-only lanes until a consuming repository wires them locally
+- **Deep security analyzers** — `osv-scanner` and `trivy` are execution-ready (the shelf builds the command, runs a bounded invocation, and normalizes their JSON into CI-14 findings when the tool is installed); `codeql` (needs a prebuilt database) and `gitleaks` (file-report output model) remain cataloged availability-only lanes until a consuming repository wires them locally
 - **Optional domain packs** — add project-specific vocabulary and exclusion rules without touching core
 
 `ACI` provides a normalized finding format, configurable severity gate, suppression/baseline/waiver contract, SARIF and annotation output, and a machine-readable report schema.
@@ -62,7 +62,7 @@ ACI is **Python-first**. Be aware of the scope before adopting:
 
 | Lane | Languages | Notes |
 |---|---|---|
-| Native static detectors | **Python** | All 17 native CI-ID detectors parse Python (AST). This is the only language with full native coverage. |
+| Native static detectors | **Python** | 16 native CI-ID detectors target Python — most parse the Python AST, with a few text-based exceptions listed in the next row. Python is the only language with native structural coverage. CI-19 (Feature Envy) is not a core-native detector: it is a domain-pack-only text/regex check (see Product Boundary). |
 | Language-agnostic text scans | supported text/code files | A few detectors are text-based rather than Python-AST-based: plaintext-secret and insecure-HTTP (CI-14), and TODO/FIXME/HACK markers (CI-03). Supported suffixes include `.py`, `.js`, `.jsx`, `.ts`, `.tsx`, `.go`, `.rs`, `.java`, `.cs`, `.kt`, `.kts`, `.sh`, `.bash`, `.sql`, `.tf`, `.hcl`, `.md`, `.txt`, `.toml`, `.yml`, `.yaml`, and `.json`, plus `Dockerfile` / `Containerfile`. |
 | External analyzers (opt-in) | Python, JS/TS, Shell, SQL, polyglot source | ruff / pyflakes / mypy / pytest (Python); semgrep (bundled baseline polyglot rules); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL). `full`, `build-preflight`, and `build-review` automatically run the analyzers that match files/config found in the target; `quick-gate` keeps the lighter Python pair (`ruff`, `pyflakes`). TypeScript type checking via `tsc` requires a `tsconfig.json` in the target root. |
 
@@ -76,7 +76,7 @@ The completed common-shelf product claim is intentionally bounded:
 - Python gets the full native structural lane
 - non-Python files get text scans plus applicable external analyzers
 - `CI-08`, `CI-11`, and `CI-24` remain human-judgment-only
-- deep security analyzers such as `codeql`, `gitleaks`, `osv-scanner`, and `trivy` stay opt-in/cataloged until the common shelf owns execution-ready adapters
+- deep dependency/vulnerability scanners `osv-scanner` and `trivy` now have execution-ready adapters (opt-in install, JSON normalized into CI-14); `codeql` and `gitleaks` stay opt-in/cataloged until the common shelf owns adapters for their database-build / file-report execution models
 - `CI-19` is only substantively complete when a downstream domain pack provides its vocabulary and tests
 - CI-14 supply-chain drift currently covers `requirements*.txt`, `pyproject.toml` dependency surfaces, `package.json`, `Dockerfile` / `Containerfile`, and GitHub workflow `uses:` refs
 

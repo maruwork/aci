@@ -29,7 +29,7 @@ ACI can:
 - normalize evidence into one finding format
 - separate baseline / waiver / suppression / ranking
 - return human-readable and machine-readable reports
-- provide full native structural/code-smell coverage for Python targets
+- provide bounded native structural/code-smell coverage for Python targets, with blind spots documented in `shared/python/aci_known_limits.py`
 
 ACI does not:
 

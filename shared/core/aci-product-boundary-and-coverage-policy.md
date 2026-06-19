@@ -18,7 +18,7 @@ external-analyzer evidence lanes**.
 
 The common shelf may claim:
 
-- full native structural/code-smell coverage only for Python
+- bounded native structural/code-smell coverage (with documented blind spots) only for Python
 - language-agnostic text-scan coverage where the detector is text-based
 - bounded external-analyzer integration when the listed analyzer is execution-ready
 - optional domain-pack extension without changing core authority
@@ -75,10 +75,14 @@ The completed common-shelf security posture is a **bounded executable baseline**
 
 This means:
 
-- `semgrep` is part of the common executable product surface
-- `codeql`, `gitleaks`, `osv-scanner`, and `trivy` are product-visible catalog
-  surfaces, but not part of the completed common executable baseline unless the
-  common shelf later gains execution-ready support for them
+- `semgrep`, `osv-scanner`, and `trivy` are part of the common executable
+  product surface (execution-ready adapters that normalize their output into
+  CI-14 findings when the tool is installed)
+- `codeql` and `gitleaks` are product-visible catalog surfaces, but not part of
+  the completed common executable baseline: their execution models (CodeQL needs
+  a prebuilt database; gitleaks writes a file report rather than JSON-on-stdout)
+  do not fit the bounded single-invocation contract, so they stay opt-in until
+  the shelf gains adapters for those models
 
 ## 4. Domain-Pack Completion Rule For CI-19
 

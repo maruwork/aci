@@ -14,13 +14,13 @@ try:
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         SEVERITY_CRITICAL, CONFIDENCE_HIGH, CONFIDENCE_MEDIUM,
     )
-    from ._helpers import _relative_path, _line_excerpt, _line_number_from_index, _cached_parse
+    from ._helpers import _relative_path, _line_excerpt, _line_number_from_index, _cached_parse, ImportResolver
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
         SEVERITY_CRITICAL, CONFIDENCE_HIGH, CONFIDENCE_MEDIUM,
     )
-    from detectors._helpers import _relative_path, _line_excerpt, _line_number_from_index, _cached_parse  # type: ignore[no-redef]
+    from detectors._helpers import _relative_path, _line_excerpt, _line_number_from_index, _cached_parse, ImportResolver  # type: ignore[no-redef]
 
 SIGNALS_EVAL_EXEC: frozenset[str] = frozenset({"CI14_DYNAMIC_CODE_EXECUTION"})
 SIGNALS_SUBPROCESS: frozenset[str] = frozenset({"CI14_SUBPROCESS_SHELL_TRUE"})
@@ -30,10 +30,6 @@ SIGNALS_DESERIALIZATION: frozenset[str] = frozenset({"CI14_UNSAFE_DESERIALIZATIO
 SIGNALS_UNSAFE_YAML: frozenset[str] = frozenset({"CI14_UNSAFE_YAML_LOAD"})
 SIGNALS_SUPPLY_CHAIN: frozenset[str] = frozenset({"CI14_SUPPLY_CHAIN_DRIFT"})
 
-_SUBPROCESS_SHELL_TRUE_PATTERN = re.compile(
-    r"\bsubprocess\.(run|Popen|call|check_call|check_output)\s*\([^)]*shell\s*=\s*True",
-    re.DOTALL,
-)
 _SECRET_NAME_PATTERN = re.compile(r"(?i)(api[_-]?key|secret|token|password)")
 _SECRET_VALUE_PATTERN = re.compile(r"^[A-Za-z0-9_\-]{8,}$")
 # Regex fallback for non-Python text/config files (.json/.yaml/.toml/...), which
@@ -149,12 +145,43 @@ def scan_eval_exec(path: Path, text: str, target_root: Path, next_id: int) -> li
     return findings
 
 
+_SUBPROCESS_SHELL_METHODS: frozenset[str] = frozenset({
+    "run", "Popen", "call", "check_call", "check_output",
+})
+
+
+def _call_has_shell_true(node: ast.Call) -> bool:
+    for kw in node.keywords:
+        if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
+            return True
+    return False
+
+
 def scan_subprocess_shell_true(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
     if path.suffix.lower() != ".py":
         return findings
-    for match in _SUBPROCESS_SHELL_TRUE_PATTERN.finditer(text):
-        line = _line_number_from_index(text, match.start())
+    try:
+        tree = _cached_parse(text)
+    except SyntaxError:
+        return findings
+    # AST + import resolution: handles aliases (import subprocess as sp), from
+    # imports (from subprocess import run), and nested-call arguments
+    # (subprocess.run(build(), shell=True)) that the old [^)]* regex missed.
+    resolver = ImportResolver(tree)
+    imported = resolver.imported_roots()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not _call_has_shell_true(node):
+            continue
+        qn = resolver.call_qualname(node)
+        if qn is None:
+            continue
+        parts = qn.split(".")
+        if len(parts) < 2 or parts[0] != "subprocess" or parts[0] not in imported:
+            continue
+        if parts[-1] not in _SUBPROCESS_SHELL_METHODS:
+            continue
+        line = node.lineno
         findings.append(
             build_finding(
                 finding_id=f"F-SCAN-{next_id + len(findings):04d}",
@@ -212,13 +239,6 @@ def scan_plaintext_secrets(path: Path, text: str, target_root: Path, next_id: in
     return findings
 
 
-def _attribute_call_name(node: ast.Call) -> tuple[str | None, str | None]:
-    if not isinstance(node.func, ast.Attribute):
-        return None, None
-    owner = node.func.value.id if isinstance(node.func.value, ast.Name) else None
-    return owner, node.func.attr
-
-
 def scan_unsafe_deserialization(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
     if path.suffix.lower() != ".py":
@@ -229,11 +249,21 @@ def scan_unsafe_deserialization(path: Path, text: str, target_root: Path, next_i
         return findings
     dangerous_owners = {"pickle", "dill", "marshal", "shelve"}
     dangerous_methods = {"load", "loads", "open"}
+    # Import resolution so aliases (import pickle as p; p.loads) and from imports
+    # (from pickle import loads; loads(...)) resolve to the same canonical name.
+    resolver = ImportResolver(tree)
+    imported = resolver.imported_roots()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        owner, attr = _attribute_call_name(node)
-        if owner not in dangerous_owners or attr not in dangerous_methods:
+        qn = resolver.call_qualname(node)
+        if qn is None:
+            continue
+        parts = qn.split(".")
+        if len(parts) < 2:
+            continue
+        owner, attr = parts[0], parts[-1]
+        if owner not in dangerous_owners or attr not in dangerous_methods or owner not in imported:
             continue
         line = node.lineno
         findings.append(
@@ -273,11 +303,16 @@ def scan_unsafe_yaml_load(path: Path, text: str, target_root: Path, next_id: int
         tree = _cached_parse(text)
     except SyntaxError:
         return findings
+    resolver = ImportResolver(tree)
+    imported = resolver.imported_roots()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        owner, attr = _attribute_call_name(node)
-        if owner != "yaml" or attr != "load":
+        qn = resolver.call_qualname(node)
+        if qn is None:
+            continue
+        parts = qn.split(".")
+        if len(parts) < 2 or parts[0] != "yaml" or parts[-1] != "load" or "yaml" not in imported:
             continue
         loader_kw = next((kw.value for kw in node.keywords if kw.arg == "Loader"), None)
         if loader_kw is not None and _is_safe_yaml_loader(loader_kw):

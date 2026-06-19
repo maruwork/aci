@@ -82,6 +82,58 @@ _KNOWN_LIMITS: tuple[dict[str, object], ...] = (
             "shared/tools/aci_recall_probe.py",
         ],
     },
+    {
+        "limit_id": "KL-ACI-CI14-CI25-IMPORT-ALIAS",
+        "ci_ids": ["CI-14", "CI-25"],
+        "signal_ids": [
+            "CI14_UNSAFE_DESERIALIZATION",
+            "CI14_SUBPROCESS_SHELL_TRUE",
+            "CI25_ENVIRONMENT_DRIFT",
+        ],
+        "kind": "blind-spot",
+        "title": "Variable-aliased and dynamic import forms stay unresolved",
+        "summary": (
+            "CI-14/CI-25 now run an import/name-resolution pass, so static "
+            "`import x as y`, `from x import y`, attribute-module, and "
+            "nested-call argument forms are resolved to their canonical name and "
+            "detected. The residual blind spot is non-import indirection: "
+            "variable aliasing (`m = pickle; m.loads()`), dynamic "
+            "`importlib.import_module` lookups, and relative imports, which are "
+            "intentionally not tracked to avoid speculative dataflow."
+        ),
+        "operator_guidance": (
+            "Static import aliasing is covered. Do not rely on CI-14/CI-25 for "
+            "values reached through an intermediate variable or a dynamic import; "
+            "use dedicated SAST tooling for those indirection forms."
+        ),
+        "source_refs": [
+            "docs/AUDIT_2026-06-19_GENERAL_PURPOSE_READINESS.md",
+            "shared/python/detectors/ci_14.py",
+            "shared/python/detectors/ci_25.py",
+        ],
+    },
+    {
+        "limit_id": "KL-ACI-CI14-TAINT-INTRAPROCEDURAL",
+        "ci_ids": ["CI-14"],
+        "signal_ids": ["CI14_TAINTED_FLOW"],
+        "kind": "coverage-boundary",
+        "title": "Taint flow is intra-procedural only",
+        "summary": (
+            "CI14_TAINTED_FLOW tracks untrusted input to a dangerous sink within "
+            "a single function, through assignments, f-strings, concatenation, "
+            "and string methods. It does not follow taint across function calls, "
+            "through container elements, or through object attributes."
+        ),
+        "operator_guidance": (
+            "A clean CI14_TAINTED_FLOW result does not rule out injection that "
+            "flows through helper functions or data structures; use a full "
+            "taint-tracking SAST tool for inter-procedural coverage."
+        ),
+        "source_refs": [
+            "docs/CI_REFERENCE.md",
+            "shared/python/detectors/ci_14_taint.py",
+        ],
+    },
 )
 
 

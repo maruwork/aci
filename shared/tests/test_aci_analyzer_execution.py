@@ -160,6 +160,56 @@ def test_ruff_output_is_normalized_into_findings(tmp_path: Path) -> None:
     assert findings[0].target_file == "sample.py"
 
 
+def test_osv_scanner_and_trivy_are_execution_ready() -> None:
+    rows = {entry["analyzer_id"]: entry for entry in execmod.analyzer_availability()}
+    assert rows["osv-scanner"]["execution_support_level"] == "execution-ready"
+    assert rows["trivy"]["execution_support_level"] == "execution-ready"
+    # gitleaks and codeql intentionally stay availability-only (different exec model).
+    assert rows["gitleaks"]["execution_support_level"] == "availability-check-only"
+    assert rows["codeql"]["execution_support_level"] == "availability-check-only"
+
+
+def test_osv_scanner_output_is_normalized_into_findings(tmp_path: Path) -> None:
+    stdout = json.dumps({
+        "results": [{
+            "source": {"path": str(tmp_path / "requirements.txt"), "type": "lockfile"},
+            "packages": [{
+                "package": {"name": "requests", "version": "2.19.0", "ecosystem": "PyPI"},
+                "vulnerabilities": [{"id": "GHSA-x4qr-2fvf-3mr5", "summary": "CRLF injection"}],
+            }],
+        }]
+    })
+    findings = execmod._osv_scanner_findings(stdout, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_OSV_SCANNER"
+    assert findings[0].ci_id == "CI-14"
+    assert findings[0].target_file == "requirements.txt"
+    assert findings[0].evidence_ref == "osv-scanner:GHSA-x4qr-2fvf-3mr5"
+
+
+def test_trivy_output_is_normalized_into_findings(tmp_path: Path) -> None:
+    stdout = json.dumps({
+        "Results": [{
+            "Target": str(tmp_path / "package-lock.json"),
+            "Vulnerabilities": [{
+                "VulnerabilityID": "CVE-2021-44228",
+                "PkgName": "log4j", "InstalledVersion": "2.14.0",
+                "Severity": "CRITICAL", "Title": "Remote code execution",
+            }],
+        }]
+    })
+    findings = execmod._trivy_findings(stdout, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_TRIVY"
+    assert findings[0].severity == "high"
+    assert findings[0].evidence_ref == "trivy:CVE-2021-44228"
+
+
+def test_osv_scanner_empty_output_is_safe(tmp_path: Path) -> None:
+    assert execmod._osv_scanner_findings("", tmp_path, 0) == []
+    assert execmod._trivy_findings("{}", tmp_path, 0) == []
+
+
 def test_mypy_output_is_normalized_into_findings(tmp_path: Path) -> None:
     stdout = f"{tmp_path / 'sample.py'}:5: error: Incompatible return value type\n"
     findings = execmod._mypy_findings(stdout, "", tmp_path, 20)
