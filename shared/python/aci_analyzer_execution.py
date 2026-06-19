@@ -297,9 +297,14 @@ def _version_probe_command(analyzer_id: str) -> list[str]:
 
 
 def _probe_version(analyzer_id: str, executable_path: str) -> tuple[str | None, bool]:
+    # Run the probe via the resolved executable path so npm shims (eslint.CMD,
+    # tsc.CMD) work on Windows, where subprocess(shell=False) cannot launch a bare
+    # `.CMD` name. On POSIX the resolved path is identical to the bare name.
+    probe = _version_probe_command(analyzer_id)
+    probe = [executable_path, *probe[1:]]
     try:
         completed = subprocess.run(
-            _version_probe_command(analyzer_id),
+            probe,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -643,6 +648,10 @@ def _execute_analyzer_command(
     *,
     cwd: Path,
 ) -> tuple[subprocess.CompletedProcess[str] | None, AnalyzerRunResult | None]:
+    # Resolve the tool to its real path so npm shims (.CMD on Windows) launch
+    # under subprocess(shell=False); on POSIX this is a no-op.
+    resolved = shutil.which(command[0]) or command[0]
+    command = [resolved, *command[1:]]
     try:
         completed = subprocess.run(
             command,
@@ -718,6 +727,10 @@ def _evaluate_analyzer_outcome(analyzer_id: str, exit_code: int, parse_ok: bool)
     if analyzer_id == "pytest" and exit_code == 5:
         ok_exit_codes.add(5)
         runtime_state = "no-tests-collected"
+    if analyzer_id == "tsc":
+        # tsc exits 2 when it finds type errors — those are the findings, not a
+        # runtime failure.
+        ok_exit_codes.add(2)
     exit_ok = exit_code in ok_exit_codes
     ok = exit_ok and parse_ok
     if not ok:

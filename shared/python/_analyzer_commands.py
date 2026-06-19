@@ -91,8 +91,41 @@ _SEMGREP_SKIP_SEGMENTS: frozenset[str] = frozenset({
 })
 
 
-def _eslint_command(target_root: Path) -> list[str]:
-    return ["eslint", "--format", "json", str(target_root)]
+_ESLINT_SOURCE_SUFFIXES: frozenset[str] = frozenset({".js", ".mjs", ".cjs", ".jsx"})
+_ESLINT_TARGET_CONFIG_NAMES: frozenset[str] = frozenset({
+    "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs",
+    ".eslintrc", ".eslintrc.js", ".eslintrc.cjs", ".eslintrc.json", ".eslintrc.yml", ".eslintrc.yaml",
+})
+
+
+def _eslint_rule_path() -> Path:
+    return Path(__file__).resolve().parent / "package_assets" / "analyzers" / "aci-eslint.config.mjs"
+
+
+def _has_eslint_source(target_root: Path) -> bool:
+    return any(
+        p.is_file() and p.suffix.lower() in _ESLINT_SOURCE_SUFFIXES
+        and not any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
+        for p in target_root.rglob("*")
+    )
+
+
+def _has_target_eslint_config(target_root: Path) -> bool:
+    return any((target_root / name).is_file() for name in _ESLINT_TARGET_CONFIG_NAMES)
+
+
+def _eslint_command(target_root: Path) -> list[str] | None:
+    # eslint v9+ uses a flat config and refuses to lint a bare directory path
+    # ("all files are ignored"); it must be given glob patterns and run with the
+    # target as cwd. Respect a target's own eslint config; otherwise use ACI's
+    # bundled baseline (core rules only, no plugins).
+    if not _has_eslint_source(target_root):
+        return None
+    command = ["eslint", "--format", "json", "--no-error-on-unmatched-pattern"]
+    if not _has_target_eslint_config(target_root):
+        command += ["--config", str(_eslint_rule_path())]
+    command += ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx"]
+    return command
 
 
 def _semgrep_rule_path() -> Path:

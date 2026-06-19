@@ -161,3 +161,32 @@ def test_trivy_lane_runs_and_normalizes_dependency_findings(tmp_path: Path) -> N
     vulns = [f for f in result.findings if f.signal == "EXT_TRIVY"]
     assert vulns, "expected trivy to flag a known-vulnerable dependency"
     assert vulns[0].ci_id == "CI-14"
+
+
+@pytest.mark.skipif(shutil.which("eslint") is None, reason="eslint not installed")
+def test_eslint_lane_runs_with_bundled_config(tmp_path: Path) -> None:
+    # eslint is profile-default; run the lane directly to prove it lints JS with
+    # ACI's bundled flat config (eslint v9+ refuses a bare directory path).
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "app.js").write_text("var x = 1\nfunction f(){ return eval('1') }\n", encoding="utf-8")
+    result = run_analyzer("eslint", tmp_path, 0)
+
+    assert result.runtime_state == "executed", f"eslint did not run: {result.stderr!r}"
+    js = [f for f in result.findings if f.signal == "EXT_ESLINT"]
+    assert js, "expected eslint findings in app.js"
+    assert any(f.ci_id == "CI-14" for f in js), "expected the no-eval finding mapped to CI-14"
+
+
+@pytest.mark.skipif(shutil.which("tsc") is None, reason="tsc not installed")
+def test_tsc_lane_treats_type_errors_as_findings(tmp_path: Path) -> None:
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "tsconfig.json").write_text('{"compilerOptions":{"strict":true,"noEmit":true}}\n', encoding="utf-8")
+    (tmp_path / "a.ts").write_text("const x: number = 'str';\n", encoding="utf-8")
+    result = run_analyzer("tsc", tmp_path, 0)
+
+    # tsc exits 2 on type errors; the adapter must treat that as executed-with-findings.
+    assert result.runtime_state == "executed", f"tsc did not run cleanly: exit={result.exit_code} {result.stderr!r}"
+    ts = [f for f in result.findings if f.signal == "EXT_TSC"]
+    assert ts, "expected tsc to report the type error as a finding"

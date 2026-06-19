@@ -43,6 +43,7 @@ aci = "shared/python"
 [tool.setuptools.package-data]
 aci = [
   "package_assets/analyzers/*.yml",
+  "package_assets/analyzers/*.mjs",
   "package_assets/fixtures/*.json",
   "package_assets/report/examples/*.md",
   "package_assets/report/examples/*.json"

@@ -31,11 +31,16 @@ jobs:
           pip install -r requirements-dev-analyzers.txt
 
       - name: Install multi-language analyzers (Linux)
-        # semgrep (multi-language SAST/taint) and sqlfluff (SQL) are not in the
-        # pinned pure-Python requirements set, but installing them on Linux makes
-        # the multi-language external-analyzer e2e tests actually run, proving the
-        # orchestration end-to-end rather than only at parser level.
-        run: pip install semgrep sqlfluff
+        # These analyzers are not in the pinned pure-Python requirements set, but
+        # installing them on Linux makes the multi-language external-analyzer e2e
+        # tests actually run, proving the orchestration end-to-end rather than only
+        # at parser level. semgrep (multi-language SAST), sqlfluff (SQL) via pip;
+        # eslint + tsc (JS/TS) via npm. shellcheck is preinstalled on ubuntu-latest.
+        # Binary-only tools (gitleaks/trivy/osv-scanner) are proven locally; their
+        # e2e tests skip here until a release-binary install step is added.
+        run: |
+          pip install semgrep sqlfluff
+          npm install -g eslint typescript
 
       - name: Run test suite
         run: pytest shared/tests/ -v
