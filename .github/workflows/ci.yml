@@ -30,6 +30,13 @@ jobs:
           pip install -e .
           pip install -r requirements-dev-analyzers.txt
 
+      - name: Install multi-language analyzers (Linux)
+        # semgrep (multi-language SAST/taint) and sqlfluff (SQL) are not in the
+        # pinned pure-Python requirements set, but installing them on Linux makes
+        # the multi-language external-analyzer e2e tests actually run, proving the
+        # orchestration end-to-end rather than only at parser level.
+        run: pip install semgrep sqlfluff
+
       - name: Run test suite
         run: pytest shared/tests/ -v
 

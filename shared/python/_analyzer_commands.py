@@ -156,7 +156,9 @@ def _shellcheck_command(shell_files: list[str]) -> list[str]:
 
 
 def _sqlfluff_command(target_root: Path) -> list[str]:
-    return ["sqlfluff", "lint", "--format", "json", str(target_root)]
+    # sqlfluff requires an explicit dialect; ansi is the portable baseline (a
+    # target can override it via its own .sqlfluff config, which sqlfluff reads).
+    return ["sqlfluff", "lint", "--format", "json", "--dialect", "ansi", str(target_root)]
 
 
 def _osv_scanner_command(target_root: Path) -> list[str]:

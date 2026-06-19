@@ -83,3 +83,38 @@ def test_external_lane_off_yields_no_external_findings(tmp_path: Path) -> None:
     report = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)
     external = [f for f in report["findings"] if f.get("owner_lane") == "external-analyzer"]
     assert external == [], f"external lane must be silent when disabled; got {external!r}"
+
+
+@pytest.mark.skipif(shutil.which("semgrep") is None, reason="semgrep not installed")
+def test_semgrep_lane_produces_multi_language_findings(tmp_path: Path) -> None:
+    # The core general-purpose claim: a non-Python file is actually scanned and
+    # normalized. semgrep's bundled baseline rules flag eval() in JavaScript.
+    (tmp_path / "app.js").write_text("function run(code){\n  return eval(code);\n}\n", encoding="utf-8")
+    (tmp_path / "svc.py").write_text("import pickle\n\n\ndef load(b):\n    return pickle.loads(b)\n", encoding="utf-8")
+
+    report = _scan_with_external(tmp_path)
+
+    runs = {r["analyzer_id"]: r for r in report.get("external_analyzer_runs", [])}
+    assert runs.get("semgrep", {}).get("runtime_state") == "executed", f"semgrep did not run: {runs.get('semgrep')!r}"
+
+    semgrep_findings = [f for f in report["findings"] if f.get("signal") == "EXT_SEMGREP"]
+    js_findings = [f for f in semgrep_findings if f["target_file"].endswith("app.js")]
+    assert js_findings, f"expected a semgrep finding in app.js (JavaScript); got {semgrep_findings!r}"
+    assert js_findings[0].get("owner_lane") == "external-analyzer"
+    assert js_findings[0].get("ci_id", "").startswith("CI-")
+
+
+@pytest.mark.skipif(shutil.which("sqlfluff") is None, reason="sqlfluff not installed")
+def test_sqlfluff_lane_runs_and_normalizes_sql_findings(tmp_path: Path) -> None:
+    (tmp_path / "query.sql").write_text("SELECT a,b FROM mytable WHERE x=1\n", encoding="utf-8")
+
+    report = _scan_with_external(tmp_path)
+
+    runs = {r["analyzer_id"]: r for r in report.get("external_analyzer_runs", [])}
+    # Regression guard: sqlfluff needs an explicit --dialect or it exits with a
+    # user error (runtime-failure) instead of linting.
+    assert runs.get("sqlfluff", {}).get("runtime_state") == "executed", f"sqlfluff did not run: {runs.get('sqlfluff')!r}"
+
+    sql_findings = [f for f in report["findings"] if f.get("signal") == "EXT_SQLFLUFF"]
+    assert sql_findings, "expected sqlfluff findings on query.sql"
+    assert all(f.get("owner_lane") == "external-analyzer" for f in sql_findings)
