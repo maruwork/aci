@@ -118,3 +118,46 @@ def test_sqlfluff_lane_runs_and_normalizes_sql_findings(tmp_path: Path) -> None:
     sql_findings = [f for f in report["findings"] if f.get("signal") == "EXT_SQLFLUFF"]
     assert sql_findings, "expected sqlfluff findings on query.sql"
     assert all(f.get("owner_lane") == "external-analyzer" for f in sql_findings)
+
+
+@pytest.mark.skipif(shutil.which("gitleaks") is None, reason="gitleaks not installed")
+def test_gitleaks_lane_detects_and_normalizes_secret(tmp_path: Path) -> None:
+    # gitleaks is opt-in, so run the lane directly to prove the file-report
+    # adapter works: command -> execute -> read JSON report -> normalized finding.
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "settings.py").write_text(
+        'github_pat = "ghp_16C7e42F292c6912E7710c838347Ae178B4a"\n', encoding="utf-8"
+    )
+    result = run_analyzer("gitleaks", tmp_path, 0)
+
+    assert result.runtime_state == "executed", f"gitleaks did not run cleanly: {result.stderr!r}"
+    secrets = [f for f in result.findings if f.signal == "EXT_GITLEAKS"]
+    assert secrets, "expected gitleaks to flag the committed GitHub token"
+    assert secrets[0].ci_id == "CI-14"
+    assert secrets[0].target_file.endswith("settings.py")
+
+
+@pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
+def test_shellcheck_lane_runs_and_normalizes_shell_findings(tmp_path: Path) -> None:
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "x.sh").write_text('#!/bin/sh\nfoo=1\necho "$bar"\nif [ $foo = 1 ]; then echo hi; fi\n', encoding="utf-8")
+    result = run_analyzer("shellcheck", tmp_path, 0)
+
+    assert result.runtime_state == "executed", f"shellcheck did not run: {result.stderr!r}"
+    sh = [f for f in result.findings if f.signal == "EXT_SHELLCHECK"]
+    assert sh, "expected shellcheck findings on x.sh"
+
+
+@pytest.mark.skipif(shutil.which("trivy") is None, reason="trivy not installed")
+def test_trivy_lane_runs_and_normalizes_dependency_findings(tmp_path: Path) -> None:
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "requirements.txt").write_text("requests==2.19.0\n", encoding="utf-8")
+    result = run_analyzer("trivy", tmp_path, 0)
+
+    assert result.runtime_state == "executed", f"trivy did not run: {result.stderr!r}"
+    vulns = [f for f in result.findings if f.signal == "EXT_TRIVY"]
+    assert vulns, "expected trivy to flag a known-vulnerable dependency"
+    assert vulns[0].ci_id == "CI-14"

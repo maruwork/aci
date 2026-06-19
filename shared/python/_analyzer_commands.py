@@ -199,11 +199,12 @@ def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
 
 def _gitleaks_command(target_root: Path, report_path: Path) -> list[str]:
     # gitleaks writes its JSON report to a file (not stdout), so the runner gives
-    # it an explicit report path and reads it back. --exit-code 0 keeps a leak
-    # finding from being reported as a process failure.
+    # it an explicit report path and reads it back. Modern gitleaks (8.19+) uses
+    # the `dir` subcommand to scan a plain directory tree; the old `detect`
+    # assumed a git repo. --exit-code 0 keeps a leak finding from being reported
+    # as a process failure.
     return [
-        "gitleaks", "detect",
-        "--source", str(target_root),
+        "gitleaks", "dir", str(target_root),
         "--no-banner",
         "--report-format", "json",
         "--report-path", str(report_path),
