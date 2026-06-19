@@ -22,7 +22,6 @@ from typing import cast
 import json
 import re
 import subprocess
-import sys
 from shutil import which
 
 try:
@@ -426,246 +425,76 @@ def analyzer_execution_support_levels() -> dict[str, str]:
     return dict(ANALYZER_EXECUTION_SUPPORT_LEVELS)
 
 
-_RUFF_PREFIX_TO_CI: dict[str, str] = {
-    "F":   "CI-07",  # pyflakes — unused imports, dead names
-    "UP":  "CI-07",  # pyupgrade — deprecated / obsolete patterns
-    "ERA": "CI-07",  # eradicate — commented-out dead code
-    "I":   "CI-13",  # isort — import ordering / dependency surface
-    "D":   "CI-15",  # pydocstyle — documentation rot
-    "ANN": "CI-23",  # annotations — type contract drift
-    "S":   "CI-14",  # bandit — security neglect
-    "PT":  "CI-09",  # pytest style — test rot
-    "DTZ": "CI-25",  # timezone-naive — nondeterminism
-    "E":   "CI-02",  # pycodestyle style — spaghetti / readability
-    "W":   "CI-02",
-    "C":   "CI-02",  # mccabe complexity
-    "N":   "CI-02",  # naming
-    "SIM": "CI-02",  # simplify
-    "PL":  "CI-02",  # pylint
-    "B":   "CI-21",  # flake8-bugbear — e.g. B904 broken exception chain (raise without `from e`)
-    "TRY": "CI-21",  # flake8-tryceratops — e.g. TRY400 missing logging.exception
-    "BLE": "CI-21",  # flake8-blind-except — BLE001 broad except (same as native CI-21)
-    "TD":  "CI-03",  # flake8-todos — patchwork markers (same as native CI-03)
-    "FIX": "CI-03",  # flake8-fixme — patchwork markers
-    "PLR": "CI-02",  # pylint refactor (complexity-ish) — default bucket
-    "PLW": "CI-02",  # pylint warning — default bucket
-    "PLC": "CI-02",
-}
 
 # Specific ruff codes whose category is a different native CI-ID than their
 # prefix bucket. Checked before the prefix lookup so native/external dedup lines
 # up (see _deduplicate_findings in aci_scan).
-_RUFF_CODE_TO_CI: dict[str, str] = {
-    "PLR0913": "CI-18",  # too-many-arguments -> data clump
-    "PLW0603": "CI-26",  # global-statement -> race hazard
-}
-
-_RUFF_PREFIX_PATTERN = re.compile(r"^([A-Z]+)")
 
 
-def _ruff_ci_id(code: str) -> str:
-    if code in _RUFF_CODE_TO_CI:
-        return _RUFF_CODE_TO_CI[code]
-    m = _RUFF_PREFIX_PATTERN.match(code or "")
-    if not m:
-        return "CI-21"
-    return _RUFF_PREFIX_TO_CI.get(m.group(1), "CI-21")
 
 
-def _ruff_severity(code: str) -> str:
-    m = _RUFF_PREFIX_PATTERN.match(code or "")
-    return "high" if m and m.group(1) == "S" else "medium"
 
 
-def _pyflakes_ci_id(message: str) -> str:
-    msg = message.lower()
-    if "imported but unused" in msg or "redefinition of unused" in msg or "assigned to but never used" in msg:
-        return "CI-07"
-    if "undefined name" in msg:
-        return "CI-21"
-    return "CI-07"
 
 
-def _ruff_command(target_root: Path) -> list[str]:
-    return ["ruff", "check", str(target_root), "--output-format", "json"]
 
-
-def _pyflakes_command(target_root: Path) -> list[str]:
-    return ["pyflakes", str(target_root)]
-
-
-_PYTHON_ANALYZER_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
-    ".claude", "archive", "common", "workspace",
-})
-_PYTEST_CANDIDATE_PATHS: tuple[str, ...] = ("shared/tests", "tests", "test", "spec", "specs")
-
-
-def _relative_parts(path: Path, target_root: Path) -> tuple[str, ...]:
-    try:
-        return path.relative_to(target_root).parts
-    except ValueError:
-        return path.parts
-
-
-def _find_python_files(target_root: Path) -> list[str]:
-    return sorted(
-        str(p)
-        for p in target_root.rglob("*.py")
-        if p.is_file() and not any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
+try:
+    from ._analyzer_commands import (
+        _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
+        _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
+    )
+except ImportError:  # pragma: no cover - direct script/module import path
+    from _analyzer_commands import (  # type: ignore[no-redef]
+        _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
+        _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
     )
 
 
-def _mypy_command(target_root: Path, python_files: list[str]) -> list[str]:
-    command = [
-        "mypy",
-        "--namespace-packages",
-        "--explicit-package-bases",
-        "--hide-error-context",
-        "--no-color-output",
-        "--show-column-numbers",
-        "--no-error-summary",
-    ]
-    workspace_dir = target_root / "workspace"
-    if workspace_dir.is_dir():
-        command.extend(["--cache-dir", str(workspace_dir / ".aci-mypy-cache")])
-    command.extend(python_files)
-    return command
 
 
-def _pytest_targets(target_root: Path) -> list[str]:
-    targets = [str(target_root / candidate) for candidate in _PYTEST_CANDIDATE_PATHS if (target_root / candidate).exists()]
-    return targets or [str(target_root)]
 
 
-def _pytest_command(target_root: Path) -> list[str]:
-    command = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"]
-    workspace_dir = target_root / "workspace"
-    if workspace_dir.is_dir():
-        command.extend(["--ignore", str(workspace_dir)])
-        command.extend(["--basetemp", str(workspace_dir / ".aci-pytest-tmp")])
-    command.extend(_pytest_targets(target_root))
-    return command
 
 
-_ESLINT_RULE_PREFIX_MAP: tuple[tuple[str, str], ...] = (
-    ("@typescript-eslint/", "CI-23"),
-    ("import/",             "CI-13"),
-    ("security/",          "CI-14"),
-    ("no-unused",          "CI-07"),
-    ("no-unreachable",     "CI-07"),
-    ("no-empty",           "CI-21"),
-    ("no-eval",            "CI-14"),
-    ("no-new-func",        "CI-14"),
-    ("no-implied-eval",    "CI-14"),
-)
-
-_SEMGREP_SUPPORTED_SUFFIXES: frozenset[str] = frozenset({
-    ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".cs", ".kt", ".kts",
-    ".sh", ".bash", ".yaml", ".yml", ".json", ".toml", ".tf", ".hcl",
-})
-_SEMGREP_SUPPORTED_NAMES: frozenset[str] = frozenset({"Dockerfile", "Containerfile"})
-_SEMGREP_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
-    ".claude", "archive", "common", "workspace",
-})
 
 
-def _eslint_ci_id(rule_id: str | None) -> str:
-    if not rule_id:
-        return "CI-02"
-    for prefix, ci_id in _ESLINT_RULE_PREFIX_MAP:
-        if rule_id.startswith(prefix):
-            return ci_id
-    return "CI-02"
 
 
-def _eslint_command(target_root: Path) -> list[str]:
-    return ["eslint", "--format", "json", str(target_root)]
 
 
-def _semgrep_rule_path() -> Path:
-    return Path(__file__).resolve().parent / "package_assets" / "analyzers" / "aci-semgrep-rules.yml"
 
 
-def _has_semgrep_source(target_root: Path, ignored_paths: tuple[Path, ...] = ()) -> bool:
-    ignored = {path.resolve() for path in ignored_paths}
-    return any(
-        path.is_file()
-        and path.resolve() not in ignored
-        and path.name not in {".semgrepignore"}
-        and not any(seg in _SEMGREP_SKIP_SEGMENTS for seg in _relative_parts(path, target_root))
-        and (path.suffix.lower() in _SEMGREP_SUPPORTED_SUFFIXES or path.name in _SEMGREP_SUPPORTED_NAMES)
-        for path in target_root.rglob("*")
-    )
 
 
-def _semgrep_command(target_root: Path) -> list[str] | None:
-    rule_path = _semgrep_rule_path()
-    if not rule_path.is_file() or not _has_semgrep_source(target_root, ignored_paths=(rule_path,)):
-        return None
-    return [
-        "semgrep",
-        "scan",
-        "--config",
-        str(rule_path),
-        "--json",
-        "--quiet",
-        "--disable-version-check",
-        str(target_root),
-    ]
 
 
-_TSC_LINE_PATTERN = re.compile(r"(.+?)\((\d+),(\d+)\):\s*(?:error|warning)\s*(TS\d+):\s*(.+)")
 
 
-def _find_tsconfig(target_root: Path) -> Path | None:
-    tsconfig = target_root / "tsconfig.json"
-    return tsconfig if tsconfig.is_file() else None
 
 
-def _tsc_command(tsconfig_path: Path) -> list[str]:
-    return ["tsc", "--noEmit", "--pretty", "false", "-p", str(tsconfig_path)]
 
 
-_SHELLCHECK_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-})
 
 
-def _shellcheck_ci_id(level: str) -> str:
-    return "CI-21" if level in ("error", "warning") else "CI-02"
 
 
-def _find_shell_files(target_root: Path) -> list[str]:
-    return sorted(
-        str(p)
-        for p in target_root.rglob("*")
-        if p.suffix in (".sh", ".bash")
-        and p.is_file()
-        and not any(seg in _SHELLCHECK_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
-    )
 
 
-def _shellcheck_command(shell_files: list[str]) -> list[str]:
-    return ["shellcheck", "--format", "json"] + shell_files[:200]
 
 
-def _sqlfluff_command(target_root: Path) -> list[str]:
-    return ["sqlfluff", "lint", "--format", "json", str(target_root)]
 
 
-def _osv_scanner_command(target_root: Path) -> list[str]:
-    # osv-scanner writes its JSON report to stdout with --format json.
-    return ["osv-scanner", "--format", "json", "-r", str(target_root)]
 
 
-def _trivy_command(target_root: Path) -> list[str]:
-    # trivy fs scans a directory tree for vulnerable dependencies; --quiet keeps
-    # the progress UI off stdout so only the JSON report remains.
-    return ["trivy", "fs", "--quiet", "--format", "json", str(target_root)]
+
+
+
+
+
+
+
+
+
 
 
 def _external_relative(filename: str, target_root: Path) -> str:
@@ -755,29 +584,6 @@ def _trivy_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFin
     return findings
 
 
-def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
-    """Return the subprocess command for directory-level analyzers.
-
-    tsc and shellcheck require source-file discovery before the command can be
-    built; they are handled separately in run_analyzer and must NOT appear here.
-    """
-    if analyzer_id == "ruff":
-        return _ruff_command(target_root)
-    if analyzer_id == "pyflakes":
-        return _pyflakes_command(target_root)
-    if analyzer_id == "pytest":
-        return _pytest_command(target_root)
-    if analyzer_id == "semgrep":
-        return _semgrep_command(target_root)
-    if analyzer_id == "eslint":
-        return _eslint_command(target_root)
-    if analyzer_id == "sqlfluff":
-        return _sqlfluff_command(target_root)
-    if analyzer_id == "osv-scanner":
-        return _osv_scanner_command(target_root)
-    if analyzer_id == "trivy":
-        return _trivy_command(target_root)
-    return None
 
 
 try:

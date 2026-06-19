@@ -646,7 +646,7 @@ def test_diff_from_invalid_ref_raises_value_error(tmp_path: Path) -> None:
         stdout="",
         stderr="fatal: bad revision 'no-such-ref'",
     )
-    with patch("aci.aci_scan.subprocess.run", return_value=mock_result):
+    with patch("aci._scan_scope.subprocess.run", return_value=mock_result):
         try:
             scan_target(
                 tmp_path, "full", "core-only",

@@ -12,14 +12,12 @@ from typing import cast
 
 try:
     from .aci_findings import AciFinding, LANE_HUMAN_JUDGMENT, SEVERITY_CRITICAL, SEVERITY_HIGH
-    from .aci_scan import (
-        SCOPE_CLASS_RUNTIME_SOURCE, SEVERITY_RANK, ScanSession, _classify_relative_path,
-    )
+    from ._scan_scope import SCOPE_CLASS_RUNTIME_SOURCE, _classify_relative_path
+    from .aci_scan import SEVERITY_RANK, ScanSession
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import AciFinding, LANE_HUMAN_JUDGMENT, SEVERITY_CRITICAL, SEVERITY_HIGH  # type: ignore[no-redef]
-    from aci_scan import (  # type: ignore[no-redef]
-        SCOPE_CLASS_RUNTIME_SOURCE, SEVERITY_RANK, ScanSession, _classify_relative_path,
-    )
+    from _scan_scope import SCOPE_CLASS_RUNTIME_SOURCE, _classify_relative_path  # type: ignore[no-redef]
+    from aci_scan import SEVERITY_RANK, ScanSession  # type: ignore[no-redef]
 
 
 def _build_summary(findings: list[AciFinding]) -> dict[str, object]:

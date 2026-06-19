@@ -13,13 +13,13 @@ try:
     from .aci_operations import (
         OperationsState, find_active_waiver, find_matching_suppression, is_existing_baseline,
     )
-    from .aci_scan import _SUPPORT_ONLY_HTTP_SCOPE_CLASSES, _classify_relative_path
+    from ._scan_scope import _SUPPORT_ONLY_HTTP_SCOPE_CLASSES, _classify_relative_path
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import AciFinding, LANE_NATIVE_STATIC, LANE_EXTERNAL_ANALYZER  # type: ignore[no-redef]
     from aci_operations import (  # type: ignore[no-redef]
         OperationsState, find_active_waiver, find_matching_suppression, is_existing_baseline,
     )
-    from aci_scan import _SUPPORT_ONLY_HTTP_SCOPE_CLASSES, _classify_relative_path  # type: ignore[no-redef]
+    from _scan_scope import _SUPPORT_ONLY_HTTP_SCOPE_CLASSES, _classify_relative_path  # type: ignore[no-redef]
 
 
 def _deduplicate_findings(findings: list[AciFinding]) -> list[AciFinding]:

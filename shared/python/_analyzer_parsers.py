@@ -13,17 +13,57 @@ import re
 
 try:
     from .aci_findings import AciFinding, build_finding, LANE_EXTERNAL_ANALYZER, VERIFICATION_EXECUTED
-    from .aci_analyzer_execution import (
-        _TSC_LINE_PATTERN, _eslint_ci_id, _pyflakes_ci_id, _ruff_ci_id, _ruff_severity, _shellcheck_ci_id,
-    )
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_EXTERNAL_ANALYZER, VERIFICATION_EXECUTED,
     )
-    from aci_analyzer_execution import (  # type: ignore[no-redef]
-        _TSC_LINE_PATTERN, _eslint_ci_id, _pyflakes_ci_id, _ruff_ci_id, _ruff_severity, _shellcheck_ci_id,
-    )
 
+
+
+_RUFF_PREFIX_TO_CI: dict[str, str] = {
+    "F":   "CI-07",  # pyflakes — unused imports, dead names
+    "UP":  "CI-07",  # pyupgrade — deprecated / obsolete patterns
+    "ERA": "CI-07",  # eradicate — commented-out dead code
+    "I":   "CI-13",  # isort — import ordering / dependency surface
+    "D":   "CI-15",  # pydocstyle — documentation rot
+    "ANN": "CI-23",  # annotations — type contract drift
+    "S":   "CI-14",  # bandit — security neglect
+    "PT":  "CI-09",  # pytest style — test rot
+    "DTZ": "CI-25",  # timezone-naive — nondeterminism
+    "E":   "CI-02",  # pycodestyle style — spaghetti / readability
+    "W":   "CI-02",
+    "C":   "CI-02",  # mccabe complexity
+    "N":   "CI-02",  # naming
+    "SIM": "CI-02",  # simplify
+    "PL":  "CI-02",  # pylint
+    "B":   "CI-21",  # flake8-bugbear — e.g. B904 broken exception chain (raise without `from e`)
+    "TRY": "CI-21",  # flake8-tryceratops — e.g. TRY400 missing logging.exception
+    "BLE": "CI-21",  # flake8-blind-except — BLE001 broad except (same as native CI-21)
+    "TD":  "CI-03",  # flake8-todos — patchwork markers (same as native CI-03)
+    "FIX": "CI-03",  # flake8-fixme — patchwork markers
+    "PLR": "CI-02",  # pylint refactor (complexity-ish) — default bucket
+    "PLW": "CI-02",  # pylint warning — default bucket
+    "PLC": "CI-02",
+}
+
+
+_RUFF_CODE_TO_CI: dict[str, str] = {
+    "PLR0913": "CI-18",  # too-many-arguments -> data clump
+    "PLW0603": "CI-26",  # global-statement -> race hazard
+}
+
+
+_ESLINT_RULE_PREFIX_MAP: tuple[tuple[str, str], ...] = (
+    ("@typescript-eslint/", "CI-23"),
+    ("import/",             "CI-13"),
+    ("security/",          "CI-14"),
+    ("no-unused",          "CI-07"),
+    ("no-unreachable",     "CI-07"),
+    ("no-empty",           "CI-21"),
+    ("no-eval",            "CI-14"),
+    ("no-new-func",        "CI-14"),
+    ("no-implied-eval",    "CI-14"),
+)
 
 def _ruff_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
@@ -430,3 +470,45 @@ def _sqlfluff_findings(stdout: str, target_root: Path, next_id: int) -> list[Aci
                 )
             )
     return findings
+
+
+_RUFF_PREFIX_PATTERN = re.compile(r"^([A-Z]+)")
+
+
+def _ruff_ci_id(code: str) -> str:
+    if code in _RUFF_CODE_TO_CI:
+        return _RUFF_CODE_TO_CI[code]
+    m = _RUFF_PREFIX_PATTERN.match(code or "")
+    if not m:
+        return "CI-21"
+    return _RUFF_PREFIX_TO_CI.get(m.group(1), "CI-21")
+
+
+def _ruff_severity(code: str) -> str:
+    m = _RUFF_PREFIX_PATTERN.match(code or "")
+    return "high" if m and m.group(1) == "S" else "medium"
+
+
+def _pyflakes_ci_id(message: str) -> str:
+    msg = message.lower()
+    if "imported but unused" in msg or "redefinition of unused" in msg or "assigned to but never used" in msg:
+        return "CI-07"
+    if "undefined name" in msg:
+        return "CI-21"
+    return "CI-07"
+
+
+def _eslint_ci_id(rule_id: str | None) -> str:
+    if not rule_id:
+        return "CI-02"
+    for prefix, ci_id in _ESLINT_RULE_PREFIX_MAP:
+        if rule_id.startswith(prefix):
+            return ci_id
+    return "CI-02"
+
+
+_TSC_LINE_PATTERN = re.compile(r"(.+?)\((\d+),(\d+)\):\s*(?:error|warning)\s*(TS\d+):\s*(.+)")
+
+
+def _shellcheck_ci_id(level: str) -> str:
+    return "CI-21" if level in ("error", "warning") else "CI-02"

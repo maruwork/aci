@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 
 from aci import aci_analyzer_execution as execmod
+from aci import _analyzer_commands as cmdmod
 from aci.aci_profiles import PROFILE_QUICK_GATE
 
 
@@ -31,15 +32,15 @@ def test_pytest_no_tests_collected_is_treated_as_nonfatal(monkeypatch, tmp_path:
 
 
 def test_pytest_command_disables_cacheprovider_writes(tmp_path: Path) -> None:
-    command = execmod._pytest_command(tmp_path)
-    assert command == [execmod.sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)]
+    command = cmdmod._pytest_command(tmp_path)
+    assert command == [cmdmod.sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)]
 
 
 def test_pytest_command_uses_workspace_scratch_when_available(tmp_path: Path) -> None:
     (tmp_path / "workspace").mkdir()
-    command = execmod._pytest_command(tmp_path)
+    command = cmdmod._pytest_command(tmp_path)
     assert command == [
-        execmod.sys.executable,
+        cmdmod.sys.executable,
         "-m",
         "pytest",
         "-q",
@@ -55,10 +56,10 @@ def test_pytest_command_uses_workspace_scratch_when_available(tmp_path: Path) ->
 
 def test_pytest_command_prefers_conventional_test_shelves(tmp_path: Path) -> None:
     (tmp_path / "shared" / "tests").mkdir(parents=True)
-    command = execmod._pytest_command(tmp_path)
+    command = cmdmod._pytest_command(tmp_path)
 
     assert command == [
-        execmod.sys.executable,
+        cmdmod.sys.executable,
         "-m",
         "pytest",
         "-q",
@@ -383,10 +384,10 @@ def test_semgrep_output_is_normalized_into_findings(tmp_path: Path) -> None:
 
 
 def test_semgrep_command_requires_supported_source_and_rules(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(execmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
+    monkeypatch.setattr(cmdmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
     (tmp_path / "aci-semgrep-rules.yml").write_text("rules: []\n", encoding="utf-8")
     (tmp_path / "Dockerfile").write_text("FROM python:3.12\n", encoding="utf-8")
-    command = execmod._semgrep_command(tmp_path)
+    command = cmdmod._semgrep_command(tmp_path)
     assert command == [
         "semgrep",
         "scan",
@@ -400,10 +401,10 @@ def test_semgrep_command_requires_supported_source_and_rules(tmp_path: Path, mon
 
 
 def test_semgrep_command_returns_none_without_applicable_source(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(execmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
+    monkeypatch.setattr(cmdmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
     (tmp_path / "aci-semgrep-rules.yml").write_text("rules: []\n", encoding="utf-8")
     (tmp_path / "README.md").write_text("docs only\n", encoding="utf-8")
-    assert execmod._semgrep_command(tmp_path) is None
+    assert cmdmod._semgrep_command(tmp_path) is None
 
 
 def test_tsc_output_is_normalized_into_findings(tmp_path: Path) -> None:

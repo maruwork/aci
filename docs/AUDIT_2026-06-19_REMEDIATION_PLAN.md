@@ -25,7 +25,10 @@
 - **Phase 5 実質完了（2026-06-19）**: `ci_22.py` を列挙ベース（1349行・~40レコグナイザ）から**原理的解析へ全面書換**（**499行＝63%削減**）。中核は「*この式を呼ぶとハンドルが閉じるか？*」を assignments/`functools.partial`/lambda/local def/registrar alias 越しに解決する**1つの再帰述語**。ExitStack callback/partial/lambda/helper の全綴りがこの述語の事例として一括分類される（＝「判定して振り分け、チェックを減らす」）。**480 CI-22テスト全通過・scorecard recall不変・ruffクリーン**。`CI_REFERENCE.md` の CI-22 列挙も 372→163行に縮小。**注**: ≤400行の数値目標は構造床（定数＋~38原理ヘルパー＋ruff強制空行）のため499行で未達。これ以上は密化で可読性（リファクタ本来の目的）を損なうため見送り。
 - **Phase 4 一部完了（2026-06-19）**: `osv-scanner`・`trivy` に execution-ready アダプタ（command builder＋JSONパーサ→CI-14正規化）を実装し `_EXECUTION_READY_ANALYZERS` に追加。`show-analyzer-availability` で両者が `availability-check-only`→`execution-ready` へ遷移。パーサをサンプルJSONで単体テスト（`test_aci_analyzer_execution.py`）。**`gitleaks`（ファイルレポート出力）・`codeql`（DB構築必須）は実行モデルが bounded single-invocation 契約に合わないため availability-only 維持＋理由を boundary doc に明記**（過剰主張回避）。ライブ実行検証は当該ツール導入時のみ可能（全opt-inアナライザ共通の制約）。
 
-- **構造化（2026-06-19）**: **責務（パイプライン段階）駆動**でモジュール分割（行数駆動ではない）。`aci_analyzer_execution.py`（1346→951）から**出力パーサ**概念を `_analyzer_parsers.py`(432)へ。`aci_scan.py`（1338）から**レポート/ゲート構築**を `_scan_report.py`(306)へ、**finding後処理(dedup/scope-noise/operations適用)** を `_scan_postprocess.py`(88)へ分離（当初reportに混在していた3概念を単一責務へ是正）。公開API・テスト参照名は元モジュールから再エクスポートして互換維持。両import経路疎通・ruff/mypyクリーン・全789テスト緑。残: `aci_scan` 内の scope/traversal 概念(~218行)抽出は scope定数群が6モジュールから参照される公開面のため波及が広く、未実施。
+- **構造化（2026-06-19）**: **責務（パイプライン段階）駆動**でモジュール分割（行数駆動ではない）。`aci_analyzer_execution.py`（1346→951）から**出力パーサ**概念を `_analyzer_parsers.py`(432)へ。`aci_scan.py`（1338）から**レポート/ゲート構築**を `_scan_report.py`(306)へ、**finding後処理(dedup/scope-noise/operations適用)** を `_scan_postprocess.py`(88)へ分離（当初reportに混在していた3概念を単一責務へ是正）。公開API・テスト参照名は元モジュールから再エクスポートして互換維持。両import経路疎通・ruff/mypyクリーン・全789テスト緑。**責務分離 完遂（2026-06-19）**: 行数ではなく**分析パイプラインの段階＝責務**で分割。
+- **analyzer**: `aci_analyzer_execution.py`(757, readiness+実行統括) / `_analyzer_commands.py`(195, コマンド構築) / `_analyzer_parsers.py`(514, 出力パース＋CI-IDマッパー, **自己完結＝循環解消**)
+- **scan**: `aci_scan.py`(674, config+検出器統括+scan_target) / `_scan_scope.py`(398, スコープ解決+走査, scope語彙定数を所有) / `_scan_report.py`(304, レポート/ゲート構築) / `_scan_postprocess.py`(88, finding後処理)
+- 各モジュールは単一責務。公開名は元モジュールから再エクスポートして互換維持。**1000行超ファイル：ゼロ**。全789テスト緑・ruff/mypyクリーン。
 
 ## フェーズ別 Goal とその検証可否（実測ベースライン付き）
 
