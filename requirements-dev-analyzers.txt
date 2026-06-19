@@ -1,6 +1,6 @@
 # Pinned Python analyzers that ACI continuously verifies in CI.
 # Keep this file in sync with `aci_analyzer_execution.analyzer_version_policy()`.
 pytest==9.0.3
-ruff==0.4.8
+ruff==0.15.18
 pyflakes==3.2.0
 mypy==1.10.0
