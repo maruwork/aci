@@ -16,7 +16,7 @@ ACI is a Python code inspection tool focused on cross-file structure:
 
 - **Native static detectors** — 16 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
 - **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest, semgrep, eslint, tsc, shellcheck, and sqlfluff when installed and applicable
-- **Deep security analyzers** — `osv-scanner` and `trivy` are execution-ready (the shelf builds the command, runs a bounded invocation, and normalizes their JSON into CI-14 findings when the tool is installed); `codeql` (needs a prebuilt database) and `gitleaks` (file-report output model) remain cataloged availability-only lanes until a consuming repository wires them locally
+- **Deep security analyzers** — `osv-scanner`, `trivy` (dependency/vuln, JSON-on-stdout), and `gitleaks` (secret scanning, JSON file-report) are execution-ready: the shelf builds the command, runs a bounded invocation, and normalizes their output into CI-14 findings when the tool is installed. Only `codeql` remains cataloged availability-only, because its execution model requires a separately-built database rather than a single bounded invocation
 - **Optional domain packs** — add project-specific vocabulary and exclusion rules without touching core
 
 `ACI` provides a normalized finding format, configurable severity gate, suppression/baseline/waiver contract, SARIF and annotation output, and a machine-readable report schema.

@@ -21,7 +21,9 @@ from pathlib import Path
 from typing import cast
 import json
 import re
+import shutil
 import subprocess
+import tempfile
 from shutil import which
 
 try:
@@ -89,11 +91,11 @@ _EXECUTION_READY_ANALYZERS: frozenset[str] = frozenset({
     "tsc",
     "shellcheck",
     "sqlfluff",
-    # Deep dependency/vulnerability scanners with a single JSON-on-stdout model.
-    # gitleaks (file-report output) and codeql (requires a prebuilt database) do
-    # not fit the bounded single-invocation contract and stay availability-only.
+    # Deep dependency/vulnerability scanners (single JSON-on-stdout model).
     "osv-scanner",
     "trivy",
+    # Secret scanner with a JSON file-report model (run via a temp report path).
+    "gitleaks",
 })
 _ANALYZER_VERSION_POLICY: dict[str, dict[str, str]] = {
     "codeql": {
@@ -441,12 +443,12 @@ def analyzer_execution_support_levels() -> dict[str, str]:
 try:
     from ._analyzer_commands import (
         _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
-        _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
+        _gitleaks_command, _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
     )
 except ImportError:  # pragma: no cover - direct script/module import path
     from _analyzer_commands import (  # type: ignore[no-redef]
         _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
-        _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
+        _gitleaks_command, _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
     )
 
 
@@ -590,11 +592,13 @@ try:
     from ._analyzer_parsers import (
         _ruff_findings, _pyflakes_findings, _mypy_findings, _pytest_findings,
         _eslint_findings, _semgrep_findings, _tsc_findings, _shellcheck_findings, _sqlfluff_findings,
+        _gitleaks_findings,
     )
 except ImportError:  # pragma: no cover - direct script/module import path
     from _analyzer_parsers import (  # type: ignore[no-redef]
         _ruff_findings, _pyflakes_findings, _mypy_findings, _pytest_findings,
         _eslint_findings, _semgrep_findings, _tsc_findings, _shellcheck_findings, _sqlfluff_findings,
+        _gitleaks_findings,
     )
 
 
@@ -721,6 +725,39 @@ def _evaluate_analyzer_outcome(analyzer_id: str, exit_code: int, parse_ok: bool)
     return ok, runtime_state
 
 
+def _run_gitleaks(target_root: Path, next_id: int) -> AnalyzerRunResult:
+    """gitleaks writes a JSON report to a file; run it with a temp report path
+    and parse the file back into normalized findings."""
+    scratch = Path(tempfile.mkdtemp(prefix="aci_gitleaks_"))
+    report_path = scratch / "gitleaks-report.json"
+    try:
+        command = _gitleaks_command(target_root, report_path)
+        completed, error_result = _execute_analyzer_command("gitleaks", command, cwd=target_root)
+        if error_result is not None or completed is None:
+            return cast(AnalyzerRunResult, error_result)
+        try:
+            report_text = report_path.read_text(encoding="utf-8") if report_path.exists() else "[]"
+        except OSError:
+            report_text = "[]"
+        try:
+            findings = _gitleaks_findings(report_text, target_root, next_id)
+            parse_ok = True
+        except json.JSONDecodeError:
+            findings, parse_ok = [], False
+        ok, runtime_state = _evaluate_analyzer_outcome("gitleaks", completed.returncode, parse_ok)
+        return AnalyzerRunResult(
+            analyzer_id="gitleaks",
+            ok=ok,
+            exit_code=completed.returncode,
+            runtime_state=runtime_state,
+            stdout=completed.stdout[:ANALYZER_MAX_OUTPUT_CHARS],
+            stderr=completed.stderr[:ANALYZER_MAX_OUTPUT_CHARS],
+            findings=tuple(findings),
+        )
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
 def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerRunResult:
     readiness = _readiness_for(analyzer_id)
     if readiness.availability_state != "ready":
@@ -733,6 +770,8 @@ def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerR
             stderr=readiness.version_text or readiness.remediation_hint,
             findings=(),
         )
+    if analyzer_id == "gitleaks":
+        return _run_gitleaks(target_root, next_id)
     command, skipped_source_count, no_source = _resolve_analyzer_command(analyzer_id, target_root)
 
     if command is None:

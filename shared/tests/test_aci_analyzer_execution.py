@@ -161,13 +161,32 @@ def test_ruff_output_is_normalized_into_findings(tmp_path: Path) -> None:
     assert findings[0].target_file == "sample.py"
 
 
-def test_osv_scanner_and_trivy_are_execution_ready() -> None:
+def test_deep_security_analyzers_are_execution_ready() -> None:
     rows = {entry["analyzer_id"]: entry for entry in execmod.analyzer_availability()}
     assert rows["osv-scanner"]["execution_support_level"] == "execution-ready"
     assert rows["trivy"]["execution_support_level"] == "execution-ready"
-    # gitleaks and codeql intentionally stay availability-only (different exec model).
-    assert rows["gitleaks"]["execution_support_level"] == "availability-check-only"
+    assert rows["gitleaks"]["execution_support_level"] == "execution-ready"
+    # codeql stays availability-only: it needs a built database, not a single invocation.
     assert rows["codeql"]["execution_support_level"] == "availability-check-only"
+
+
+def test_gitleaks_report_is_normalized_into_findings(tmp_path: Path) -> None:
+    report = json.dumps([
+        {"RuleID": "generic-api-key", "Description": "API key", "File": str(tmp_path / "config.py"),
+         "StartLine": 7, "Secret": "AKIA...", "Match": "key = 'AKIA...'"},
+    ])
+    findings = execmod._gitleaks_findings(report, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_GITLEAKS"
+    assert findings[0].ci_id == "CI-14"
+    assert findings[0].target_file == "config.py"
+    assert findings[0].line == 7
+    assert findings[0].evidence_ref == "gitleaks:generic-api-key"
+
+
+def test_gitleaks_empty_report_is_safe(tmp_path: Path) -> None:
+    assert execmod._gitleaks_findings("", tmp_path, 0) == []
+    assert execmod._gitleaks_findings("[]", tmp_path, 0) == []
 
 
 def test_osv_scanner_output_is_normalized_into_findings(tmp_path: Path) -> None:

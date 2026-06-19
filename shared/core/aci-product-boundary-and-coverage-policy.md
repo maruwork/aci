@@ -75,14 +75,14 @@ The completed common-shelf security posture is a **bounded executable baseline**
 
 This means:
 
-- `semgrep`, `osv-scanner`, and `trivy` are part of the common executable
-  product surface (execution-ready adapters that normalize their output into
-  CI-14 findings when the tool is installed)
-- `codeql` and `gitleaks` are product-visible catalog surfaces, but not part of
-  the completed common executable baseline: their execution models (CodeQL needs
-  a prebuilt database; gitleaks writes a file report rather than JSON-on-stdout)
-  do not fit the bounded single-invocation contract, so they stay opt-in until
-  the shelf gains adapters for those models
+- `semgrep`, `osv-scanner`, `trivy`, and `gitleaks` are part of the common
+  executable product surface (execution-ready adapters that normalize their
+  output into CI-14 findings when the tool is installed). gitleaks runs via a
+  bounded temp-report-file invocation; the others are JSON-on-stdout.
+- `codeql` is a product-visible catalog surface, but not part of the completed
+  common executable baseline: its execution model requires a separately-built
+  database (per-language, multi-step) rather than a bounded single invocation,
+  so it stays opt-in until the shelf gains a database-build adapter
 
 ## 4. Domain-Pack Completion Rule For CI-19
 

@@ -193,3 +193,17 @@ def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
     if analyzer_id == "trivy":
         return _trivy_command(target_root)
     return None
+
+
+def _gitleaks_command(target_root: Path, report_path: Path) -> list[str]:
+    # gitleaks writes its JSON report to a file (not stdout), so the runner gives
+    # it an explicit report path and reads it back. --exit-code 0 keeps a leak
+    # finding from being reported as a process failure.
+    return [
+        "gitleaks", "detect",
+        "--source", str(target_root),
+        "--no-banner",
+        "--report-format", "json",
+        "--report-path", str(report_path),
+        "--exit-code", "0",
+    ]

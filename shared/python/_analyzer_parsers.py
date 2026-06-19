@@ -512,3 +512,45 @@ _TSC_LINE_PATTERN = re.compile(r"(.+?)\((\d+),(\d+)\):\s*(?:error|warning)\s*(TS
 
 def _shellcheck_ci_id(level: str) -> str:
     return "CI-21" if level in ("error", "warning") else "CI-02"
+
+
+def _gitleaks_findings(report_text: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    payload = json.loads(report_text or "[]")
+    if not isinstance(payload, list):
+        return findings
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        rule = item.get("RuleID") or item.get("Description") or "secret"
+        filename = item.get("File", "")
+        try:
+            relative = Path(filename).resolve().relative_to(target_root.resolve()).as_posix()
+        except (ValueError, OSError):
+            relative = Path(filename).as_posix() if filename else ""
+        line = item.get("StartLine") or 1
+        findings.append(
+            build_finding(
+                finding_id=f"F-EXT-{next_id + len(findings):04d}",
+                ci_id="CI-14",
+                signal="EXT_GITLEAKS",
+                severity="high",
+                confidence="medium",
+                actor_label=LANE_EXTERNAL_ANALYZER,
+                triage_state="review-first",
+                priority="P1",
+                fixability="owner-decision",
+                baseline_status="new",
+                waiver_status="none",
+                lifecycle_state="open",
+                owner_lane=LANE_EXTERNAL_ANALYZER,
+                target_file=relative,
+                line=int(line) if isinstance(line, int) else 1,
+                excerpt=str(rule),
+                reason=f"gitleaks flagged a committed secret ({rule}); rotate it and move it to a secret store.",
+                evidence_ref=f"gitleaks:{rule}",
+                recommended_action="Rotate the exposed credential and load it from an environment or secret manager.",
+                verification_status=VERIFICATION_EXECUTED,
+            )
+        )
+    return findings
