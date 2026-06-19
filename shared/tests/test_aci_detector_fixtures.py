@@ -369,8 +369,47 @@ def test_ci14_supply_chain_clean_on_pinned_requirement(tmp_path: Path) -> None:
     assert "CI14_SUPPLY_CHAIN_DRIFT" not in _signals(_scan(tmp_path))
 
 
+def test_ci14_supply_chain_triggers_on_unversioned_requirement(tmp_path: Path) -> None:
+    _write(tmp_path / "requirements.txt", "requests\n")
+    assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_scan(tmp_path))
+
+
 def test_ci14_supply_chain_triggers_on_latest_container_tag(tmp_path: Path) -> None:
     _write(tmp_path / "Dockerfile", "FROM python:latest\n")
+    assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_scan(tmp_path))
+
+
+def test_ci14_supply_chain_triggers_on_unpinned_pyproject_dependency(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "pyproject.toml",
+        "\n".join([
+            "[project]",
+            'dependencies = ["requests>=2.31.0"]',
+        ]),
+    )
+    assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_scan(tmp_path))
+
+
+def test_ci14_supply_chain_clean_on_pinned_pyproject_dependency(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "pyproject.toml",
+        "\n".join([
+            "[project]",
+            'dependencies = ["requests==2.31.0"]',
+        ]),
+    )
+    assert "CI14_SUPPLY_CHAIN_DRIFT" not in _signals(_scan(tmp_path))
+
+
+def test_ci14_supply_chain_triggers_on_poetry_dependency_range(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "pyproject.toml",
+        "\n".join([
+            "[tool.poetry.dependencies]",
+            'python = "^3.12"',
+            'requests = "^2.31.0"',
+        ]),
+    )
     assert "CI14_SUPPLY_CHAIN_DRIFT" in _signals(_scan(tmp_path))
 
 
@@ -504,15 +543,266 @@ def test_ci22_clean_on_try_finally_close(tmp_path: Path) -> None:
     assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
 
 
+def test_ci22_clean_on_try_except_else_with_explicit_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "clean_except_else.py",
+        "\n".join([
+            'def read_data(path):',
+            '    handle = open(path)',
+            '    try:',
+            '        data = handle.read()',
+            '    except Exception:',
+            '        handle.close()',
+            '        raise',
+            '    else:',
+            '        handle.close()',
+            '        return data',
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_explicit_handle_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_handle_close.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    handle.close()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_explicit_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_os_close.py",
+        "\n".join([
+            "import os",
+            "",
+            "def read_data(path):",
+            "    fd = os.open(path, os.O_RDONLY)",
+            "    data = os.read(fd, 8)",
+            "    os.close(fd)",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_bound_close_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_bound_close_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = handle.close",
+            "    cleanup()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_os_close_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "",
+            "def read_data(path):",
+            "    fd = os.open(path, os.O_RDONLY)",
+            "    data = os.read(fd, 8)",
+            "    cleanup = os.close",
+            "    cleanup(fd)",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_close_name_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_close_name.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    close(handle)",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_close_name_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_close_name_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = close",
+            "    cleanup(handle)",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_lambda_close_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_lambda_close_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = lambda: handle.close()",
+            "    cleanup()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_lambda_default_bound_close_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_lambda_default_bound_close_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = lambda managed=handle: managed.close()",
+            "    cleanup()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_lambda_close_name_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_lambda_close_name_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = lambda: close(handle)",
+            "    cleanup()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_lambda_os_close_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_lambda_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "",
+            "def read_data(path):",
+            "    fd = os.open(path, os.O_RDONLY)",
+            "    data = os.read(fd, 8)",
+            "    cleanup = lambda: os.close(fd)",
+            "    cleanup()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_lambda_supplied_arg_close_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_lambda_supplied_arg_close_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = lambda managed: managed.close()",
+            "    cleanup(handle)",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_lambda_supplied_arg_os_close_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_lambda_supplied_arg_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "",
+            "def read_data(path):",
+            "    fd = os.open(path, os.O_RDONLY)",
+            "    data = os.read(fd, 8)",
+            "    cleanup = lambda raw_fd: os.close(raw_fd)",
+            "    cleanup(fd)",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_linear_lambda_default_bound_close_name_alias_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_lambda_default_bound_close_name_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = lambda managed=handle: close(managed)",
+            "    cleanup()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_triggers_on_unexecuted_linear_lambda_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_unexecuted_lambda_close_alias.py",
+        "\n".join([
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    data = handle.read()",
+            "    cleanup = lambda: handle.close()",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" in _signals(_scan(tmp_path))
+
+
+def test_ci22_triggers_on_unexecuted_linear_lambda_supplied_arg_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "linear_unexecuted_lambda_supplied_arg_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "",
+            "def read_data(path):",
+            "    fd = os.open(path, os.O_RDONLY)",
+            "    data = os.read(fd, 8)",
+            "    cleanup = lambda raw_fd: os.close(raw_fd)",
+            "    return data",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" in _signals(_scan(tmp_path))
+
+
 def test_ci22_triggers_when_close_exists_only_on_success_path(tmp_path: Path) -> None:
     _write(
         tmp_path / "partial_close.py",
         "\n".join([
             'def read_data(path):',
             '    handle = open(path)',
-            '    data = handle.read()',
-            '    handle.close()',
-            '    return data',
+            '    if path:',
+            '        data = handle.read()',
+            '        handle.close()',
+            '        return data',
+            '    return ""',
         ]),
     )
     assert "CI22_RESOURCE_CLEANUP_GAP" in _signals(_scan(tmp_path))
@@ -563,6 +853,9082 @@ def test_ci22_triggers_on_pathlike_open_method_without_management(tmp_path: Path
         ]),
     )
     assert "CI22_RESOURCE_CLEANUP_GAP" in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_handle_wrapped_by_context_manager_helper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "closing_wrapper.py",
+        "\n".join([
+            "from contextlib import closing",
+            "",
+            "def read_data(path):",
+            "    handle = open(path)",
+            "    with closing(handle):",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_registered_handle(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_registered.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.enter_context(handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_registrar_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_enter_context_registrar_alias.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.enter_context",
+            "        handle = open(path)",
+            "        register(handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.enter_context(closing(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_registrar_alias_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_enter_context_registrar_alias_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.enter_context",
+            "        handle = open(path)",
+            "        register(closing(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_registrar_alias_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_enter_context_registrar_alias_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.enter_context",
+            "        handle = register(open(path))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_registrar_alias_assigned_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_enter_context_registrar_alias_assigned_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.enter_context",
+            "        managed = closing(open(path))",
+            "        handle = register(managed)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_closing_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_closing_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = stack.enter_context(closing(open(path)))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_assigned_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        managed = closing(handle)",
+            "        stack.enter_context(managed)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_enter_context_assigned_closing_wrapped_open(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_closing_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        managed = closing(open(path))",
+            "        handle = stack.enter_context(managed)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = stack.enter_context(open(path))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_registered_handle(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_registered.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        await stack.enter_async_context(handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_registrar_alias_handle(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_registrar_alias_handle.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.enter_async_context",
+            "        handle = open(path)",
+            "        await register(handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_wrapped_open.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = await stack.enter_async_context(open(path))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_registrar_alias_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_registrar_alias_wrapped_open.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.enter_async_context",
+            "        handle = await register(open(path))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(handle.close)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(close, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(close, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = close",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = close",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed: close(managed), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        stack.callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        cleanup = partial(cleanup_fn, handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        cleanup = partial(cleanup_fn, handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        stack.callback(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        stack.callback(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        stack.callback(partial(cleanup, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup, fd)",
+            "        stack.callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, fd)",
+            "        stack.callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(partial(close, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = partial(close, handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(partial(close, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = partial(close, handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(partial(handle.close))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = partial(handle.close)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(partial(os.close, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = partial(os.close, fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(partial(handle.close))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = partial(handle.close)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(partial(os.close, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = partial(os.close, fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        cleanup = partial(cleanup_fn)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        stack.callback(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        cleanup = partial(cleanup_fn, fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        cleanup = partial(cleanup_fn)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        register(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        cleanup = partial(cleanup_fn, fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_lambda_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_lambda_fd.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda raw_fd: os.close(raw_fd), fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_os_close_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_os_close_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_lambda_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_lambda_fd.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd: os.close(raw_fd)",
+            "        stack.push_async_callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_os_close_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_os_close_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        stack.push_async_callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_handle_close_lambda(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_handle_close_lambda.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda: handle.close()",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_handle_close_lambda(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_handle_close_lambda.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(lambda: handle.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_handle_close_lambda(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_handle_close_lambda.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = lambda: handle.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(close, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = close",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(handle.close)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(close, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = close",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(os.close, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed: managed.close(), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_default_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_default_bound_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed=handle: managed.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda raw_fd: os.close(raw_fd), fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = handle.close",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(close, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(handle.close)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(partial(handle.close))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(partial(close, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        stack.callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        cleanup = partial(cleanup_fn, handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        stack.callback(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        stack.callback(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        stack.callback(partial(cleanup, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup, fd)",
+            "        stack.callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, fd)",
+            "        stack.callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        cleanup = partial(cleanup_fn)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(partial(handle.close))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        cleanup = partial(cleanup_fn, handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        register(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        register(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        register(partial(cleanup, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup, fd)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, fd)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        cleanup = partial(cleanup_fn)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        register(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = partial(close, handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(partial(os.close, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = partial(handle.close)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = partial(close, handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda: handle.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = partial(os.close, fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(partial(os.close, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        stack.callback(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = partial(os.close, fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = partial(handle.close)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed: managed.close(), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(os.close, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed: close(managed), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed: close(managed), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_lambda_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda: handle.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: managed.close()",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_default_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_default_bound_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed=handle: managed.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: close(managed)",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = os.close",
+            "        stack.callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(lambda raw_fd: os.close(raw_fd), fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_default_bound_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(lambda raw_fd=fd: os.close(raw_fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_default_bound_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_default_bound_lambda_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: managed.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed=handle: close(managed))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_default_bound_lambda_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_default_bound_lambda_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: close(managed)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda: close(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda: close(handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda: close(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda: close(handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_lambda_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd: os.close(raw_fd)",
+            "        stack.callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        stack.callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_default_bound_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_default_bound_lambda_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd=fd: os.close(raw_fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: managed.close()",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_default_bound_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_default_bound_lambda_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd=fd: os.close(raw_fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_default_bound_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda raw_fd=fd: os.close(raw_fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_lambda_zero_arg_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_lambda_zero_arg_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(lambda: os.close(fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_assigned_lambda_zero_arg_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_assigned_lambda_zero_arg_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda: os.close(fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_zero_arg_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_zero_arg_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda: os.close(fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_zero_arg_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_zero_arg_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda: os.close(fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = handle.close",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_lambda_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda: handle.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda: handle.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = os.close",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: close(managed)",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_default_bound_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_default_bound_lambda_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: managed.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_default_bound_lambda_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_default_bound_lambda_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: close(managed)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_lambda_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_lambda_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed=handle: close(managed))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_callback_registrar_alias_assigned_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_callback_registrar_alias_assigned_lambda_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd: os.close(raw_fd)",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = handle.close",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_lambda_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_lambda_fd.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.push_async_callback(lambda raw_fd: os.close(raw_fd), fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_handle_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_handle_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(handle.close)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(close, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_generic_close_callback_with_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_generic_close_callback_with_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = close",
+            "        stack.push_async_callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_handle_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_handle_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(partial(handle.close))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(partial(close, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        stack.push_async_callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        cleanup = partial(cleanup_fn, handle)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        stack.push_async_callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        cleanup = partial(cleanup_fn)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        stack.push_async_callback(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        stack.push_async_callback(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        stack.push_async_callback(partial(cleanup, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup, fd)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, fd)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.push_async_callback(partial(os.close, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        cleanup = partial(cleanup_fn, fd)",
+            "        stack.push_async_callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        stack.push_async_callback(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = handle.close",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_handle_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_handle_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = partial(handle.close)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = partial(close, handle)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = partial(os.close, fd)",
+            "        stack.push_async_callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.push_async_callback(os.close, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(lambda managed: managed.close(), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(lambda managed: close(managed), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_default_bound_lambda_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_default_bound_lambda_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(lambda managed=handle: managed.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_default_bound_lambda_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_default_bound_lambda_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(lambda managed=handle: close(managed))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_lambda_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_lambda_default_bound_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.push_async_callback(lambda raw_fd=fd: os.close(raw_fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = os.close",
+            "        stack.push_async_callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: managed.close()",
+            "        stack.push_async_callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: close(managed)",
+            "        stack.push_async_callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        stack.push_async_callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        stack.push_async_callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_default_bound_lambda_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_default_bound_lambda_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: managed.close()",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_default_bound_lambda_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_default_bound_lambda_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: close(managed)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_handle_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_handle_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(handle.close)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(lambda managed: close(managed), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_close_callback.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = handle.close",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: close(managed)",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_default_bound_lambda_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_default_bound_lambda_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: close(managed)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_lambda_default_bound_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_lambda_default_bound_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(lambda managed=handle: close(managed))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_lambda_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_lambda_default_bound_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda raw_fd=fd: os.close(raw_fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_default_bound_lambda_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_default_bound_lambda_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd=fd: os.close(raw_fd)",
+            "        stack.push_async_callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = os.close",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_default_bound_lambda_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_default_bound_lambda_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd=fd: os.close(raw_fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push_async_callback(lambda: close(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda: close(handle)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(lambda: close(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = lambda: close(handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        stack.push_async_callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_zero_arg_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_zero_arg_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_zero_arg_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_zero_arg_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        stack.push_async_callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_zero_arg_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_zero_arg_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_zero_arg_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_default_bound_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_default_bound_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        stack.push_async_callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_default_bound_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_default_bound_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_default_bound_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_default_bound_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_default_bound_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_default_bound_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        stack.push_async_callback(partial(cleanup_fn))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_default_bound_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_default_bound_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        stack.push_async_callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_partial_local_helper_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_partial_local_helper_default_bound_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        stack.push_async_callback(partial(cleanup))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_partial_local_helper_default_bound_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.push_async_callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_zero_arg_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_zero_arg_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_default_bound_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_default_bound_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_zero_arg_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_default_bound_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        register(partial(cleanup))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_default_bound_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_default_bound_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_default_bound_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_default_bound_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_default_bound_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_default_bound_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        stack.push_async_callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_local_helper_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_local_helper_default_bound_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        stack.push_async_callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_zero_arg_bound_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_zero_arg_bound_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_local_helper_default_bound_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_local_helper_default_bound_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_zero_arg_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_zero_arg_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.push_async_callback(lambda: os.close(fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_assigned_zero_arg_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_assigned_zero_arg_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda: os.close(fd)",
+            "        stack.push_async_callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_zero_arg_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_zero_arg_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda: os.close(fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_zero_arg_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_zero_arg_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda: os.close(fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_handle_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_handle_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = partial(handle.close)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = partial(close, handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        cleanup = partial(cleanup_fn, handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        cleanup = partial(cleanup_fn)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_bound_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_bound_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup_fn = handle.close",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_generic_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_generic_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(partial(close, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_generic_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_generic_close_alias.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup_fn = close",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_os_close_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_os_close_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup_fn = os.close",
+            "        register(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_handle_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_handle_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(partial(handle.close))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        register(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        register(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        register(partial(cleanup, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup, fd)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, fd)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_partial_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_partial_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(partial(os.close, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_partial_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_partial_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "from functools import partial",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = partial(os.close, fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(os.close, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_os_close.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = os.close",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: managed.close()",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_default_bound_lambda_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_default_bound_lambda_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        register(lambda managed=handle: managed.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_default_bound_lambda_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_default_bound_lambda_close.py",
+        "\n".join([
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: managed.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_async_exitstack_push_async_callback_registrar_alias_assigned_lambda_os_close(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "async_exitstack_push_async_callback_registrar_alias_assigned_lambda_fd.py",
+        "\n".join([
+            "import os",
+            "from contextlib import AsyncExitStack",
+            "",
+            "async def read_data(path):",
+            "    async with AsyncExitStack() as stack:",
+            "        register = stack.push_async_callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd: os.close(raw_fd)",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(handle.close)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = handle.close",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(os.close, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(os.close, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_lambda_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda: handle.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_lambda_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda: handle.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed: managed.close(), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_os_close_callback_registrar_alias(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_fd_registrar_alias.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = os.close",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_default_bound_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_default_bound_lambda_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed=handle: managed.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_default_bound_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_default_bound_lambda_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: managed.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = os.close",
+            "        stack.callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda: handle.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed: managed.close(), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed: close(managed), handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: close(managed)",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda: handle.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: managed.close()",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_default_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_default_bound_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed=handle: managed.close())",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda managed=handle: close(managed))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_lambda_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_lambda_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda managed=handle: close(managed))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_lambda_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_lambda_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed: close(managed)",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        stack.callback(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_default_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_default_bound_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: managed.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: close(managed)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_lambda_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_lambda_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda managed=handle: close(managed)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.callback(lambda: close(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        cleanup = lambda: close(handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        register(lambda: close(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_lambda_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_lambda_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        cleanup = lambda: close(handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        register(cleanup, handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        stack.callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        stack.callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        stack.callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        stack.callback(partial(cleanup_fn))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        stack.callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        stack.callback(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.callback(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_partial_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_partial_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        stack.callback(partial(cleanup))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_partial_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_partial_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup)",
+            "        stack.callback(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        stack.callback(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            close(handle)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        register(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_generic_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_alias_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        register(partial(cleanup, handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_callback_with_handle_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_bound_close_callback_with_handle_arg.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup, handle)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        register(partial(cleanup, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup, fd)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn, fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_os_close_alias_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn, fd)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_generic_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def close(handle):",
+            "    handle.close()",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            close(managed)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_alias_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        register(partial(cleanup_fn))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_alias_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_alias_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_fn = cleanup",
+            "        cleanup_cb = partial(cleanup_fn)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        register(partial(cleanup))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup(managed=handle):",
+            "            managed.close()",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_partial_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_partial_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        register(partial(cleanup))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_partial_local_helper_default_bound_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "from functools import partial",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd=fd):",
+            "            os.close(raw_fd)",
+            "        cleanup_cb = partial(cleanup)",
+            "        register(cleanup_cb)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_zero_arg_bound_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_zero_arg_bound_close_callback.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        handle = open(path)",
+            "        def cleanup():",
+            "            handle.close()",
+            "        register(cleanup)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(lambda: os.close(fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_fd_callback_with_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(lambda raw_fd: os.close(raw_fd), fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda: os.close(fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        stack.callback(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_lambda_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_lambda_fd_callback_with_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd: os.close(raw_fd)",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_lambda_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_lambda_fd_callback_with_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda raw_fd: os.close(raw_fd), fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_local_helper_os_close_callback_with_fd_arg(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_local_helper_os_close_callback_with_fd_arg.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        def cleanup(raw_fd):",
+            "            os.close(raw_fd)",
+            "        register(cleanup, fd)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_zero_arg_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_zero_arg_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda: os.close(fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_zero_arg_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_zero_arg_os_close_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda: os.close(fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_lambda_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_lambda_default_bound_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        stack.callback(lambda raw_fd=fd: os.close(raw_fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_assigned_lambda_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_assigned_lambda_default_bound_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd=fd: os.close(raw_fd)",
+            "        stack.callback(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_lambda_default_bound_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_lambda_default_bound_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        register(lambda raw_fd=fd: os.close(raw_fd))",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_callback_registrar_alias_assigned_default_bound_lambda_os_close_callback(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_callback_registrar_alias_assigned_default_bound_lambda_fd_callback.py",
+        "\n".join([
+            "import os",
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.callback",
+            "        fd = os.open(path, os.O_RDONLY)",
+            "        cleanup = lambda raw_fd=fd: os.close(raw_fd)",
+            "        register(cleanup)",
+            "        return os.read(fd, 8)",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_assigned_exitstack_used_as_context_manager(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "assigned_exitstack.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    stack = ExitStack()",
+            "    with stack:",
+            "        handle = open(path)",
+            "        stack.callback(handle.close)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_registered_handle(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_registered.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push(handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_registrar_alias_handle(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_registrar_alias.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.push",
+            "        handle = open(path)",
+            "        register(handle)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = stack.push(open(path))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_registrar_alias_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_registrar_alias_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.push",
+            "        handle = register(open(path))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_registrar_alias_closing_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_registrar_alias_closing_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.push",
+            "        register(closing(open(path)))",
+            "        return 1",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_registrar_alias_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_registrar_alias_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.push",
+            "        handle = open(path)",
+            "        register(closing(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_registrar_alias_assigned_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_registrar_alias_assigned_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        register = stack.push",
+            "        managed = closing(open(path))",
+            "        register(managed)",
+            "        return 1",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        stack.push(closing(handle))",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_closing_wrapped_open_call(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_closing_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        stack.push(closing(open(path)))",
+            "        return 1",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_assigned_closing_wrapper(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_assigned_closing_wrapper.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        handle = open(path)",
+            "        managed = closing(handle)",
+            "        stack.push(managed)",
+            "        return handle.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
+
+
+def test_ci22_clean_on_exitstack_push_assigned_closing_wrapped_open(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "exitstack_push_assigned_closing_wrapped_open.py",
+        "\n".join([
+            "from contextlib import ExitStack, closing",
+            "",
+            "def read_data(path):",
+            "    with ExitStack() as stack:",
+            "        managed = closing(open(path))",
+            "        stack.push(managed)",
+            "        return managed.thing.read()",
+        ]),
+    )
+    assert "CI22_RESOURCE_CLEANUP_GAP" not in _signals(_scan(tmp_path))
 
 
 def test_ci22_triggers_on_fire_and_forget_task(tmp_path: Path) -> None:

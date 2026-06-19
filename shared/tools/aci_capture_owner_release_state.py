@@ -184,6 +184,7 @@ def _release_blockers(snapshot: dict[str, Any]) -> list[str]:
     blockers: list[str] = []
     pypi_state = snapshot["pypi"]
     project = snapshot["project"]
+    repository = snapshot["github"]["repository"]
     pypi_latest_version = pypi_state.get("latest_version")
     project_version = project.get("version")
     if pypi_state.get("exists") is False:
@@ -207,6 +208,10 @@ def _release_blockers(snapshot: dict[str, Any]) -> list[str]:
         blockers.append("GitHub code scanning is not enabled on the hosted repository.")
     if snapshot["github"]["secret_scanning"].get("status_code") == 404:
         blockers.append("GitHub secret scanning is disabled on the hosted repository.")
+    if snapshot["github"]["branch_protection"].get("status_code") == 403:
+        blockers.append("Branch protection is unavailable under the current visibility/plan.")
+    if repository.get("private") is True:
+        blockers.append("The repository is still private, so final hosted posture / visibility remains unresolved.")
     return blockers
 
 
@@ -248,8 +253,28 @@ def _load_owner_evidence(path: Path | None) -> dict[str, Any]:
     return data
 
 
+def _public_history_decision_branch(owner_evidence: dict[str, Any]) -> str:
+    branch = owner_evidence.get("public_history_decision_branch")
+    if not isinstance(branch, str):
+        return ""
+    return branch.strip()
+
+
+def _public_history_policy_complete(owner_evidence: dict[str, Any]) -> bool:
+    if owner_evidence.get("public_history_policy_decided") is not True:
+        return False
+    branch = _public_history_decision_branch(owner_evidence)
+    if branch not in {"accept-current-history", "rewrite-history-before-public-release"}:
+        return False
+    rationale = owner_evidence.get("public_history_decision_rationale")
+    if not isinstance(rationale, str) or not rationale.strip():
+        return False
+    return True
+
+
 def _release_readiness(snapshot: dict[str, Any]) -> dict[str, Any]:
     github = snapshot["github"]
+    repository = github["repository"]
     pypi = snapshot["pypi"]
     project = snapshot["project"]
     owner_evidence = snapshot.get("owner_evidence", {})
@@ -257,7 +282,7 @@ def _release_readiness(snapshot: dict[str, Any]) -> dict[str, Any]:
         owner_evidence = {}
     pypi_matches_local = pypi.get("exists") is True and pypi.get("latest_version") == project.get("version")
     trusted_publisher_registered = owner_evidence.get("trusted_publisher_registered") is True
-    public_history_policy_decided = owner_evidence.get("public_history_policy_decided") is True
+    public_history_policy_decided = _public_history_policy_complete(owner_evidence)
     dependabot_reachable = (
         github["vulnerability_alerts"].get("status_code") == 204
         and bool(github["dependabot_alerts"].get("ok"))
@@ -269,10 +294,12 @@ def _release_readiness(snapshot: dict[str, Any]) -> dict[str, Any]:
             complete="Owner evidence records PyPI Trusted Publisher registration for the chosen package target.",
             incomplete="Repository-side OIDC publish workflow is wired, but PyPI Trusted Publisher registration still requires owner evidence.",
         ),
-        "36_hosted_code_and_secret_scanning": _complete_when(
-            bool(github["code_scanning"].get("ok")) and bool(github["secret_scanning"].get("ok")),
-            complete="GitHub code scanning and secret scanning endpoints are both reachable.",
-            incomplete="GitHub code scanning and/or secret scanning are not enabled on the hosted repository.",
+        "36_hosted_code_secret_branch_protection": _complete_when(
+            bool(github["code_scanning"].get("ok"))
+            and bool(github["secret_scanning"].get("ok"))
+            and bool(github["branch_protection"].get("ok")),
+            complete="GitHub code scanning, secret scanning, and branch protection are all reachable on the hosted repository.",
+            incomplete="GitHub code scanning, secret scanning, and/or branch protection are not yet enabled on the hosted repository.",
         ),
         "37_dependabot_alerts": _complete_when(
             dependabot_reachable and dependabot_open_alert_count == 0,
@@ -285,13 +312,18 @@ def _release_readiness(snapshot: dict[str, Any]) -> dict[str, Any]:
         ),
         "38_public_history_policy": _complete_when(
             public_history_policy_decided,
-            complete="Owner evidence records the public-history acceptance or cleanup decision.",
-            incomplete="Current git history acceptance or cleanup remains an explicit owner decision.",
+            complete="Owner evidence records the public-history decision branch and rationale.",
+            incomplete="Current git history acceptance or cleanup remains an explicit owner decision with recorded branch and rationale.",
         ),
         "39_first_public_release": _complete_when(
             bool(github["latest_release"].get("ok")) and pypi_matches_local,
             complete="GitHub latest release exists and PyPI latest version matches the local release version.",
             incomplete="GitHub latest release is absent or PyPI latest version does not match the local release version.",
+        ),
+        "repo_visibility_final_hosted_posture": _complete_when(
+            str(repository.get("visibility") or "") == "public",
+            complete="Repository visibility is public and the final hosted posture is aligned with public release.",
+            incomplete="The repository is still private, so final hosted posture / visibility remains unresolved.",
         ),
     }
     blocking_items = [
@@ -377,6 +409,21 @@ def build_markdown_summary(snapshot: dict[str, Any]) -> str:
     pypi_state = snapshot["pypi"]
     blockers = snapshot.get("external_blockers", [])
     owner_evidence = snapshot.get("owner_evidence", {})
+    public_history_branch = (
+        _public_history_decision_branch(owner_evidence)
+        if isinstance(owner_evidence, dict)
+        else ""
+    )
+    public_history_recorded_at = (
+        str(owner_evidence.get("public_history_decision_recorded_at") or "").strip()
+        if isinstance(owner_evidence, dict)
+        else ""
+    )
+    public_history_rationale_present = (
+        bool(str(owner_evidence.get("public_history_decision_rationale") or "").strip())
+        if isinstance(owner_evidence, dict)
+        else False
+    )
     dependabot_open = snapshot["github"]["dependabot_alerts"].get("open_alert_count")
     dependabot_fixed = snapshot["github"]["dependabot_alerts"].get("fixed_alert_count")
     dependabot_suffix = ""
@@ -413,6 +460,9 @@ def build_markdown_summary(snapshot: dict[str, Any]) -> str:
         "",
         f"- Trusted Publisher registered: `{owner_evidence.get('trusted_publisher_registered') is True if isinstance(owner_evidence, dict) else False}`",
         f"- Public history policy decided: `{owner_evidence.get('public_history_policy_decided') is True if isinstance(owner_evidence, dict) else False}`",
+        f"- Public history decision branch: `{public_history_branch or '(unset)'}`",
+        f"- Public history decision recorded at: `{public_history_recorded_at or '(unset)'}`",
+        f"- Public history rationale present: `{public_history_rationale_present}`",
         "",
         "## G8 Readiness",
         "",

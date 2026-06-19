@@ -8,6 +8,9 @@ Fix what the common `ACI` shelf is allowed to claim as its completed product
 surface, and what remains explicitly delegated, human-judgment-only, or
 downstream-defined.
 
+Execution-order and closure policy for repo-local completion work lives in
+`docs/roadmap/ACI_COMPLETION_POLICY.md`.
+
 ## Canonical Completion Stance
 
 `ACI` is a **Python-first code audit tool with polyglot text-scan and
@@ -111,6 +114,7 @@ The current common-shelf supply-chain detector intentionally has a narrow,
 explicit manifest set:
 
 - `requirements*.txt`
+- `pyproject.toml` dependency surfaces
 - `package.json`
 - `Dockerfile` / `Containerfile`
 - GitHub workflow `uses:` refs
@@ -119,7 +123,6 @@ The common shelf must state this limitation directly whenever it describes CI-14
 supply-chain coverage. It must not imply general lockfile/manifests coverage for
 surfaces such as:
 
-- `pyproject.toml`
 - `poetry.lock`
 - `package-lock.json`
 - `pnpm-lock.yaml`

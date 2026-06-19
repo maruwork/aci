@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import json
 import os
 from pathlib import Path
 import re
@@ -13,6 +14,8 @@ import warnings
 import zipfile
 
 from setuptools.build_meta import build_sdist, build_wheel
+
+from aci.aci_known_limits import known_limits
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -170,3 +173,10 @@ def test_wheel_and_sdist_target_installs_preserve_analyzer_asset_contract(tmp_pa
         )
         assert completed.returncode == 0, completed.stderr or completed.stdout
         _assert_installed_package_check(install_target)
+
+
+def test_sample_report_asset_known_limits_stay_in_sync() -> None:
+    sample_report_path = REPO_ROOT / "shared/python/package_assets/report/examples/aci-core-sample-report.json"
+    payload = json.loads(sample_report_path.read_text(encoding="utf-8"))
+
+    assert payload["known_limits"] == known_limits()

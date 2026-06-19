@@ -7,8 +7,10 @@ from typing import cast
 
 try:
     from .aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
+    from .aci_scan import SCOPE_CLASS_RUNTIME_SOURCE, _classify_relative_path
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
+    from aci_scan import SCOPE_CLASS_RUNTIME_SOURCE, _classify_relative_path
 
 
 SEVERITY_TO_LEVEL = {
@@ -19,14 +21,37 @@ SEVERITY_TO_LEVEL = {
 }
 
 
+def _report_map(value: object) -> dict[str, object]:
+    return cast(dict[str, object], value) if isinstance(value, dict) else {}
+
+
+def _gate_scope_classes(report: dict[str, object]) -> tuple[str, ...]:
+    scope_rules = _report_map(report.get("scope_rules"))
+    raw = scope_rules.get("gate_scope_classes")
+    if not isinstance(raw, list) or not raw:
+        return (SCOPE_CLASS_RUNTIME_SOURCE,)
+    values = tuple(str(item) for item in raw if isinstance(item, str) and item)
+    return values or (SCOPE_CLASS_RUNTIME_SOURCE,)
+
+
+def _scope_class(finding: dict[str, object]) -> str:
+    explicit = finding.get("scope_class")
+    if isinstance(explicit, str) and explicit:
+        return explicit
+    return _classify_relative_path(str(finding.get("target_file") or ""))
+
+
 def build_sarif_report(report: dict[str, object]) -> dict[str, object]:
     raw_findings = report.get("findings") or []
     findings: list[dict[str, object]] = raw_findings if isinstance(raw_findings, list) else []
+    gate_scope_classes = _gate_scope_classes(report)
     rules: dict[str, dict[str, object]] = {}
     results: list[dict[str, object]] = []
     for finding in findings:
         if not isinstance(finding, dict):
             continue
+        scope_class = _scope_class(finding)
+        advisory_only = scope_class not in gate_scope_classes
         rule_id = str(finding.get("signal") or finding.get("ci_id") or "ACI-FINDING")
         rules.setdefault(
             rule_id,
@@ -49,12 +74,19 @@ def build_sarif_report(report: dict[str, object]) -> dict[str, object]:
             phys_loc = location["physicalLocation"]
             if isinstance(phys_loc, dict):
                 phys_loc["region"] = {"startLine": int(cast(int, finding["line"]))}
+        message_text = str(finding.get("reason") or "ACI finding")
+        if advisory_only:
+            message_text = f"Advisory-only ({scope_class}): {message_text}"
         results.append(
             {
                 "ruleId": rule_id,
-                "level": SEVERITY_TO_LEVEL.get(str(finding.get("severity")), "warning"),
-                "message": {"text": str(finding.get("reason") or "ACI finding")},
+                "level": "note" if advisory_only else SEVERITY_TO_LEVEL.get(str(finding.get("severity")), "warning"),
+                "message": {"text": message_text},
                 "locations": [location],
+                "properties": {
+                    "aci.scope_class": scope_class,
+                    "aci.scope_policy": "advisory-only" if advisory_only else "gated",
+                },
                 "fingerprints": {
                     "primaryLocationLineHash": str(finding.get("fingerprint") or "")
                 },

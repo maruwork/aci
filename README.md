@@ -78,7 +78,7 @@ The completed common-shelf product claim is intentionally bounded:
 - `CI-08`, `CI-11`, and `CI-24` remain human-judgment-only
 - deep security analyzers such as `codeql`, `gitleaks`, `osv-scanner`, and `trivy` stay opt-in/cataloged until the common shelf owns execution-ready adapters
 - `CI-19` is only substantively complete when a downstream domain pack provides its vocabulary and tests
-- CI-14 supply-chain drift currently covers only `requirements*.txt`, `package.json`, `Dockerfile` / `Containerfile`, and GitHub workflow `uses:` refs
+- CI-14 supply-chain drift currently covers `requirements*.txt`, `pyproject.toml` dependency surfaces, `package.json`, `Dockerfile` / `Containerfile`, and GitHub workflow `uses:` refs
 
 This boundary is defined canonically in `shared/core/aci-product-boundary-and-coverage-policy.md`.
 
@@ -176,10 +176,12 @@ This smoke check verifies only:
 For full install verification (automation-smoke, fixture-check, installed-package-check), see `shared/runtime/aci-ci-and-automation-contract.md`.
 For the dedicated ACI self-audit surface, see `shared/runtime/aci-self-audit-contract.md`.
 For scale budgets and multi-OS verification, see `shared/runtime/aci-scale-and-platform-contract.md`.
+For human-labeled precision review preparation, see `docs/PRECISION_REVIEW_WORKFLOW.md`.
 
 ### 2. Next reading
 
 - `docs/CONFIGURATION.md`
+- `docs/PRECISION_REVIEW_WORKFLOW.md`
 - `docs/USER_EVALUATION_INDEX.md`
 - `shared/runtime/aci-cli-and-config-contract.md`
 - `shared/runtime/aci-ci-and-automation-contract.md`

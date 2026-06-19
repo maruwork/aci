@@ -151,6 +151,7 @@ Use one of:
 - severity ordering must be descending
 - triage information must make `fix-now`, `review-first`, and `accepted-residual` visible without guessing
 - advisory-only findings from tests / fixtures / docs / support shelves must be visibly distinct from gated runtime findings
+- hosted/exported final outputs such as annotations and SARIF must visibly mark findings outside the gate as `advisory-only`
 - baseline, suppression, and waiver meaning must not be conflated
 - lifecycle meaning must be visible without inferring it from triage or waiver fields
 - next action must name the file, owner lane, or next report to read

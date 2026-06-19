@@ -1,0 +1,3 @@
+# CI-14 fixture: hard-coded secret
+
+AWS_SECRET_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLEKEY1234567890abcd"

@@ -13,10 +13,13 @@ to label TP/FP, the same workflow as a domain validation decision register.
 
 Usage:
     python shared/tools/aci_corpus_harness.py <path> [<path> ...] \
-        [--samples N] [--json OUT.json] [--markdown OUT.md]
+        [--samples N] [--json OUT.json] [--markdown OUT.md] [--include-findings] \
+        [--scope-mode source-only] [--include-path PATH] [--exclude-path PATH]
 
 Each <path> is a project directory (scanned with profile=full, native lane only
-so external-analyzer availability does not affect the baseline).
+so external-analyzer availability does not affect the baseline). The default
+scope for precision review is `source-only` so fixtures/docs/scratch shelves do
+not dominate the label set unless explicitly requested.
 """
 from __future__ import annotations
 
@@ -34,20 +37,50 @@ except ImportError:  # pragma: no cover - direct source checkout path
     from aci_scan import scan_target  # type: ignore[no-redef]
 
 
-def scan_corpus(paths: list[Path], samples: int) -> dict:
+def _finding_projection(project_path: Path, finding: dict[str, object]) -> dict[str, object]:
+    return {
+        "project": str(project_path),
+        "fingerprint": str(finding.get("fingerprint") or ""),
+        "ci_id": str(finding.get("ci_id") or "UNKNOWN"),
+        "signal": str(finding.get("signal") or ""),
+        "severity": str(finding.get("severity") or ""),
+        "confidence": str(finding.get("confidence") or ""),
+        "target_file": str(finding.get("target_file") or ""),
+        "line": finding.get("line"),
+        "reason": str(finding.get("reason") or ""),
+        "excerpt": (str(finding.get("excerpt") or ""))[:160],
+    }
+
+
+def scan_corpus(
+    paths: list[Path],
+    samples: int,
+    *,
+    include_findings: bool = False,
+    scope_mode: str = "source-only",
+    include_paths: tuple[str, ...] = (),
+    exclude_paths: tuple[str, ...] = (),
+) -> dict:
     """Scan each path (native lane) and aggregate findings per CI-ID."""
     per_ci: dict[str, dict] = defaultdict(
         lambda: {"count": 0, "files": set(), "samples": []}
     )
     projects: list[dict] = []
+    flat_findings: list[dict[str, object]] = []
 
     for path in paths:
         report = scan_target(
-            path, "full", "core-only", include_external_analyzers=False
+            path,
+            "full",
+            "core-only",
+            include_external_analyzers=False,
+            scope_mode=scope_mode,
+            include_paths=include_paths,
+            exclude_paths=exclude_paths,
         )
-        findings = report["findings"]
-        projects.append({"path": str(path), "total_findings": len(findings)})
-        for f in findings:
+        report_findings = report["findings"]
+        projects.append({"path": str(path), "total_findings": len(report_findings)})
+        for f in report_findings:
             ci = f.get("ci_id", "UNKNOWN")
             bucket = per_ci[ci]
             bucket["count"] += 1
@@ -63,6 +96,8 @@ def scan_corpus(paths: list[Path], samples: int) -> dict:
                         "excerpt": (f.get("excerpt") or "")[:160],
                     }
                 )
+            if include_findings:
+                flat_findings.append(_finding_projection(path, f))
 
     summary = {
         ci: {
@@ -72,11 +107,17 @@ def scan_corpus(paths: list[Path], samples: int) -> dict:
         }
         for ci, b in sorted(per_ci.items(), key=lambda kv: -kv[1]["count"])
     }
-    return {
+    result = {
         "projects": projects,
         "total_findings": sum(p["total_findings"] for p in projects),
         "per_ci_id": summary,
+        "scope_mode": scope_mode,
+        "include_paths": list(include_paths),
+        "exclude_paths": list(exclude_paths),
     }
+    if include_findings:
+        result["findings"] = flat_findings
+    return result
 
 
 def to_markdown(result: dict) -> str:
@@ -116,13 +157,42 @@ def main() -> int:
     parser.add_argument("--samples", type=int, default=5, help="max sampled findings per CI-ID")
     parser.add_argument("--json", type=Path, default=None, help="write full JSON result here")
     parser.add_argument("--markdown", type=Path, default=None, help="write markdown triage report here")
+    parser.add_argument(
+        "--include-findings",
+        action="store_true",
+        help="include flat finding rows in the JSON output for later human labeling",
+    )
+    parser.add_argument(
+        "--scope-mode",
+        default="source-only",
+        help="scan scope mode for corpus review (default: source-only)",
+    )
+    parser.add_argument(
+        "--include-path",
+        action="append",
+        default=[],
+        help="optional relative include path; may be repeated",
+    )
+    parser.add_argument(
+        "--exclude-path",
+        action="append",
+        default=[],
+        help="optional relative exclude path; may be repeated",
+    )
     args = parser.parse_args()
 
     missing = [p for p in args.paths if not p.is_dir()]
     if missing:
         parser.error(f"not a directory: {', '.join(str(m) for m in missing)}")
 
-    result = scan_corpus(args.paths, args.samples)
+    result = scan_corpus(
+        args.paths,
+        args.samples,
+        include_findings=args.include_findings,
+        scope_mode=args.scope_mode,
+        include_paths=tuple(str(item) for item in args.include_path),
+        exclude_paths=tuple(str(item) for item in args.exclude_path),
+    )
 
     if args.json:
         args.json.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")

@@ -4,6 +4,10 @@ from __future__ import annotations
 import ast
 import re
 from pathlib import Path
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.11+ in supported runtime
+    tomllib = None  # type: ignore[assignment]
 
 try:
     from ..aci_findings import (
@@ -38,9 +42,10 @@ _PLAINTEXT_SECRET_PATTERN = re.compile(
     r"(?i)\b(api[_-]?key|secret|token|password)\b\s*[:=]\s*['\"][A-Za-z0-9_\-]{8,}['\"]"
 )
 _INSECURE_HTTP_PATTERN = re.compile(r"(?i)http://[A-Za-z0-9._:/\-]+")
-_UNPINNED_REQUIREMENT_PATTERN = re.compile(r"^[A-Za-z0-9_.\-]+(\[[A-Za-z0-9_,.\-]+\])?\s*(?!==)(?:[><~^!*]=?|@).+")
 _DOCKER_LATEST_PATTERN = re.compile(r"^\s*FROM\s+\S+:latest(?:\s|$)", re.IGNORECASE)
 _GITHUB_ACTION_USES_PATTERN = re.compile(r"^\s*uses:\s*([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)@([^\s#]+)", re.IGNORECASE)
+_EXACT_REQUIREMENT_PIN_PATTERN = re.compile(r"===?\s*[^=]")
+_POETRY_FLOATING_SPEC_PATTERN = re.compile(r"^(?:\^|~|>=|<=|>|<|!=|\*)")
 
 # Env-var / constant NAMES (UPPER_SNAKE with an underscore) assigned to a
 # secret-named target are labels, not secret material: `SECRET_KEY =
@@ -394,6 +399,176 @@ def _package_json_supply_chain_findings(path: Path, text: str, target_root: Path
     return findings
 
 
+def _requirement_spec_is_exact_pin(spec: str) -> bool:
+    stripped = spec.strip()
+    if not stripped:
+        return False
+    if stripped.startswith(("-e ", "--editable ")):
+        return True
+    if " @" in stripped or stripped.startswith(("git+", "http://", "https://")):
+        return True
+    return bool(_EXACT_REQUIREMENT_PIN_PATTERN.search(stripped))
+
+
+def _find_dependency_line(lines: list[str], needle: str) -> int:
+    for index, raw in enumerate(lines, start=1):
+        if needle in raw:
+            return index
+    return 1
+
+
+def _append_supply_chain_finding(
+    findings: list[AciFinding],
+    *,
+    next_id: int,
+    path: Path,
+    target_root: Path,
+    line: int,
+    excerpt_text: str,
+    reason: str,
+    recommended_action: str,
+) -> None:
+    findings.append(
+        _build_security_finding(
+            finding_id=f"F-SCAN-{next_id + len(findings):04d}",
+            signal="CI14_SUPPLY_CHAIN_DRIFT",
+            severity="medium",
+            path=path,
+            target_root=target_root,
+            line=line,
+            excerpt_text=excerpt_text,
+            reason=reason,
+            recommended_action=recommended_action,
+        )
+    )
+
+
+def _iter_pep621_dependency_specs(payload: dict[str, object]) -> list[tuple[str, str]]:
+    specs: list[tuple[str, str]] = []
+    project = payload.get("project")
+    if isinstance(project, dict):
+        dependencies = project.get("dependencies")
+        if isinstance(dependencies, list):
+            for item in dependencies:
+                if isinstance(item, str):
+                    specs.append(("project.dependencies", item))
+        optional = project.get("optional-dependencies")
+        if isinstance(optional, dict):
+            for group_name, group_items in optional.items():
+                if not isinstance(group_name, str) or not isinstance(group_items, list):
+                    continue
+                for item in group_items:
+                    if isinstance(item, str):
+                        specs.append((f"project.optional-dependencies.{group_name}", item))
+    dependency_groups = payload.get("dependency-groups")
+    if isinstance(dependency_groups, dict):
+        for group_name, group_items in dependency_groups.items():
+            if not isinstance(group_name, str) or not isinstance(group_items, list):
+                continue
+            for item in group_items:
+                if isinstance(item, str):
+                    specs.append((f"dependency-groups.{group_name}", item))
+    return specs
+
+
+def _is_poetry_exact_pin(spec: str) -> bool:
+    stripped = spec.strip()
+    if not stripped:
+        return False
+    if stripped in {"*", "latest"}:
+        return False
+    if stripped.startswith(("path = ", "file = ", "git = ", "url = ")):
+        return True
+    return not _POETRY_FLOATING_SPEC_PATTERN.match(stripped)
+
+
+def _iter_poetry_dependency_specs(payload: dict[str, object]) -> list[tuple[str, str, str]]:
+    specs: list[tuple[str, str, str]] = []
+    tool = payload.get("tool")
+    if not isinstance(tool, dict):
+        return specs
+    poetry = tool.get("poetry")
+    if not isinstance(poetry, dict):
+        return specs
+
+    def _consume_table(section_name: str, table: object) -> None:
+        if not isinstance(table, dict):
+            return
+        for dep_name, dep_spec in table.items():
+            if not isinstance(dep_name, str) or dep_name == "python":
+                continue
+            if isinstance(dep_spec, str):
+                specs.append((section_name, dep_name, dep_spec))
+                continue
+            if isinstance(dep_spec, dict):
+                version = dep_spec.get("version")
+                if isinstance(version, str):
+                    specs.append((section_name, dep_name, version))
+
+    _consume_table("tool.poetry.dependencies", poetry.get("dependencies"))
+    _consume_table("tool.poetry.dev-dependencies", poetry.get("dev-dependencies"))
+    groups = poetry.get("group")
+    if isinstance(groups, dict):
+        for group_name, group_table in groups.items():
+            if not isinstance(group_name, str) or not isinstance(group_table, dict):
+                continue
+            _consume_table(
+                f"tool.poetry.group.{group_name}.dependencies",
+                group_table.get("dependencies"),
+            )
+    return specs
+
+
+def _pyproject_supply_chain_findings(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    if tomllib is None:
+        return findings
+    try:
+        payload = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return findings
+    if not isinstance(payload, dict):
+        return findings
+    lines = text.splitlines()
+
+    for section_name, raw_spec in _iter_pep621_dependency_specs(payload):
+        if _requirement_spec_is_exact_pin(raw_spec):
+            continue
+        line = _find_dependency_line(lines, raw_spec)
+        _append_supply_chain_finding(
+            findings,
+            next_id=next_id,
+            path=path,
+            target_root=target_root,
+            line=line,
+            excerpt_text=_line_excerpt(text, line),
+            reason=(
+                f"Dependency spec '{raw_spec}' in {section_name} is not pinned to an exact version, "
+                "which widens supply-chain drift."
+            ),
+            recommended_action="Pin pyproject dependencies to reviewed exact versions or isolate floating ranges behind an explicitly reviewed policy.",
+        )
+
+    for section_name, dep_name, raw_spec in _iter_poetry_dependency_specs(payload):
+        if _is_poetry_exact_pin(raw_spec):
+            continue
+        line = _find_dependency_line(lines, f"{dep_name} =")
+        _append_supply_chain_finding(
+            findings,
+            next_id=next_id,
+            path=path,
+            target_root=target_root,
+            line=line,
+            excerpt_text=_line_excerpt(text, line),
+            reason=(
+                f"Dependency '{dep_name}' in {section_name} uses a floating version spec, "
+                "which widens supply-chain drift."
+            ),
+            recommended_action="Pin Poetry-managed dependencies to reviewed exact versions or document the floating range as an intentional exception.",
+        )
+    return findings
+
+
 def scan_supply_chain_drift(path: Path, text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
     suffix = path.suffix.lower()
@@ -401,24 +576,23 @@ def scan_supply_chain_drift(path: Path, text: str, target_root: Path, next_id: i
     lines = text.splitlines()
     if name == "package.json":
         return _package_json_supply_chain_findings(path, text, target_root, next_id)
+    if name == "pyproject.toml":
+        return _pyproject_supply_chain_findings(path, text, target_root, next_id)
     if name.startswith("requirements") and suffix == ".txt":
         for lineno, raw in enumerate(lines, start=1):
             stripped = raw.strip()
             if not stripped or stripped.startswith(("#", "-r", "--", "-e", "git+", "http://", "https://")):
                 continue
-            if _UNPINNED_REQUIREMENT_PATTERN.match(stripped):
-                findings.append(
-                    _build_security_finding(
-                        finding_id=f"F-SCAN-{next_id + len(findings):04d}",
-                        signal="CI14_SUPPLY_CHAIN_DRIFT",
-                        severity="medium",
-                        path=path,
-                        target_root=target_root,
-                        line=lineno,
-                        excerpt_text=raw.strip(),
-                        reason="A Python requirement is not pinned to an exact version, which weakens reproducibility and review boundaries.",
-                        recommended_action="Pin third-party requirements with exact versions or route intentionally floating dependencies through a reviewed exceptions file.",
-                    )
+            if not _requirement_spec_is_exact_pin(stripped):
+                _append_supply_chain_finding(
+                    findings,
+                    next_id=next_id,
+                    path=path,
+                    target_root=target_root,
+                    line=lineno,
+                    excerpt_text=raw.strip(),
+                    reason="A Python requirement is not pinned to an exact version, which weakens reproducibility and review boundaries.",
+                    recommended_action="Pin third-party requirements with exact versions or route intentionally floating dependencies through a reviewed exceptions file.",
                 )
         return findings
     if name in {"Dockerfile", "Containerfile"}:

@@ -47,9 +47,9 @@ _KNOWN_LIMITS: tuple[dict[str, object], ...] = (
         "kind": "coverage-boundary",
         "title": "Supply-chain manifest coverage is intentionally narrow",
         "summary": (
-            "The common-shelf CI-14 supply-chain detector currently covers only "
-            "requirements*.txt, package.json, Dockerfile/Containerfile, and "
-            "GitHub workflow uses: references."
+            "The common-shelf CI-14 supply-chain detector currently covers "
+            "requirements*.txt, pyproject.toml dependency surfaces, package.json, "
+            "Dockerfile/Containerfile, and GitHub workflow uses: references."
         ),
         "operator_guidance": (
             "Use additional tooling or downstream extensions for lockfiles and "
@@ -67,8 +67,10 @@ _KNOWN_LIMITS: tuple[dict[str, object], ...] = (
         "kind": "recall-limit",
         "title": "Non-local lifecycle reasoning stays conservative",
         "summary": (
-            "CI-22 does not try to prove resource cleanup through helper calls, "
-            "ownership transfers, or broad non-local control flow."
+            "CI-22 accepts local safe-management patterns such as explicit close "
+            "paths, helper context managers, and managed ExitStack registration "
+            "or close callbacks, but still does not try to prove helper-call "
+            "ownership transfers or broad non-local control flow."
         ),
         "operator_guidance": (
             "Treat CI-22 as a conservative structural signal; confirm exception-path "
