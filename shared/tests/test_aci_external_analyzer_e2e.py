@@ -190,3 +190,16 @@ def test_tsc_lane_treats_type_errors_as_findings(tmp_path: Path) -> None:
     assert result.runtime_state == "executed", f"tsc did not run cleanly: exit={result.exit_code} {result.stderr!r}"
     ts = [f for f in result.findings if f.signal == "EXT_TSC"]
     assert ts, "expected tsc to report the type error as a finding"
+
+
+@pytest.mark.skipif(shutil.which("osv-scanner") is None, reason="osv-scanner not installed")
+def test_osv_scanner_lane_runs_and_normalizes_dependency_findings(tmp_path: Path) -> None:
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "requirements.txt").write_text("requests==2.19.0\n", encoding="utf-8")
+    result = run_analyzer("osv-scanner", tmp_path, 0)
+
+    assert result.runtime_state == "executed", f"osv-scanner did not run: {result.stderr!r}"
+    vulns = [f for f in result.findings if f.signal == "EXT_OSV_SCANNER"]
+    assert vulns, "expected osv-scanner to flag a known-vulnerable dependency"
+    assert vulns[0].ci_id == "CI-14"

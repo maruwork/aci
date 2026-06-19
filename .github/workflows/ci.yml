@@ -42,6 +42,16 @@ jobs:
           pip install semgrep sqlfluff
           npm install -g eslint typescript
 
+      - name: Install binary security analyzers (Linux)
+        # gitleaks (secrets), trivy (deps/vuln), osv-scanner (deps) ship as release
+        # binaries; installing them lets their live e2e tests run in CI too.
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+          sudo curl -sSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o /usr/local/bin/osv-scanner
+          sudo chmod +x /usr/local/bin/osv-scanner
+          GL_URL=$(curl -sSL https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep -o '"browser_download_url": *"[^"]*linux_x64.tar.gz"' | head -1 | cut -d'"' -f4)
+          curl -sSL "$GL_URL" | sudo tar -xz -C /usr/local/bin gitleaks
+
       - name: Run test suite
         run: pytest shared/tests/ -v
 

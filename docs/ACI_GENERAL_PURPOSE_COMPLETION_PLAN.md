@@ -17,16 +17,19 @@ orchestration of best-in-class analyzers**, honestly bounded.
   multi-year effort; ACI borrows multi-language depth via orchestration. Native
   structural depth stays Python.
 
-## Present position (2026-06-20)
+## Present position (2026-06-20, after G1)
 
 - execution-ready (12): ruff, pyflakes, mypy, pytest, semgrep, eslint, tsc,
   shellcheck, sqlfluff, osv-scanner, trivy, gitleaks
 - availability-only (1): codeql
-- **live-verified (8 lanes, real binaries run)**: ruff, mypy, pytest, semgrep
-  (JS+multi-language), sqlfluff (SQL), shellcheck (shell), trivy (deps), gitleaks
-  (secrets)
-- **not yet live-verified**: eslint, tsc (Windows `.CMD` + eslint flat-config),
-  osv-scanner (not installed in this env), codeql (opt-in)
+- **G1 done — all 12 execution-ready lanes live-verified** (real binaries run and
+  normalize findings): ruff/mypy/pytest (Python), semgrep (JS+multi-language),
+  sqlfluff (SQL), shellcheck (shell), trivy + osv-scanner (deps), gitleaks
+  (secrets), eslint (JS), tsc (TS). Live runs found and fixed six real invocation
+  bugs (sqlfluff `--dialect`, gitleaks `detect`→`dir`, tsc exit-2, eslint flat
+  config / unmatched-glob, Windows `.CMD` resolution) that parser-only tests could
+  not catch. CI installs every tool so the e2e run there.
+- **remaining**: codeql (G2, opt-in / DB-build).
 
 ## Phase G1 — Every executable lane live-verified in CI
 
