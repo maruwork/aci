@@ -35,6 +35,7 @@ REQUIRED_SAMPLE_TOP_LEVEL_FIELDS = (
     "scan_scope",
     "generated_at",
     "verification_status",
+    "detection_disclosure",
     "summary",
     "findings",
     "blockers",

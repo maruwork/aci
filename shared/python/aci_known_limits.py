@@ -154,3 +154,22 @@ _KNOWN_LIMITS: tuple[dict[str, object], ...] = (
 def known_limits() -> list[dict[str, object]]:
     """Return a copy of the bounded machine-readable known-limit catalog."""
     return [dict(item) for item in _KNOWN_LIMITS]
+
+
+# Carried on every scan report so users RECOGNISE that ACI is not exhaustive --
+# not merely that specific limits exist (that is known_limits above), but that
+# even the checks ACI implements and declares do not detect 100%. ACI does not
+# aim for perfect auditing; it aims to audit its declared capabilities well, and
+# to disclose the residual miss-rate plainly rather than imply completeness.
+_DETECTION_DISCLOSURE: str = (
+    "ACI performs bounded, best-effort code auditing and does not aim to be "
+    "exhaustive. Even for the checks it implements and declares, detection is "
+    "not 100%: a clean or low-finding result does not prove the absence of "
+    "issues. Treat ACI as one layer, review the known_limits in this report, "
+    "and do not rely on it as a sole gate."
+)
+
+
+def detection_disclosure() -> str:
+    """Return the user-facing non-exhaustiveness disclosure for a scan report."""
+    return _DETECTION_DISCLOSURE

@@ -724,3 +724,23 @@ def test_suppression_count_in_summary(tmp_path: Path) -> None:
     assert report["summary"]["suppressed_count"] >= 2
     signals = {f["signal"] for f in report["findings"]}
     assert "CI03_TODO_HACK" not in signals
+
+
+def test_every_scan_report_discloses_non_exhaustive_detection(tmp_path: Path) -> None:
+    # The user-facing recognition requirement: a report must carry an explicit
+    # "detection is not 100%" disclosure, so a clean result is never read as proof
+    # of absence. It is mandatory output, not optional prose.
+    from aci.aci_automation import REQUIRED_SAMPLE_TOP_LEVEL_FIELDS
+
+    _write(tmp_path / "clean.py", "def f():\n    return 1\n")
+    report = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)
+
+    disclosure = report.get("detection_disclosure", "")
+    assert isinstance(disclosure, str) and disclosure, "report must carry a detection_disclosure"
+    lowered = disclosure.lower()
+    assert "not 100%" in lowered, disclosure
+    assert "not aim to be" in lowered or "not exhaustive" in lowered, disclosure
+    assert "does not prove" in lowered, disclosure
+
+    # Enforced as a required field so no report can ship without the disclosure.
+    assert "detection_disclosure" in REQUIRED_SAMPLE_TOP_LEVEL_FIELDS

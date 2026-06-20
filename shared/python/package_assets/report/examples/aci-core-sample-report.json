@@ -54,6 +54,7 @@
   "generated_at": "2026-06-18T00:00:00Z",
   "verification_status": "executed",
   "external_analyzer_runs": [],
+  "detection_disclosure": "ACI performs bounded, best-effort code auditing and does not aim to be exhaustive. Even for the checks it implements and declares, detection is not 100%: a clean or low-finding result does not prove the absence of issues. Treat ACI as one layer, review the known_limits in this report, and do not rely on it as a sole gate.",
   "known_limits": [
     {
       "limit_id": "KL-ACI-CI05-STRUCTURE-EXACT",

@@ -50,6 +50,18 @@ bundled coverage is over-building — it moves ACI *away* from completion. Cover
 breadth is the analyzers' axis to grow; ACI's axis is the **quality and honesty
 of the orchestration**.
 
+**Not perfect — sufficient for what is declared, and honestly disclosed.** ACI
+does not aim for perfect or exhaustive auditing. For the capabilities it
+implements and declares, it aims for an audit that is *good enough to rely on for
+those capabilities*. Crucially, it discloses on **every** scan report that even
+those are not 100%: the top-level `detection_disclosure` field
+(`aci_known_limits.detection_disclosure`) states plainly that a clean or
+low-finding result does not prove the absence of issues. A clean result is
+*evidence, not proof* — users must recognise the residual miss-rate, not read
+silence as safety. This disclosure is **mandatory output**, enforced by
+`REQUIRED_SAMPLE_TOP_LEVEL_FIELDS` (so a report cannot ship without it), not
+optional prose; the specific limits behind it are enumerated in `known_limits`.
+
 The common shelf may claim:
 
 - bounded native structural/code-smell coverage (with documented blind spots) only for Python

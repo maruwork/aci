@@ -78,7 +78,7 @@ try:
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
-    from .aci_known_limits import known_limits
+    from .aci_known_limits import known_limits, detection_disclosure
 except ImportError:  # pragma: no cover - direct script/module import path
     from detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY  # type: ignore[no-redef]
     from detectors._helpers import _relative_path  # type: ignore[no-redef]
@@ -108,7 +108,7 @@ except ImportError:  # pragma: no cover - direct script/module import path
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
-    from aci_known_limits import known_limits
+    from aci_known_limits import known_limits, detection_disclosure
 
 
 try:
@@ -599,6 +599,7 @@ def _build_scan_report(session: ScanSession, operations_file: Path | None, artif
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "verification_status": "executed",
         "external_analyzer_runs": artifacts.analyzer_runs,
+        "detection_disclosure": detection_disclosure(),
         "known_limits": known_limits(),
         "operations_file": None if operations_file is None else operations_file.resolve().as_posix(),
         "summary": summary,

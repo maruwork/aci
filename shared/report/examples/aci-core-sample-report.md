@@ -55,6 +55,14 @@ Status: Active
 
 - none
 
+## Detection Disclosure
+
+> ACI performs bounded, best-effort code auditing and does not aim to be
+> exhaustive. Even for the checks it implements and declares, detection is not
+> 100%: a clean or low-finding result does not prove the absence of issues. Treat
+> ACI as one layer, review the known_limits below, and do not rely on it as a
+> sole gate.
+
 ## Known Limits
 
 - `KL-ACI-CI05-STRUCTURE-EXACT`
