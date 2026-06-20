@@ -696,6 +696,79 @@ def test_diff_from_scopes_findings_to_changed_lines(tmp_path: Path, monkeypatch)
     assert all(6 <= line <= 10 for line in ci21_lines), f"unchanged function leaked: {ci21_lines}"
 
 
+def test_diff_from_keeps_structural_finding_when_change_is_inside_construct(tmp_path: Path, monkeypatch) -> None:
+    # The core of change-aware scoping: a long-function finding anchors at the def
+    # line, but a change deep in its body (far from the def) must still keep it,
+    # while a change OUTSIDE the function must drop it.
+    # CI-02 long-function fires only on long AND branch-heavy bodies (>=80 lines,
+    # complexity >=15), so use 80 flat `if` blocks (160 body lines, complexity ~81).
+    body = "".join(f"    if x == {i}:\n        y = {i}\n" for i in range(80))
+    _write(tmp_path / "big.py", f"def big(x):\n{body}    return y\nZ_SENTINEL = object()\n")
+    # def big(x) = line 1; body = 2..161; return = 162; Z_SENTINEL = 163
+    monkeypatch.setattr("aci.aci_scan._git_changed_files", lambda root, ref: frozenset(["big.py"]))
+
+    monkeypatch.setattr("aci.aci_scan._git_changed_lines", lambda root, ref: {"big.py": {60}})
+    inside = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False, diff_from="HEAD~1")
+    assert any(f["ci_id"] == "CI-02" for f in inside["findings"]), "a change inside the long function must keep its finding"
+
+    monkeypatch.setattr("aci.aci_scan._git_changed_lines", lambda root, ref: {"big.py": {163}})
+    outside = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False, diff_from="HEAD~1")
+    assert not any(f["ci_id"] == "CI-02" for f in outside["findings"]), "a change outside the function must drop its finding"
+
+
+def test_git_changed_lines_parses_hunks(tmp_path: Path, monkeypatch) -> None:
+    from aci._scan_scope import _git_changed_lines
+
+    diff_out = (
+        "diff --git a/m.py b/m.py\n--- a/m.py\n+++ b/m.py\n"
+        "@@ -10,0 +11,3 @@ def ctx\n+a\n+b\n+c\n"
+        "@@ -20,2 +23,1 @@\n-old\n+new\n"
+        "@@ -30,2 +32,0 @@\n-x\n-y\n"
+        "diff --git a/new.py b/new.py\n--- /dev/null\n+++ b/new.py\n"
+        "@@ -0,0 +1,2 @@\n+p\n+q\n"
+    )
+    diff_cp = subprocess.CompletedProcess(args=[], returncode=0, stdout=diff_out, stderr="")
+    top_cp = subprocess.CompletedProcess(args=[], returncode=0, stdout=str(tmp_path.resolve()), stderr="")
+    monkeypatch.setattr(
+        "aci._scan_scope.subprocess.run",
+        lambda *a, **k: diff_cp if a[0][1] == "diff" else top_cp,
+    )
+    changed = _git_changed_lines(tmp_path, "HEAD~1")
+    assert changed["m.py"] == {11, 12, 13, 23, 32}  # added/changed lines + the deletion-hunk anchor (32)
+    assert changed["new.py"] == {1, 2}
+
+
+def test_diff_from_falls_back_to_file_level_when_line_diff_fails(tmp_path: Path, monkeypatch) -> None:
+    # If the line-level diff cannot be computed, the scan must keep the file-level
+    # result rather than silently dropping everything.
+    _write(tmp_path / "m.py", "def f():\n    try:\n        pass\n    except Exception:\n        pass\n")
+    monkeypatch.setattr("aci.aci_scan._git_changed_files", lambda root, ref: frozenset(["m.py"]))
+
+    def boom(root, ref):
+        raise ValueError("git unavailable")
+
+    monkeypatch.setattr("aci.aci_scan._git_changed_lines", boom)
+    report = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False, diff_from="HEAD~1")
+    assert any(f["signal"] == "CI21_BROAD_EXCEPTION_SWALLOW" for f in report["findings"]), "fallback must keep file-level findings"
+
+
+def test_construct_spans_handles_async_and_decorated() -> None:
+    from aci.aci_scan import _construct_spans
+
+    src = (
+        "@decorator\n"        # 1 (decorator)
+        "def deco():\n"       # 2 (FunctionDef.lineno -> the def line, not the decorator)
+        "    return 1\n"      # 3
+        "async def af():\n"   # 4
+        "    await x()\n"     # 5
+        "    return 2\n"      # 6
+    )
+    spans = _construct_spans(src)
+    assert spans[2] == 3   # decorated def anchored at the `def` line, spans 2..3
+    assert spans[4] == 6   # async function span 4..6
+    assert 1 not in spans  # the decorator line is not a construct anchor
+
+
 # ── suppression tests ──────────────────────────────────────────────────────
 
 def test_suppression_by_signal_removes_finding(tmp_path: Path) -> None:
