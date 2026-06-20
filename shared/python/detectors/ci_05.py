@@ -7,13 +7,13 @@ from pathlib import Path
 try:
     from ..aci_findings import (
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_LOW, CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW,
     )
     from ._helpers import _relative_path, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED,
-        CONFIDENCE_LOW, CONFIDENCE_MEDIUM,
+        CONFIDENCE_LOW,
     )
     from detectors._helpers import _relative_path, _cached_parse  # type: ignore[no-redef]
 
@@ -138,7 +138,9 @@ def scan(paths: list[Path], root: Path, next_id: int) -> list[AciFinding]:
                     if support_only
                     else "Extract the shared logic into a single named function and call it from each site."
                 ),
-                confidence=CONFIDENCE_LOW if support_only else CONFIDENCE_MEDIUM,
+                # Calibrated to measured field precision (~40% on real code: FPs
+                # on trivial boilerplate / re-exports). See examples/aci-field-precision/.
+                confidence=CONFIDENCE_LOW,
                 priority="P3" if support_only else "P2",
                 owner_lane=LANE_NATIVE_STATIC,
                 verification_status=VERIFICATION_EXECUTED,

@@ -21,8 +21,9 @@ from pathlib import Path
 from typing import cast
 import json
 import re
+import shutil
 import subprocess
-import sys
+import tempfile
 from shutil import which
 
 try:
@@ -46,8 +47,15 @@ ANALYZER_EXECUTION_SUPPORT_LEVELS: dict[str, str] = {
     ),
 }
 
-VERSION_PROBE_TIMEOUT_SECONDS: int = 10
+# Heavy analyzers (semgrep loads a Python + OCaml core) take ~9s just to print
+# their version on a cold start, which sat right on a tighter 10s edge and caused
+# intermittent version-or-runtime-problem readiness flaps. A broken executable
+# still fails fast via OSError; this only widens the margin for slow-but-healthy
+# startups. Surfaced by a live run, not parser tests.
+VERSION_PROBE_TIMEOUT_SECONDS: int = 30
 ANALYZER_TIMEOUT_SECONDS: int = 60
+# codeql builds a database then runs query suites; each step can take minutes.
+CODEQL_TIMEOUT_SECONDS: int = 900
 ANALYZER_MAX_OUTPUT_CHARS: int = 10 * 1024 * 1024  # 10 M chars per stream (≈10 MB for ASCII output)
 
 MINIMUM_ANALYZER_VERSIONS: dict[str, tuple[int, ...]] = {
@@ -90,6 +98,14 @@ _EXECUTION_READY_ANALYZERS: frozenset[str] = frozenset({
     "tsc",
     "shellcheck",
     "sqlfluff",
+    # Deep dependency/vulnerability scanners (single JSON-on-stdout model).
+    "osv-scanner",
+    "trivy",
+    # Secret scanner with a JSON file-report model (run via a temp report path).
+    "gitleaks",
+    # Multi-language taint engine: build a database per interpreted language, then
+    # analyze to SARIF (a heavier, multi-step model than a single invocation).
+    "codeql",
 })
 _ANALYZER_VERSION_POLICY: dict[str, dict[str, str]] = {
     "codeql": {
@@ -291,9 +307,14 @@ def _version_probe_command(analyzer_id: str) -> list[str]:
 
 
 def _probe_version(analyzer_id: str, executable_path: str) -> tuple[str | None, bool]:
+    # Run the probe via the resolved executable path so npm shims (eslint.CMD,
+    # tsc.CMD) work on Windows, where subprocess(shell=False) cannot launch a bare
+    # `.CMD` name. On POSIX the resolved path is identical to the bare name.
+    probe = _version_probe_command(analyzer_id)
+    probe = [executable_path, *probe[1:]]
     try:
         completed = subprocess.run(
-            _version_probe_command(analyzer_id),
+            probe,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -421,663 +442,247 @@ def analyzer_execution_support_levels() -> dict[str, str]:
     return dict(ANALYZER_EXECUTION_SUPPORT_LEVELS)
 
 
-_RUFF_PREFIX_TO_CI: dict[str, str] = {
-    "F":   "CI-07",  # pyflakes — unused imports, dead names
-    "UP":  "CI-07",  # pyupgrade — deprecated / obsolete patterns
-    "ERA": "CI-07",  # eradicate — commented-out dead code
-    "I":   "CI-13",  # isort — import ordering / dependency surface
-    "D":   "CI-15",  # pydocstyle — documentation rot
-    "ANN": "CI-23",  # annotations — type contract drift
-    "S":   "CI-14",  # bandit — security neglect
-    "PT":  "CI-09",  # pytest style — test rot
-    "DTZ": "CI-25",  # timezone-naive — nondeterminism
-    "E":   "CI-02",  # pycodestyle style — spaghetti / readability
-    "W":   "CI-02",
-    "C":   "CI-02",  # mccabe complexity
-    "N":   "CI-02",  # naming
-    "SIM": "CI-02",  # simplify
-    "PL":  "CI-02",  # pylint
-    "B":   "CI-21",  # flake8-bugbear — e.g. B904 broken exception chain (raise without `from e`)
-    "TRY": "CI-21",  # flake8-tryceratops — e.g. TRY400 missing logging.exception
-    "BLE": "CI-21",  # flake8-blind-except — BLE001 broad except (same as native CI-21)
-    "TD":  "CI-03",  # flake8-todos — patchwork markers (same as native CI-03)
-    "FIX": "CI-03",  # flake8-fixme — patchwork markers
-    "PLR": "CI-02",  # pylint refactor (complexity-ish) — default bucket
-    "PLW": "CI-02",  # pylint warning — default bucket
-    "PLC": "CI-02",
-}
 
 # Specific ruff codes whose category is a different native CI-ID than their
 # prefix bucket. Checked before the prefix lookup so native/external dedup lines
 # up (see _deduplicate_findings in aci_scan).
-_RUFF_CODE_TO_CI: dict[str, str] = {
-    "PLR0913": "CI-18",  # too-many-arguments -> data clump
-    "PLW0603": "CI-26",  # global-statement -> race hazard
-}
-
-_RUFF_PREFIX_PATTERN = re.compile(r"^([A-Z]+)")
 
 
-def _ruff_ci_id(code: str) -> str:
-    if code in _RUFF_CODE_TO_CI:
-        return _RUFF_CODE_TO_CI[code]
-    m = _RUFF_PREFIX_PATTERN.match(code or "")
-    if not m:
-        return "CI-21"
-    return _RUFF_PREFIX_TO_CI.get(m.group(1), "CI-21")
 
 
-def _ruff_severity(code: str) -> str:
-    m = _RUFF_PREFIX_PATTERN.match(code or "")
-    return "high" if m and m.group(1) == "S" else "medium"
 
 
-def _pyflakes_ci_id(message: str) -> str:
-    msg = message.lower()
-    if "imported but unused" in msg or "redefinition of unused" in msg or "assigned to but never used" in msg:
-        return "CI-07"
-    if "undefined name" in msg:
-        return "CI-21"
-    return "CI-07"
 
 
-def _ruff_command(target_root: Path) -> list[str]:
-    return ["ruff", "check", str(target_root), "--output-format", "json"]
 
-
-def _pyflakes_command(target_root: Path) -> list[str]:
-    return ["pyflakes", str(target_root)]
-
-
-_PYTHON_ANALYZER_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
-    ".claude", "archive", "common", "workspace",
-})
-_PYTEST_CANDIDATE_PATHS: tuple[str, ...] = ("shared/tests", "tests", "test", "spec", "specs")
-
-
-def _relative_parts(path: Path, target_root: Path) -> tuple[str, ...]:
-    try:
-        return path.relative_to(target_root).parts
-    except ValueError:
-        return path.parts
-
-
-def _find_python_files(target_root: Path) -> list[str]:
-    return sorted(
-        str(p)
-        for p in target_root.rglob("*.py")
-        if p.is_file() and not any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
+try:
+    from ._analyzer_commands import (
+        _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
+        _gitleaks_command, _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
+        _codeql_languages, _codeql_db_create_command, _codeql_analyze_command,
+    )
+except ImportError:  # pragma: no cover - direct script/module import path
+    from _analyzer_commands import (  # type: ignore[no-redef]
+        _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
+        _gitleaks_command, _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
+        _codeql_languages, _codeql_db_create_command, _codeql_analyze_command,
     )
 
 
-def _mypy_command(target_root: Path, python_files: list[str]) -> list[str]:
-    command = [
-        "mypy",
-        "--namespace-packages",
-        "--explicit-package-bases",
-        "--hide-error-context",
-        "--no-color-output",
-        "--show-column-numbers",
-        "--no-error-summary",
-    ]
-    workspace_dir = target_root / "workspace"
-    if workspace_dir.is_dir():
-        command.extend(["--cache-dir", str(workspace_dir / ".aci-mypy-cache")])
-    command.extend(python_files)
-    return command
 
 
-def _pytest_targets(target_root: Path) -> list[str]:
-    targets = [str(target_root / candidate) for candidate in _PYTEST_CANDIDATE_PATHS if (target_root / candidate).exists()]
-    return targets or [str(target_root)]
 
 
-def _pytest_command(target_root: Path) -> list[str]:
-    command = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"]
-    workspace_dir = target_root / "workspace"
-    if workspace_dir.is_dir():
-        command.extend(["--ignore", str(workspace_dir)])
-        command.extend(["--basetemp", str(workspace_dir / ".aci-pytest-tmp")])
-    command.extend(_pytest_targets(target_root))
-    return command
 
 
-_ESLINT_RULE_PREFIX_MAP: tuple[tuple[str, str], ...] = (
-    ("@typescript-eslint/", "CI-23"),
-    ("import/",             "CI-13"),
-    ("security/",          "CI-14"),
-    ("no-unused",          "CI-07"),
-    ("no-unreachable",     "CI-07"),
-    ("no-empty",           "CI-21"),
-    ("no-eval",            "CI-14"),
-    ("no-new-func",        "CI-14"),
-    ("no-implied-eval",    "CI-14"),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def _external_relative(filename: str, target_root: Path) -> str:
+    path = Path(filename)
+    try:
+        return path.resolve().relative_to(target_root.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix() if filename else ""
+
+
+_CODEQL_CWE_CI: tuple[tuple[str, str], ...] = (
+    ("cwe-079", "CI-14"), ("cwe-089", "CI-14"), ("cwe-078", "CI-14"),
+    ("cwe-094", "CI-14"), ("cwe-502", "CI-14"), ("cwe-022", "CI-14"),
+    ("cwe-798", "CI-14"), ("cwe-327", "CI-14"), ("cwe-352", "CI-14"),
 )
 
-_SEMGREP_SUPPORTED_SUFFIXES: frozenset[str] = frozenset({
-    ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".cs", ".kt", ".kts",
-    ".sh", ".bash", ".yaml", ".yml", ".json", ".toml", ".tf", ".hcl",
-})
-_SEMGREP_SUPPORTED_NAMES: frozenset[str] = frozenset({"Dockerfile", "Containerfile"})
-_SEMGREP_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
-    ".claude", "archive", "common", "workspace",
-})
 
-
-def _eslint_ci_id(rule_id: str | None) -> str:
-    if not rule_id:
-        return "CI-02"
-    for prefix, ci_id in _ESLINT_RULE_PREFIX_MAP:
-        if rule_id.startswith(prefix):
+def _codeql_ci_id(rule: dict[str, object] | None) -> str:
+    """Map a codeql rule's tags to a CI-ID. Security rules -> CI-14; otherwise a
+    conservative default."""
+    tags: list[str] = []
+    if isinstance(rule, dict):
+        props = rule.get("properties")
+        if isinstance(props, dict) and isinstance(props.get("tags"), list):
+            tags = [str(t).lower() for t in props["tags"]]
+    joined = " ".join(tags)
+    for needle, ci_id in _CODEQL_CWE_CI:
+        if needle in joined:
             return ci_id
-    return "CI-02"
-
-
-def _eslint_command(target_root: Path) -> list[str]:
-    return ["eslint", "--format", "json", str(target_root)]
-
-
-def _semgrep_rule_path() -> Path:
-    return Path(__file__).resolve().parent / "package_assets" / "analyzers" / "aci-semgrep-rules.yml"
-
-
-def _has_semgrep_source(target_root: Path, ignored_paths: tuple[Path, ...] = ()) -> bool:
-    ignored = {path.resolve() for path in ignored_paths}
-    return any(
-        path.is_file()
-        and path.resolve() not in ignored
-        and path.name not in {".semgrepignore"}
-        and not any(seg in _SEMGREP_SKIP_SEGMENTS for seg in _relative_parts(path, target_root))
-        and (path.suffix.lower() in _SEMGREP_SUPPORTED_SUFFIXES or path.name in _SEMGREP_SUPPORTED_NAMES)
-        for path in target_root.rglob("*")
-    )
-
-
-def _semgrep_command(target_root: Path) -> list[str] | None:
-    rule_path = _semgrep_rule_path()
-    if not rule_path.is_file() or not _has_semgrep_source(target_root, ignored_paths=(rule_path,)):
-        return None
-    return [
-        "semgrep",
-        "scan",
-        "--config",
-        str(rule_path),
-        "--json",
-        "--quiet",
-        "--disable-version-check",
-        str(target_root),
-    ]
-
-
-_TSC_LINE_PATTERN = re.compile(r"(.+?)\((\d+),(\d+)\):\s*(?:error|warning)\s*(TS\d+):\s*(.+)")
-
-
-def _find_tsconfig(target_root: Path) -> Path | None:
-    tsconfig = target_root / "tsconfig.json"
-    return tsconfig if tsconfig.is_file() else None
-
-
-def _tsc_command(tsconfig_path: Path) -> list[str]:
-    return ["tsc", "--noEmit", "--pretty", "false", "-p", str(tsconfig_path)]
-
-
-_SHELLCHECK_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-})
-
-
-def _shellcheck_ci_id(level: str) -> str:
-    return "CI-21" if level in ("error", "warning") else "CI-02"
-
-
-def _find_shell_files(target_root: Path) -> list[str]:
-    return sorted(
-        str(p)
-        for p in target_root.rglob("*")
-        if p.suffix in (".sh", ".bash")
-        and p.is_file()
-        and not any(seg in _SHELLCHECK_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
-    )
-
-
-def _shellcheck_command(shell_files: list[str]) -> list[str]:
-    return ["shellcheck", "--format", "json"] + shell_files[:200]
-
-
-def _sqlfluff_command(target_root: Path) -> list[str]:
-    return ["sqlfluff", "lint", "--format", "json", str(target_root)]
-
-
-def _analyzer_command(analyzer_id: str, target_root: Path) -> list[str] | None:
-    """Return the subprocess command for directory-level analyzers.
-
-    tsc and shellcheck require source-file discovery before the command can be
-    built; they are handled separately in run_analyzer and must NOT appear here.
-    """
-    if analyzer_id == "ruff":
-        return _ruff_command(target_root)
-    if analyzer_id == "pyflakes":
-        return _pyflakes_command(target_root)
-    if analyzer_id == "pytest":
-        return _pytest_command(target_root)
-    if analyzer_id == "semgrep":
-        return _semgrep_command(target_root)
-    if analyzer_id == "eslint":
-        return _eslint_command(target_root)
-    if analyzer_id == "sqlfluff":
-        return _sqlfluff_command(target_root)
-    return None
-
-
-def _ruff_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    for item in payload:
-        filename = Path(item["filename"])
-        try:
-            relative = filename.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filename.as_posix()
-        location = item.get("location", {})
-        line = location.get("row")
-        code = item.get("code", "")
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_ruff_ci_id(code),
-                signal="EXT_RUFF",
-                severity=_ruff_severity(code),
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=line,
-                excerpt=item.get("message", ""),
-                reason=item.get("message", "ruff reported a finding"),
-                evidence_ref=f"ruff:{code or 'unknown'}",
-                recommended_action="Review the analyzer message and align code or rule configuration.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _pyflakes_findings(stdout: str, stderr: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in (stdout + "\n" + stderr).splitlines():
-        match = re.match(r"(.+?):(\d+):\s*(.+)", raw_line.strip())
-        if not match:
-            continue
-        filename, line_text, message = match.groups()
-        path = Path(filename)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_pyflakes_ci_id(message),
-                signal="EXT_PYFLAKES",
-                severity="medium",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=int(line_text),
-                excerpt=message,
-                reason=message,
-                evidence_ref="pyflakes",
-                recommended_action="Review the analyzer message and align code or imports accordingly.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _mypy_findings(stdout: str, stderr: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in (stdout + "\n" + stderr).splitlines():
-        match = re.match(r"(.+?):(\d+):(?:(\d+):)?\s*(error|note):\s*(.+)", raw_line.strip())
-        if not match:
-            continue
-        filename, line_text, _column_text, level_text, message = match.groups()
-        path = Path(filename)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        code_match = re.search(r"\[([^\]]+)\]$", message.strip())
-        mypy_code = code_match.group(1) if code_match else None
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id="CI-23",
-                signal="EXT_MYPY",
-                severity="high" if level_text == "error" else "low",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=int(line_text),
-                excerpt=message,
-                reason=message,
-                evidence_ref=f"mypy:{mypy_code}" if mypy_code else "mypy",
-                recommended_action="Align declared and actual interfaces so the type contract stays explicit.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _pytest_findings(stdout: str, stderr: str, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in stdout.splitlines():
-        stripped = raw_line.strip()
-        if not stripped.startswith("FAILED "):
-            continue
-        message = stripped.removeprefix("FAILED ").strip()
-        target_file = message.split("::", 1)[0]
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id="CI-09",
-                signal="EXT_PYTEST",
-                severity="high",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=target_file,
-                line=None,
-                excerpt=message,
-                reason=message,
-                evidence_ref="pytest",
-                recommended_action="Inspect the failing test and restore the broken behavior or fixture contract.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    if findings:
-        return findings
-    if "failed" in stdout.lower():
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id:04d}",
-                ci_id="CI-09",
-                signal="EXT_PYTEST",
-                severity="high",
-                confidence="low",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file="pytest-session",
-                line=None,
-                excerpt="pytest reported failing tests",
-                reason="pytest reported failing tests but the failure lines were not individually parsed.",
-                evidence_ref="pytest",
-                recommended_action="Open the pytest session output and repair the failing test or fixture contract.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _eslint_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    for file_result in payload:
-        filepath = Path(file_result["filePath"])
-        try:
-            relative = filepath.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filepath.as_posix()
-        for msg in file_result.get("messages", []):
-            rule_id = msg.get("ruleId")
-            severity_level = msg.get("severity", 1)
-            findings.append(
-                build_finding(
-                    finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                    ci_id=_eslint_ci_id(rule_id),
-                    signal="EXT_ESLINT",
-                    severity="high" if severity_level == 2 else "medium",
-                    confidence="medium",
-                    actor_label=LANE_EXTERNAL_ANALYZER,
-                    triage_state="review-first",
-                    priority="P2",
-                    fixability="owner-decision",
-                    baseline_status="new",
-                    waiver_status="none",
-                    lifecycle_state="open",
-                    owner_lane=LANE_EXTERNAL_ANALYZER,
-                    target_file=relative,
-                    line=msg.get("line"),
-                    excerpt=msg.get("message", ""),
-                    reason=msg.get("message", "eslint reported a finding"),
-                    evidence_ref=f"eslint:{rule_id or 'unknown'}",
-                    recommended_action="Review the ESLint rule violation and align code or rule configuration.",
-                    verification_status=VERIFICATION_EXECUTED,
-                )
-            )
-    return findings
-
-
-def _semgrep_ci_id(check_id: str) -> str:
-    lowered = check_id.lower()
-    if ".ci22." in lowered:
-        return "CI-22"
-    if ".ci23." in lowered:
-        return "CI-23"
-    if ".ci26." in lowered:
-        return "CI-26"
-    if ".ci21." in lowered:
-        return "CI-21"
+    if "security" in joined:
+        return "CI-14"
     return "CI-14"
 
 
-def _semgrep_severity(value: str) -> str:
-    severity = value.upper()
-    if severity == "ERROR":
-        return "high"
-    if severity == "INFO":
-        return "low"
-    return "medium"
-
-
-def _semgrep_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
+def _codeql_findings(sarif_text: str, target_root: Path, next_id: int) -> list[AciFinding]:
     findings: list[AciFinding] = []
-    payload = json.loads(stdout or "{}")
-    for item in payload.get("results", []):
-        raw_path = item.get("path", "")
-        if not raw_path:
-            continue
-        path = Path(raw_path)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        extra = item.get("extra", {})
-        check_id = str(item.get("check_id", "semgrep.unknown"))
-        message = str(extra.get("message", "semgrep reported a finding"))
-        line = ((item.get("start") or {}) if isinstance(item.get("start"), dict) else {}).get("line")
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_semgrep_ci_id(check_id),
-                signal="EXT_SEMGREP",
-                severity=_semgrep_severity(str(extra.get("severity", "WARNING"))),
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1" if _semgrep_severity(str(extra.get("severity", "WARNING"))) == "high" else "P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=line if isinstance(line, int) else None,
-                excerpt=message,
-                reason=message,
-                evidence_ref=f"semgrep:{check_id}",
-                recommended_action="Review the Semgrep finding and either harden the code path or narrow the rule scope.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _tsc_findings(stdout: str, stderr: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    for raw_line in (stdout + "\n" + stderr).splitlines():
-        match = _TSC_LINE_PATTERN.match(raw_line.strip())
-        if not match:
-            continue
-        filename, line_text, _col, ts_code, message = match.groups()
-        path = Path(filename)
-        try:
-            relative = path.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id="CI-23",
-                signal="EXT_TSC",
-                severity="high",
-                confidence="high",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P1",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=int(line_text),
-                excerpt=message,
-                reason=f"{ts_code}: {message}",
-                evidence_ref=f"tsc:{ts_code}",
-                recommended_action="Resolve the TypeScript type error to maintain type contract integrity.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _shellcheck_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    for item in payload:
-        filepath = Path(item["file"])
-        try:
-            relative = filepath.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filepath.as_posix()
-        level = item.get("level", "style")
-        code = item.get("code", 0)
-        message = item.get("message", "")
-        findings.append(
-            build_finding(
-                finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                ci_id=_shellcheck_ci_id(level),
-                signal="EXT_SHELLCHECK",
-                severity="high" if level == "error" else "medium",
-                confidence="medium",
-                actor_label=LANE_EXTERNAL_ANALYZER,
-                triage_state="review-first",
-                priority="P2",
-                fixability="owner-decision",
-                baseline_status="new",
-                waiver_status="none",
-                lifecycle_state="open",
-                owner_lane=LANE_EXTERNAL_ANALYZER,
-                target_file=relative,
-                line=item.get("line"),
-                excerpt=message,
-                reason=message,
-                evidence_ref=f"shellcheck:SC{code}",
-                recommended_action="Review the ShellCheck finding and fix the shell script issue.",
-                verification_status=VERIFICATION_EXECUTED,
-            )
-        )
-    return findings
-
-
-def _sqlfluff_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
-    findings: list[AciFinding] = []
-    payload = json.loads(stdout or "[]")
-    file_list = payload.get("files", payload) if isinstance(payload, dict) else payload
-    for file_result in file_list:
-        raw_path = file_result.get("filepath", "")
-        if not raw_path:
-            continue
-        filepath = Path(raw_path)
-        try:
-            relative = filepath.resolve().relative_to(target_root.resolve()).as_posix()
-        except ValueError:
-            relative = filepath.as_posix()
-        for violation in file_result.get("violations", []):
-            code = violation.get("code", "")
-            description = violation.get("description", "")
-            is_warning = violation.get("warning", False)
+    payload = json.loads(sarif_text or "{}")
+    for run in payload.get("runs", []) or []:
+        driver = ((run.get("tool") or {}).get("driver") or {})
+        rules_by_id = {r.get("id"): r for r in (driver.get("rules") or []) if isinstance(r, dict)}
+        for result in run.get("results", []) or []:
+            if not isinstance(result, dict):
+                continue
+            rule_id = str(result.get("ruleId") or "")
+            message = ((result.get("message") or {}).get("text")) or rule_id
+            location = (result.get("locations") or [{}])[0] or {}
+            physical = (location.get("physicalLocation") or {})
+            uri = ((physical.get("artifactLocation") or {}).get("uri")) or ""
+            line = (physical.get("region") or {}).get("startLine") or 1
             findings.append(
                 build_finding(
                     finding_id=f"F-EXT-{next_id + len(findings):04d}",
-                    ci_id="CI-02",
-                    signal="EXT_SQLFLUFF",
-                    severity="low" if is_warning else "medium",
+                    ci_id=_codeql_ci_id(rules_by_id.get(rule_id)),
+                    signal="EXT_CODEQL",
+                    severity="high",
                     confidence="medium",
                     actor_label=LANE_EXTERNAL_ANALYZER,
                     triage_state="review-first",
-                    priority="P2",
+                    priority="P1",
+                    fixability="owner-decision",
+                    baseline_status="new",
+                    waiver_status="none",
+                    lifecycle_state="open",
+                    owner_lane=LANE_EXTERNAL_ANALYZER,
+                    target_file=_external_relative(uri, target_root),
+                    line=int(line) if isinstance(line, int) else 1,
+                    excerpt=str(rule_id),
+                    reason=f"codeql ({rule_id}): {str(message)[:160]}",
+                    evidence_ref=f"codeql:{rule_id}",
+                    recommended_action="Review the codeql data-flow path and fix or justify the flagged sink.",
+                    verification_status=VERIFICATION_EXECUTED,
+                )
+            )
+    return findings
+
+
+def _osv_scanner_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    payload = json.loads(stdout or "{}")
+    for result in payload.get("results", []) or []:
+        source_path = (result.get("source") or {}).get("path", "")
+        relative = _external_relative(source_path, target_root)
+        for package in result.get("packages", []) or []:
+            info = package.get("package", {}) or {}
+            name = info.get("name", "?")
+            version = info.get("version", "?")
+            for vuln in package.get("vulnerabilities", []) or []:
+                vuln_id = vuln.get("id", "unknown")
+                summary = vuln.get("summary") or vuln.get("details") or vuln_id
+                findings.append(
+                    build_finding(
+                        finding_id=f"F-EXT-{next_id + len(findings):04d}",
+                        ci_id="CI-14",
+                        signal="EXT_OSV_SCANNER",
+                        severity="high",
+                        confidence="medium",
+                        actor_label=LANE_EXTERNAL_ANALYZER,
+                        triage_state="review-first",
+                        priority="P1",
+                        fixability="owner-decision",
+                        baseline_status="new",
+                        waiver_status="none",
+                        lifecycle_state="open",
+                        owner_lane=LANE_EXTERNAL_ANALYZER,
+                        target_file=relative,
+                        line=1,
+                        excerpt=f"{name} {version}: {vuln_id}",
+                        reason=f"{name} {version} is affected by {vuln_id}: {str(summary)[:160]}",
+                        evidence_ref=f"osv-scanner:{vuln_id}",
+                        recommended_action="Upgrade or patch the dependency to a version without the reported advisory.",
+                        verification_status=VERIFICATION_EXECUTED,
+                    )
+                )
+    return findings
+
+
+def _trivy_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    payload = json.loads(stdout or "{}")
+    for result in payload.get("Results", []) or []:
+        relative = _external_relative(result.get("Target", ""), target_root)
+        for vuln in result.get("Vulnerabilities", []) or []:
+            vuln_id = vuln.get("VulnerabilityID", "unknown")
+            pkg_name = vuln.get("PkgName", "?")
+            version = vuln.get("InstalledVersion", "?")
+            raw_severity = (vuln.get("Severity") or "MEDIUM").lower()
+            severity = "high" if raw_severity in ("high", "critical") else "medium"
+            title = vuln.get("Title") or vuln.get("Description") or vuln_id
+            findings.append(
+                build_finding(
+                    finding_id=f"F-EXT-{next_id + len(findings):04d}",
+                    ci_id="CI-14",
+                    signal="EXT_TRIVY",
+                    severity=severity,
+                    confidence="medium",
+                    actor_label=LANE_EXTERNAL_ANALYZER,
+                    triage_state="review-first",
+                    priority="P1" if severity == "high" else "P2",
                     fixability="owner-decision",
                     baseline_status="new",
                     waiver_status="none",
                     lifecycle_state="open",
                     owner_lane=LANE_EXTERNAL_ANALYZER,
                     target_file=relative,
-                    line=violation.get("line_no"),
-                    excerpt=description,
-                    reason=description,
-                    evidence_ref=f"sqlfluff:{code}",
-                    recommended_action="Review the SQL style violation and align with SQL best practices.",
+                    line=1,
+                    excerpt=f"{pkg_name} {version}: {vuln_id}",
+                    reason=f"{pkg_name} {version} is affected by {vuln_id}: {str(title)[:160]}",
+                    evidence_ref=f"trivy:{vuln_id}",
+                    recommended_action="Upgrade the affected dependency or apply the vendor-provided fix.",
                     verification_status=VERIFICATION_EXECUTED,
                 )
             )
     return findings
+
+
+
+
+try:
+    from ._analyzer_parsers import (
+        _ruff_findings, _pyflakes_findings, _mypy_findings, _pytest_findings,
+        _eslint_findings, _semgrep_findings, _tsc_findings, _shellcheck_findings, _sqlfluff_findings,
+        _gitleaks_findings,
+    )
+except ImportError:  # pragma: no cover - direct script/module import path
+    from _analyzer_parsers import (  # type: ignore[no-redef]
+        _ruff_findings, _pyflakes_findings, _mypy_findings, _pytest_findings,
+        _eslint_findings, _semgrep_findings, _tsc_findings, _shellcheck_findings, _sqlfluff_findings,
+        _gitleaks_findings,
+    )
 
 
 def _resolve_analyzer_command(analyzer_id: str, target_root: Path) -> tuple[list[str] | None, int, bool]:
@@ -1120,7 +725,12 @@ def _execute_analyzer_command(
     command: list[str],
     *,
     cwd: Path,
+    timeout: int = ANALYZER_TIMEOUT_SECONDS,
 ) -> tuple[subprocess.CompletedProcess[str] | None, AnalyzerRunResult | None]:
+    # Resolve the tool to its real path so npm shims (.CMD on Windows) launch
+    # under subprocess(shell=False); on POSIX this is a no-op.
+    resolved = shutil.which(command[0]) or command[0]
+    command = [resolved, *command[1:]]
     try:
         completed = subprocess.run(
             command,
@@ -1128,7 +738,7 @@ def _execute_analyzer_command(
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=ANALYZER_TIMEOUT_SECONDS,
+            timeout=timeout,
             check=False,
             cwd=str(cwd),
         )
@@ -1181,6 +791,10 @@ def _parse_analyzer_findings(
             return _shellcheck_findings(stdout, target_root, next_id), True
         if analyzer_id == "sqlfluff":
             return _sqlfluff_findings(stdout, target_root, next_id), True
+        if analyzer_id == "osv-scanner":
+            return _osv_scanner_findings(stdout, target_root, next_id), True
+        if analyzer_id == "trivy":
+            return _trivy_findings(stdout, target_root, next_id), True
     except json.JSONDecodeError:
         return [], False
     return [], True
@@ -1192,11 +806,98 @@ def _evaluate_analyzer_outcome(analyzer_id: str, exit_code: int, parse_ok: bool)
     if analyzer_id == "pytest" and exit_code == 5:
         ok_exit_codes.add(5)
         runtime_state = "no-tests-collected"
+    if analyzer_id == "tsc":
+        # tsc exits 2 when it finds type errors — those are the findings, not a
+        # runtime failure.
+        ok_exit_codes.add(2)
     exit_ok = exit_code in ok_exit_codes
     ok = exit_ok and parse_ok
     if not ok:
         runtime_state = "parse-failure" if exit_ok and not parse_ok else "runtime-failure"
     return ok, runtime_state
+
+
+def _run_gitleaks(target_root: Path, next_id: int) -> AnalyzerRunResult:
+    """gitleaks writes a JSON report to a file; run it with a temp report path
+    and parse the file back into normalized findings."""
+    scratch = Path(tempfile.mkdtemp(prefix="aci_gitleaks_"))
+    report_path = scratch / "gitleaks-report.json"
+    try:
+        command = _gitleaks_command(target_root, report_path)
+        completed, error_result = _execute_analyzer_command("gitleaks", command, cwd=target_root)
+        if error_result is not None or completed is None:
+            return cast(AnalyzerRunResult, error_result)
+        try:
+            report_text = report_path.read_text(encoding="utf-8") if report_path.exists() else "[]"
+        except OSError:
+            report_text = "[]"
+        try:
+            findings = _gitleaks_findings(report_text, target_root, next_id)
+            parse_ok = True
+        except json.JSONDecodeError:
+            findings, parse_ok = [], False
+        ok, runtime_state = _evaluate_analyzer_outcome("gitleaks", completed.returncode, parse_ok)
+        return AnalyzerRunResult(
+            analyzer_id="gitleaks",
+            ok=ok,
+            exit_code=completed.returncode,
+            runtime_state=runtime_state,
+            stdout=completed.stdout[:ANALYZER_MAX_OUTPUT_CHARS],
+            stderr=completed.stderr[:ANALYZER_MAX_OUTPUT_CHARS],
+            findings=tuple(findings),
+        )
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def _run_codeql(target_root: Path, next_id: int) -> AnalyzerRunResult:
+    """codeql is multi-step: build a database per interpreted language, analyze it
+    to SARIF, then normalize. DB-build needs no compile step for python/javascript;
+    compiled languages are out of scope for this bounded adapter."""
+    languages = _codeql_languages(target_root)
+    if not languages:
+        return _no_source_result("codeql", True)
+    scratch = Path(tempfile.mkdtemp(prefix="aci_codeql_"))
+    findings: list[AciFinding] = []
+    ran = False
+    last_exit = 0
+    last_stderr = ""
+    try:
+        for language in languages:
+            db_dir = scratch / f"db-{language}"
+            sarif_path = scratch / f"{language}.sarif"
+            create = _codeql_db_create_command(db_dir, language, target_root)
+            created, error_result = _execute_analyzer_command(
+                "codeql", create, cwd=target_root, timeout=CODEQL_TIMEOUT_SECONDS)
+            if error_result is not None or created is None or created.returncode != 0:
+                last_stderr = (created.stderr if created else (error_result.stderr if error_result else "")) or last_stderr
+                continue
+            analyze = _codeql_analyze_command(db_dir, sarif_path, language)
+            analyzed, analyze_error = _execute_analyzer_command(
+                "codeql", analyze, cwd=target_root, timeout=CODEQL_TIMEOUT_SECONDS)
+            if analyze_error is not None or analyzed is None:
+                last_stderr = (analyze_error.stderr if analyze_error else "") or last_stderr
+                continue
+            ran = True
+            last_exit = analyzed.returncode
+            last_stderr = analyzed.stderr or last_stderr
+            try:
+                sarif_text = sarif_path.read_text(encoding="utf-8") if sarif_path.exists() else "{}"
+                findings.extend(_codeql_findings(sarif_text, target_root, next_id + len(findings)))
+            except (OSError, json.JSONDecodeError):
+                continue
+        runtime_state = VERIFICATION_EXECUTED if ran else "runtime-failure"
+        return AnalyzerRunResult(
+            analyzer_id="codeql",
+            ok=ran,
+            exit_code=last_exit if ran else None,
+            runtime_state=runtime_state,
+            stdout="",
+            stderr=last_stderr[:ANALYZER_MAX_OUTPUT_CHARS],
+            findings=tuple(findings),
+        )
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerRunResult:
@@ -1211,6 +912,10 @@ def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerR
             stderr=readiness.version_text or readiness.remediation_hint,
             findings=(),
         )
+    if analyzer_id == "gitleaks":
+        return _run_gitleaks(target_root, next_id)
+    if analyzer_id == "codeql":
+        return _run_codeql(target_root, next_id)
     command, skipped_source_count, no_source = _resolve_analyzer_command(analyzer_id, target_root)
 
     if command is None:

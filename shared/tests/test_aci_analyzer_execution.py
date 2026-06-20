@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 
 from aci import aci_analyzer_execution as execmod
+from aci import _analyzer_commands as cmdmod
 from aci.aci_profiles import PROFILE_QUICK_GATE
 
 
@@ -31,15 +32,15 @@ def test_pytest_no_tests_collected_is_treated_as_nonfatal(monkeypatch, tmp_path:
 
 
 def test_pytest_command_disables_cacheprovider_writes(tmp_path: Path) -> None:
-    command = execmod._pytest_command(tmp_path)
-    assert command == [execmod.sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)]
+    command = cmdmod._pytest_command(tmp_path)
+    assert command == [cmdmod.sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tmp_path)]
 
 
 def test_pytest_command_uses_workspace_scratch_when_available(tmp_path: Path) -> None:
     (tmp_path / "workspace").mkdir()
-    command = execmod._pytest_command(tmp_path)
+    command = cmdmod._pytest_command(tmp_path)
     assert command == [
-        execmod.sys.executable,
+        cmdmod.sys.executable,
         "-m",
         "pytest",
         "-q",
@@ -55,10 +56,10 @@ def test_pytest_command_uses_workspace_scratch_when_available(tmp_path: Path) ->
 
 def test_pytest_command_prefers_conventional_test_shelves(tmp_path: Path) -> None:
     (tmp_path / "shared" / "tests").mkdir(parents=True)
-    command = execmod._pytest_command(tmp_path)
+    command = cmdmod._pytest_command(tmp_path)
 
     assert command == [
-        execmod.sys.executable,
+        cmdmod.sys.executable,
         "-m",
         "pytest",
         "-q",
@@ -85,24 +86,25 @@ def test_missing_analyzer_returns_not_installed(tmp_path: Path, monkeypatch) -> 
     assert result.runtime_state == "not-installed"
 
 
-def test_project_local_setup_analyzer_keeps_support_level_when_not_installed(monkeypatch) -> None:
+def test_codeql_reports_not_installed_when_absent(monkeypatch) -> None:
     monkeypatch.setattr(execmod, "which", lambda analyzer_id: None)
     readiness = execmod._readiness_for("codeql")
 
     assert readiness.availability_state == "not-installed"
-    assert readiness.execution_support_level == "availability-check-only"
+    # codeql now has an execution adapter (database build + analyze), so it is
+    # execution-ready; it stays opt-in (not run by default) because it is heavy.
+    assert readiness.execution_support_level == "execution-ready"
     assert readiness.default_policy == "opt-in"
 
 
-def test_availability_only_analyzer_reports_downstream_setup_when_visible(monkeypatch) -> None:
+def test_codeql_is_ready_when_installed_and_version_ok(monkeypatch) -> None:
     monkeypatch.setattr(execmod, "which", lambda analyzer_id: f"C:/fake/{analyzer_id}.exe")
-    monkeypatch.setattr(execmod, "_probe_version", lambda analyzer_id, executable_path: ("CodeQL 2.0.0", True))
+    monkeypatch.setattr(execmod, "_probe_version", lambda analyzer_id, executable_path: ("CodeQL 2.25.6", True))
 
     readiness = execmod._readiness_for("codeql")
 
-    assert readiness.availability_state == "downstream-setup-required"
-    assert readiness.execution_support_level == "availability-check-only"
-    assert readiness.remediation_hint
+    assert readiness.availability_state == "ready"
+    assert readiness.execution_support_level == "execution-ready"
 
 
 def test_sarif_ready_readiness_summary_contains_known_states() -> None:
@@ -137,7 +139,7 @@ def test_analyzer_availability_exposes_setup_and_version_policy(monkeypatch) -> 
     assert rows["ruff"]["setup_hint"]
     assert rows["ruff"]["version_policy"] == "aci-maintained-pin"
     assert rows["ruff"]["install_spec"] == "ruff==0.4.8"
-    assert rows["codeql"]["execution_support_level"] == "availability-check-only"
+    assert rows["codeql"]["execution_support_level"] == "execution-ready"
     assert rows["codeql"]["support_level"] == "opt-in"
 
 
@@ -158,6 +160,102 @@ def test_ruff_output_is_normalized_into_findings(tmp_path: Path) -> None:
     assert findings[0].signal == "EXT_RUFF"
     assert findings[0].line == 3
     assert findings[0].target_file == "sample.py"
+
+
+def test_deep_security_analyzers_are_execution_ready() -> None:
+    rows = {entry["analyzer_id"]: entry for entry in execmod.analyzer_availability()}
+    assert rows["osv-scanner"]["execution_support_level"] == "execution-ready"
+    assert rows["trivy"]["execution_support_level"] == "execution-ready"
+    assert rows["gitleaks"]["execution_support_level"] == "execution-ready"
+    assert rows["codeql"]["execution_support_level"] == "execution-ready"
+
+
+def test_codeql_sarif_is_normalized_into_findings(tmp_path: Path) -> None:
+    sarif = json.dumps({
+        "runs": [{
+            "tool": {"driver": {"rules": [
+                {"id": "py/code-injection", "properties": {"tags": ["security", "external/cwe/cwe-094"]}},
+            ]}},
+            "results": [{
+                "ruleId": "py/code-injection",
+                "message": {"text": "This code execution depends on a user-provided value."},
+                "locations": [{"physicalLocation": {
+                    "artifactLocation": {"uri": "app.py"}, "region": {"startLine": 7}}}],
+            }],
+        }]
+    })
+    findings = execmod._codeql_findings(sarif, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_CODEQL"
+    assert findings[0].ci_id == "CI-14"
+    assert findings[0].target_file == "app.py"
+    assert findings[0].line == 7
+    assert findings[0].evidence_ref == "codeql:py/code-injection"
+
+
+def test_codeql_empty_sarif_is_safe(tmp_path: Path) -> None:
+    assert execmod._codeql_findings("", tmp_path, 0) == []
+    assert execmod._codeql_findings("{}", tmp_path, 0) == []
+
+
+def test_gitleaks_report_is_normalized_into_findings(tmp_path: Path) -> None:
+    report = json.dumps([
+        {"RuleID": "generic-api-key", "Description": "API key", "File": str(tmp_path / "config.py"),
+         "StartLine": 7, "Secret": "AKIA...", "Match": "key = 'AKIA...'"},
+    ])
+    findings = execmod._gitleaks_findings(report, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_GITLEAKS"
+    assert findings[0].ci_id == "CI-14"
+    assert findings[0].target_file == "config.py"
+    assert findings[0].line == 7
+    assert findings[0].evidence_ref == "gitleaks:generic-api-key"
+
+
+def test_gitleaks_empty_report_is_safe(tmp_path: Path) -> None:
+    assert execmod._gitleaks_findings("", tmp_path, 0) == []
+    assert execmod._gitleaks_findings("[]", tmp_path, 0) == []
+
+
+def test_osv_scanner_output_is_normalized_into_findings(tmp_path: Path) -> None:
+    stdout = json.dumps({
+        "results": [{
+            "source": {"path": str(tmp_path / "requirements.txt"), "type": "lockfile"},
+            "packages": [{
+                "package": {"name": "requests", "version": "2.19.0", "ecosystem": "PyPI"},
+                "vulnerabilities": [{"id": "GHSA-x4qr-2fvf-3mr5", "summary": "CRLF injection"}],
+            }],
+        }]
+    })
+    findings = execmod._osv_scanner_findings(stdout, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_OSV_SCANNER"
+    assert findings[0].ci_id == "CI-14"
+    assert findings[0].target_file == "requirements.txt"
+    assert findings[0].evidence_ref == "osv-scanner:GHSA-x4qr-2fvf-3mr5"
+
+
+def test_trivy_output_is_normalized_into_findings(tmp_path: Path) -> None:
+    stdout = json.dumps({
+        "Results": [{
+            "Target": str(tmp_path / "package-lock.json"),
+            "Vulnerabilities": [{
+                "VulnerabilityID": "CVE-2021-44228",
+                "PkgName": "log4j", "InstalledVersion": "2.14.0",
+                "Severity": "CRITICAL", "Title": "Remote code execution",
+            }],
+        }]
+    })
+    findings = execmod._trivy_findings(stdout, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_TRIVY"
+    assert findings[0].severity == "high"
+    assert findings[0].evidence_ref == "trivy:CVE-2021-44228"
+
+
+def test_osv_scanner_empty_output_is_safe(tmp_path: Path) -> None:
+    assert execmod._osv_scanner_findings("", tmp_path, 0) == []
+    assert execmod._trivy_findings("{}", tmp_path, 0) == []
 
 
 def test_mypy_output_is_normalized_into_findings(tmp_path: Path) -> None:
@@ -333,10 +431,10 @@ def test_semgrep_output_is_normalized_into_findings(tmp_path: Path) -> None:
 
 
 def test_semgrep_command_requires_supported_source_and_rules(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(execmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
+    monkeypatch.setattr(cmdmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
     (tmp_path / "aci-semgrep-rules.yml").write_text("rules: []\n", encoding="utf-8")
     (tmp_path / "Dockerfile").write_text("FROM python:3.12\n", encoding="utf-8")
-    command = execmod._semgrep_command(tmp_path)
+    command = cmdmod._semgrep_command(tmp_path)
     assert command == [
         "semgrep",
         "scan",
@@ -350,10 +448,10 @@ def test_semgrep_command_requires_supported_source_and_rules(tmp_path: Path, mon
 
 
 def test_semgrep_command_returns_none_without_applicable_source(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(execmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
+    monkeypatch.setattr(cmdmod, "_semgrep_rule_path", lambda: tmp_path / "aci-semgrep-rules.yml")
     (tmp_path / "aci-semgrep-rules.yml").write_text("rules: []\n", encoding="utf-8")
     (tmp_path / "README.md").write_text("docs only\n", encoding="utf-8")
-    assert execmod._semgrep_command(tmp_path) is None
+    assert cmdmod._semgrep_command(tmp_path) is None
 
 
 def test_tsc_output_is_normalized_into_findings(tmp_path: Path) -> None:

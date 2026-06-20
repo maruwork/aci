@@ -14,9 +14,9 @@ aci scan --target .
 
 ACI is a Python code inspection tool focused on cross-file structure:
 
-- **Native static detectors** — 17 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
-- **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest, semgrep, eslint, tsc, shellcheck, and sqlfluff when installed and applicable
-- **Cataloged opt-in security analyzers** — tracks `codeql`, `gitleaks`, `osv-scanner`, and `trivy` as availability-only lanes until a consuming repository wires them locally
+- **Native static detectors** — 16 detectors covering god classes, spaghetti code, duplicate code, scattered constants, interface drift, resource leaks, exception swallowing, and more (full list in `docs/CI_REFERENCE.md`)
+- **External analyzer lane** — integrates ruff, pyflakes, mypy, pytest, semgrep, eslint, tsc, shellcheck, and sqlfluff when installed and applicable. semgrep carries a **closed** bundled taint-mode baseline (JavaScript + Python), so the default lane tracks untrusted-input → code-execution-sink flows out of the box, not just bare patterns. That baseline is precision-gated by `shared/tools/aci_taint_eval.py` (perfect recall, zero false positives on a curated source→sink + control corpus). It is deliberately not grown language-by-language: deeper and multi-language taint is borrowed from the analyzers' own maintained rulesets (codeql query suites; semgrep registry), not authored here
+- **Deep security analyzers** — `osv-scanner`, `trivy` (dependency/vuln, JSON-on-stdout), `gitleaks` (secret scanning, JSON file-report), and `codeql` (multi-language data-flow, database-build → analyze → SARIF) are all execution-ready: the shelf builds the command, runs the tool, and normalizes its output into CI-14 findings when the tool is installed. **All 13 cataloged analyzers are execution-ready; none remain availability-only.** `codeql` stays default-opt-in because a per-language database build is heavy, not because the adapter is missing
 - **Optional domain packs** — add project-specific vocabulary and exclusion rules without touching core
 
 `ACI` provides a normalized finding format, configurable severity gate, suppression/baseline/waiver contract, SARIF and annotation output, and a machine-readable report schema.
@@ -28,10 +28,17 @@ shelves can be triaged without post-processing.
 The common shelf now also ships a bounded `scale-check` surface plus continuous
 CI verification on Linux, Windows, and macOS.
 
-Product-boundary claim for this common shelf: `ACI` is a **Python-first**
-native audit tool with polyglot text-scan and external-analyzer evidence lanes,
-not a language-general native structural auditor. See
-`shared/core/aci-product-boundary-and-coverage-policy.md`.
+Product-boundary claim for this common shelf: `ACI` is a **complete
+general-purpose code audit tool on the orchestration model** — a Python-native
+structural core plus a fully live-verified, multi-language orchestration of
+best-in-class analyzers (all 13 cataloged lanes execution-ready and proven to
+run in CI). It is **not** a language-general *native* structural auditor: native
+structural and intra-procedural taint depth is Python-only, and multi-language
+depth (including source→sink taint) is borrowed from orchestrated analyzers, not
+re-implemented per language — an explicit non-goal. This is the same shape as
+every "general-purpose" platform, which orchestrates rather than re-implements.
+See `shared/core/aci-product-boundary-and-coverage-policy.md` and
+`docs/ACI_GENERAL_PURPOSE_COMPLETION_PLAN.md`.
 
 The `scan` CLI supports four scope presets:
 
@@ -62,9 +69,9 @@ ACI is **Python-first**. Be aware of the scope before adopting:
 
 | Lane | Languages | Notes |
 |---|---|---|
-| Native static detectors | **Python** | All 17 native CI-ID detectors parse Python (AST). This is the only language with full native coverage. |
+| Native static detectors | **Python** | 16 native CI-ID detectors target Python — most parse the Python AST, with a few text-based exceptions listed in the next row. Python is the only language with native structural coverage. CI-19 (Feature Envy) is not a core-native detector: it is a domain-pack-only text/regex check (see Product Boundary). |
 | Language-agnostic text scans | supported text/code files | A few detectors are text-based rather than Python-AST-based: plaintext-secret and insecure-HTTP (CI-14), and TODO/FIXME/HACK markers (CI-03). Supported suffixes include `.py`, `.js`, `.jsx`, `.ts`, `.tsx`, `.go`, `.rs`, `.java`, `.cs`, `.kt`, `.kts`, `.sh`, `.bash`, `.sql`, `.tf`, `.hcl`, `.md`, `.txt`, `.toml`, `.yml`, `.yaml`, and `.json`, plus `Dockerfile` / `Containerfile`. |
-| External analyzers (opt-in) | Python, JS/TS, Shell, SQL, polyglot source | ruff / pyflakes / mypy / pytest (Python); semgrep (bundled baseline polyglot rules); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL). `full`, `build-preflight`, and `build-review` automatically run the analyzers that match files/config found in the target; `quick-gate` keeps the lighter Python pair (`ruff`, `pyflakes`). TypeScript type checking via `tsc` requires a `tsconfig.json` in the target root. |
+| External analyzers | Python, JS/TS, Shell, SQL, polyglot source | ruff / pyflakes / mypy / pytest (Python); semgrep (bundled baseline **plus a closed taint-mode baseline** — source→sink for JS + Python, precision-gated; multi-language taint is borrowed from codeql/semgrep registry, not grown here); eslint, tsc (JS/TS); shellcheck (Shell); sqlfluff (SQL); osv-scanner / trivy / gitleaks (deps + secrets); codeql (multi-language data-flow, default-opt-in because the per-language DB build is heavy). `full`, `build-preflight`, and `build-review` automatically run the analyzers that match files/config found in the target; `quick-gate` keeps the lighter Python pair (`ruff`, `pyflakes`). TypeScript type checking via `tsc` requires a `tsconfig.json` in the target root. |
 
 Non-Python codebases do not get the Python-native structure detectors. They can
 still use the supported text scans plus any applicable external analyzers.
@@ -76,7 +83,7 @@ The completed common-shelf product claim is intentionally bounded:
 - Python gets the full native structural lane
 - non-Python files get text scans plus applicable external analyzers
 - `CI-08`, `CI-11`, and `CI-24` remain human-judgment-only
-- deep security analyzers such as `codeql`, `gitleaks`, `osv-scanner`, and `trivy` stay opt-in/cataloged until the common shelf owns execution-ready adapters
+- deep dependency/vulnerability scanners `osv-scanner` and `trivy` now have execution-ready adapters (opt-in install, JSON normalized into CI-14); `codeql` and `gitleaks` stay opt-in/cataloged until the common shelf owns adapters for their database-build / file-report execution models
 - `CI-19` is only substantively complete when a downstream domain pack provides its vocabulary and tests
 - CI-14 supply-chain drift currently covers `requirements*.txt`, `pyproject.toml` dependency surfaces, `package.json`, `Dockerfile` / `Containerfile`, and GitHub workflow `uses:` refs
 

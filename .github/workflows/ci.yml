@@ -30,6 +30,28 @@ jobs:
           pip install -e .
           pip install -r requirements-dev-analyzers.txt
 
+      - name: Install multi-language analyzers (Linux)
+        # These analyzers are not in the pinned pure-Python requirements set, but
+        # installing them on Linux makes the multi-language external-analyzer e2e
+        # tests actually run, proving the orchestration end-to-end rather than only
+        # at parser level. semgrep (multi-language SAST), sqlfluff (SQL) via pip;
+        # eslint + tsc (JS/TS) via npm. shellcheck is preinstalled on ubuntu-latest.
+        # Binary-only tools (gitleaks/trivy/osv-scanner) are proven locally; their
+        # e2e tests skip here until a release-binary install step is added.
+        run: |
+          pip install semgrep sqlfluff
+          npm install -g eslint typescript
+
+      - name: Install binary security analyzers (Linux)
+        # gitleaks (secrets), trivy (deps/vuln), osv-scanner (deps) ship as release
+        # binaries; installing them lets their live e2e tests run in CI too.
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+          sudo curl -sSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o /usr/local/bin/osv-scanner
+          sudo chmod +x /usr/local/bin/osv-scanner
+          GL_URL=$(curl -sSL https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep -o '"browser_download_url": *"[^"]*linux_x64.tar.gz"' | head -1 | cut -d'"' -f4)
+          curl -sSL "$GL_URL" | sudo tar -xz -C /usr/local/bin gitleaks
+
       - name: Run test suite
         run: pytest shared/tests/ -v
 
@@ -91,6 +113,34 @@ jobs:
             --no-external-analyzers \
             --output-format json
         continue-on-error: true
+
+  codeql-e2e:
+    # codeql is heavy (a ~600 MB bundle plus a per-language database build), so it
+    # gets its own Linux job that installs the bundle and runs only the codeql
+    # lane e2e — proving the database-build -> analyze -> SARIF -> normalized
+    # finding pipeline end-to-end rather than only at the SARIF-parser level.
+    name: codeql lane (live)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          pip install setuptools==79.0.1
+          pip install -e .
+          # The codeql lane e2e is driven by pytest; this job does not install
+          # the full multi-analyzer set, only the pinned dev tools that include
+          # pytest (without it the step exits 127 -- command not found).
+          pip install -r requirements-dev-analyzers.txt
+      - name: Install codeql bundle
+        run: |
+          curl -sSL -o "$HOME/codeql-bundle.tar.gz" https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.25.6/codeql-bundle-linux64.tar.gz
+          tar -xzf "$HOME/codeql-bundle.tar.gz" -C "$HOME"
+          echo "$HOME/codeql" >> "$GITHUB_PATH"
+      - name: Run codeql lane e2e
+        run: pytest shared/tests/test_aci_external_analyzer_e2e.py -k codeql -v
 
   platform-smoke:
     name: Platform verification (${{ matrix.os }}, Python ${{ matrix.python-version }})

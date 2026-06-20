@@ -54,6 +54,7 @@
   "generated_at": "2026-06-18T00:00:00Z",
   "verification_status": "executed",
   "external_analyzer_runs": [],
+  "detection_disclosure": "ACI performs bounded, best-effort code auditing and does not aim to be exhaustive. Even for the checks it implements and declares, detection is not 100%: a clean or low-finding result does not prove the absence of issues. Treat ACI as one layer, review the known_limits in this report, and do not rely on it as a sole gate.",
   "known_limits": [
     {
       "limit_id": "KL-ACI-CI05-STRUCTURE-EXACT",
@@ -98,7 +99,7 @@
       ],
       "kind": "coverage-boundary",
       "title": "Supply-chain manifest coverage is intentionally narrow",
-      "summary": "The common-shelf CI-14 supply-chain detector currently covers only requirements*.txt, package.json, Dockerfile/Containerfile, and GitHub workflow uses: references.",
+      "summary": "The common-shelf CI-14 supply-chain detector currently covers requirements*.txt, pyproject.toml dependency surfaces, package.json, Dockerfile/Containerfile, and GitHub workflow uses: references.",
       "operator_guidance": "Use additional tooling or downstream extensions for lockfiles and ecosystem manifests outside the bounded common-shelf set.",
       "source_refs": [
         "docs/CI_REFERENCE.md",
@@ -116,12 +117,80 @@
       ],
       "kind": "recall-limit",
       "title": "Non-local lifecycle reasoning stays conservative",
-      "summary": "CI-22 does not try to prove resource cleanup through helper calls, ownership transfers, or broad non-local control flow.",
+      "summary": "CI-22 accepts local safe-management patterns such as explicit close paths, helper context managers, and managed ExitStack registration or close callbacks, but still does not try to prove helper-call ownership transfers or broad non-local control flow.",
       "operator_guidance": "Treat CI-22 as a conservative structural signal; confirm exception-path cleanup manually when ownership leaves the local function.",
       "source_refs": [
         "docs/CI_REFERENCE.md",
         "shared/python/detectors/ci_22.py",
         "shared/tools/aci_recall_probe.py"
+      ]
+    },
+    {
+      "limit_id": "KL-ACI-CI14-CI25-IMPORT-ALIAS",
+      "ci_ids": [
+        "CI-14",
+        "CI-25"
+      ],
+      "signal_ids": [
+        "CI14_UNSAFE_DESERIALIZATION",
+        "CI14_SUBPROCESS_SHELL_TRUE",
+        "CI25_ENVIRONMENT_DRIFT"
+      ],
+      "kind": "blind-spot",
+      "title": "Variable-aliased and dynamic import forms stay unresolved",
+      "summary": "CI-14/CI-25 now run an import/name-resolution pass, so static `import x as y`, `from x import y`, attribute-module, and nested-call argument forms are resolved to their canonical name and detected. The residual blind spot is non-import indirection: variable aliasing (`m = pickle; m.loads()`), dynamic `importlib.import_module` lookups, and relative imports, which are intentionally not tracked to avoid speculative dataflow.",
+      "operator_guidance": "Static import aliasing is covered. Do not rely on CI-14/CI-25 for values reached through an intermediate variable or a dynamic import; use dedicated SAST tooling for those indirection forms.",
+      "source_refs": [
+        "docs/AUDIT_2026-06-19_GENERAL_PURPOSE_READINESS.md",
+        "shared/python/detectors/ci_14.py",
+        "shared/python/detectors/ci_25.py"
+      ]
+    },
+    {
+      "limit_id": "KL-ACI-CI14-TAINT-INTRAPROCEDURAL",
+      "ci_ids": [
+        "CI-14"
+      ],
+      "signal_ids": [
+        "CI14_TAINTED_FLOW"
+      ],
+      "kind": "coverage-boundary",
+      "title": "Native taint flow is intra-procedural only (orchestrated lane covers the rest)",
+      "summary": "The native CI14_TAINTED_FLOW detector tracks untrusted input to a dangerous sink within a single Python function, through assignments, f-strings, concatenation, and string methods. It does not itself follow taint across function calls, through container elements, or through object attributes. Inter-procedural and multi-language source→sink taint is instead delivered by the orchestrated external-analyzer lane: a closed bundled semgrep taint baseline (JavaScript and Python source→sink, run by default, precision-gated by shared/tools/aci_taint_eval.py at full recall and zero false positives on a curated control corpus; not grown language-by-language) and the execution-ready codeql data-flow adapter, which borrows deep, multi-language taint from codeql's own maintained query suites (opt-in because the per-language database build is heavy).",
+      "operator_guidance": "A clean native CI14_TAINTED_FLOW result does not by itself rule out injection that flows through helper functions or data structures. For that depth, enable the orchestrated taint lane (semgrep is on by default; codeql is opt-in) rather than reaching outside ACI; both normalize their source→sink findings into CI-14.",
+      "source_refs": [
+        "docs/CI_REFERENCE.md",
+        "shared/python/detectors/ci_14_taint.py",
+        "shared/python/package_assets/analyzers/aci-semgrep-rules.yml",
+        "shared/tests/fixtures/taint_multilang/README.md",
+        "shared/tools/aci_taint_eval.py"
+      ]
+    },
+    {
+      "limit_id": "KL-ACI-FIELD-PRECISION",
+      "ci_ids": [
+        "CI-02",
+        "CI-04",
+        "CI-05",
+        "CI-07",
+        "CI-21",
+        "CI-22"
+      ],
+      "signal_ids": [
+        "CI04_GOD_CLASS",
+        "CI05_COPY_PASTE_CODE",
+        "CI21_BROAD_EXCEPTION_SWALLOW",
+        "CI22_RESOURCE_CLEANUP_GAP"
+      ],
+      "kind": "precision-limit",
+      "title": "Curated-suite precision overstates real-code precision",
+      "summary": "The in-repo validation scorecard reports 100% recall / 0 false positives, but that is on fixtures authored alongside the detectors. On a human-labeled field corpus of mature third-party packages (126 native findings; see examples/aci-field-precision/), measured detection precision was ~76% overall, and only ~4% of findings were review-worthy on that mature code. CI-04 (god class) was the weakest at 0% (its cohesion clustering mislabels large-but-cohesive visitor/parser/registry/value-object classes), with CI-05 (~40%) and CI-22 (~50%) next; CI-14/CI-18/CI-03 measured ~100%.",
+      "operator_guidance": "Treat native structural findings as review candidates, not verdicts. Be especially skeptical of CI-04 on idiomatic many-method classes, and of CI-05/CI-22 on boilerplate and caller-managed resources. On mature, well-reviewed code most true positives are idiomatic and not worth acting on; expect a higher actionable share on first-party code under active change.",
+      "source_refs": [
+        "examples/aci-field-precision/README.md",
+        "examples/aci-field-precision/labels.json",
+        "shared/tools/aci_precision_benchmark.py",
+        "shared/tools/aci_corpus_harness.py"
       ]
     }
   ],

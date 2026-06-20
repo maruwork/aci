@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from . import ci_02, ci_03, ci_04, ci_05, ci_06, ci_07, ci_12, ci_13, ci_14, ci_18, ci_20, ci_21, ci_22, ci_23, ci_25, ci_26
+from . import ci_02, ci_03, ci_04, ci_05, ci_06, ci_07, ci_12, ci_13, ci_14, ci_14_taint, ci_18, ci_20, ci_21, ci_22, ci_23, ci_25, ci_26
 
 # Per-file detectors take (path, text, target_root, next_id); cross-file detectors
 # take (paths, root, next_id). Both return a list of normalized findings. The
@@ -27,6 +27,7 @@ PER_FILE_REGISTRY: tuple[tuple[frozenset[str], Detector], ...] = (
     (ci_14.SIGNALS_DESERIALIZATION, ci_14.scan_unsafe_deserialization),
     (ci_14.SIGNALS_UNSAFE_YAML, ci_14.scan_unsafe_yaml_load),
     (ci_14.SIGNALS_SUPPLY_CHAIN, ci_14.scan_supply_chain_drift),
+    (ci_14_taint.SIGNALS, ci_14_taint.scan),
     (ci_21.SIGNALS_BROAD, ci_21.scan_broad),
     (ci_21.SIGNALS_SILENT, ci_21.scan_silent),
     (ci_22.SIGNALS, ci_22.scan),

@@ -21,7 +21,10 @@ workspace/
 /common/
 /archive/
 /docs/governance/
-/docs/roadmap/
+/docs/roadmap/*
+# Keep the canonical completion-policy doc tracked: it is the authority cited by
+# shared/core/aci-product-boundary-and-coverage-policy.md and must ship in the repo.
+!/docs/roadmap/ACI_COMPLETION_POLICY.md
 /docs/tasks/
 /docs/design/
 /docs/release/

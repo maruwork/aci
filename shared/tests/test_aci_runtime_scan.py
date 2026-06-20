@@ -590,9 +590,13 @@ def test_ruff_unavailable_keeps_overlapping_native_signals(tmp_path: Path, monke
 
     signals = {item["signal"] for item in report["findings"]}
     assert "CI03_TODO_HACK" in signals
-    assert "CI18_PARAMETER_CLUSTER" in signals
+    # CI-18 is a wholly-low-confidence detector and is opt-in (full only), so it
+    # does not fire under the default quick-gate even when ruff is unavailable.
+    assert "CI18_PARAMETER_CLUSTER" not in signals
     assert "CI21_BROAD_EXCEPTION_SWALLOW" in signals
     assert "CI26_RACE_HAZARD" in signals
+    # CI02_LONG_FUNCTION stays in the default set: the CI-02 detector also emits
+    # the >= MEDIUM CI02_SPAGHETTI_CODE signal, so the detector still runs.
     assert "CI02_LONG_FUNCTION" in signals
 
 
@@ -646,7 +650,7 @@ def test_diff_from_invalid_ref_raises_value_error(tmp_path: Path) -> None:
         stdout="",
         stderr="fatal: bad revision 'no-such-ref'",
     )
-    with patch("aci.aci_scan.subprocess.run", return_value=mock_result):
+    with patch("aci._scan_scope.subprocess.run", return_value=mock_result):
         try:
             scan_target(
                 tmp_path, "full", "core-only",
@@ -724,3 +728,23 @@ def test_suppression_count_in_summary(tmp_path: Path) -> None:
     assert report["summary"]["suppressed_count"] >= 2
     signals = {f["signal"] for f in report["findings"]}
     assert "CI03_TODO_HACK" not in signals
+
+
+def test_every_scan_report_discloses_non_exhaustive_detection(tmp_path: Path) -> None:
+    # The user-facing recognition requirement: a report must carry an explicit
+    # "detection is not 100%" disclosure, so a clean result is never read as proof
+    # of absence. It is mandatory output, not optional prose.
+    from aci.aci_automation import REQUIRED_SAMPLE_TOP_LEVEL_FIELDS
+
+    _write(tmp_path / "clean.py", "def f():\n    return 1\n")
+    report = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)
+
+    disclosure = report.get("detection_disclosure", "")
+    assert isinstance(disclosure, str) and disclosure, "report must carry a detection_disclosure"
+    lowered = disclosure.lower()
+    assert "not 100%" in lowered, disclosure
+    assert "not aim to be" in lowered or "not exhaustive" in lowered, disclosure
+    assert "does not prove" in lowered, disclosure
+
+    # Enforced as a required field so no report can ship without the disclosure.
+    assert "detection_disclosure" in REQUIRED_SAMPLE_TOP_LEVEL_FIELDS

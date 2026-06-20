@@ -41,15 +41,11 @@ Artifact hygiene and generated-output boundaries (T52):
 """
 from __future__ import annotations
 
-from collections import Counter
-from dataclasses import replace
 from dataclasses import dataclass
 from datetime import datetime, UTC
 from pathlib import Path
-from pathlib import PurePosixPath
 import re
-import subprocess
-from typing import cast, Protocol
+from typing import Protocol
 
 ACI_TOOL_VERSION = "0.1.8"
 
@@ -68,17 +64,13 @@ try:
     from .aci_ignore import load_ignore_patterns
     from .aci_operations import (
         OperationsState,
-        find_active_waiver,
-        find_matching_suppression,
         find_resolved_baseline_entries,
-        is_existing_baseline,
         load_operations_state,
     )
     from .aci_profile_catalog import PROFILE_ENABLED_LANES
     from .aci_profiles import (
         build_profile_signals, PROFILE_REQUIRES_TARGETED_SCOPE,
         PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_SELF_AUDIT, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
-        default_external_analyzers,
     )
     from .aci_signals import (
         STRUCTURE_SIGNALS as _STRUCTURE_SIGNALS,
@@ -86,7 +78,7 @@ try:
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
-    from .aci_known_limits import known_limits
+    from .aci_known_limits import known_limits, detection_disclosure
 except ImportError:  # pragma: no cover - direct script/module import path
     from detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY  # type: ignore[no-redef]
     from detectors._helpers import _relative_path  # type: ignore[no-redef]
@@ -102,17 +94,13 @@ except ImportError:  # pragma: no cover - direct script/module import path
     from aci_ignore import load_ignore_patterns
     from aci_operations import (
         OperationsState,
-        find_active_waiver,
-        find_matching_suppression,
         find_resolved_baseline_entries,
-        is_existing_baseline,
         load_operations_state,
     )
     from aci_profile_catalog import PROFILE_ENABLED_LANES
     from aci_profiles import (
         build_profile_signals, PROFILE_REQUIRES_TARGETED_SCOPE,
         PROFILE_QUICK_GATE, PROFILE_FULL, PROFILE_SELF_AUDIT, PROFILE_BUILD_PREFLIGHT, PROFILE_BUILD_REVIEW,
-        default_external_analyzers,
     )
     from aci_signals import (
         STRUCTURE_SIGNALS as _STRUCTURE_SIGNALS,
@@ -120,123 +108,30 @@ except ImportError:  # pragma: no cover - direct script/module import path
         SAFE_SIDE_PROGRAM_PATTERN,
         compile_keyword_pattern,
     )
-    from aci_known_limits import known_limits
+    from aci_known_limits import known_limits, detection_disclosure
 
 
-TEXT_SUFFIXES = {
-    ".py",
-    ".js",
-    ".jsx",
-    ".ts",
-    ".tsx",
-    ".go",
-    ".rs",
-    ".java",
-    ".cs",
-    ".kt",
-    ".kts",
-    ".sh",
-    ".bash",
-    ".sql",
-    ".tf",
-    ".hcl",
-    ".md",
-    ".txt",
-    ".toml",
-    ".yml",
-    ".yaml",
-    ".json",
-}
-DEFAULT_MAX_FILE_BYTES = 1_000_000
-MAX_SCAN_FILE_COUNT = 10_000
-DEFAULT_GENERATED_PATH_SEGMENTS = {
-    # Python interpreter and tool caches
-    "__pycache__",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    # Version control
-    ".git",
-    # Build and distribution artifacts
-    "build",
-    "dist",
-    "aci.egg-info",
-    ".eggs",
-    # Virtual environments
-    ".venv",
-    "venv",
-    "env",
-    # Test and coverage artifacts
-    ".tox",
-    "htmlcov",
-    ".coverage",
-    # Node / other ecosystems (common in full-stack repos)
-    "node_modules",
-    # Local tool state and session scratch space (non-canonical; never in distributed packages)
-    ".claude",
-    "workspace",
-}
+try:
+    from ._scan_scope import (  # noqa: F401  (re-exported for downstream/test imports)
+        TEXT_SUFFIXES, DEFAULT_MAX_FILE_BYTES, MAX_SCAN_FILE_COUNT, DEFAULT_GENERATED_PATH_SEGMENTS,
+        SCOPE_MODE_FULL_REPO, SCOPE_MODE_SOURCE_ONLY, SCOPE_MODE_DOGFOOD, SCOPE_MODE_SELF_AUDIT, SUPPORTED_SCOPE_MODES,
+        SCOPE_CLASS_RUNTIME_SOURCE, SCOPE_CLASS_TESTS, SCOPE_CLASS_FIXTURES, SCOPE_CLASS_DOCS_EVIDENCE,
+        SCOPE_CLASS_ROADMAP_EVIDENCE, SCOPE_CLASS_MAINTAINER_PROBES, SCOPE_CLASS_SUPPORT, SCOPE_CLASS_GENERATED,
+        SkippedTarget, _classify_relative_path, _resolve_scope_filters, _gate_scope_classes,
+        _select_external_analyzers, _iter_target_files, _git_changed_files, _path_matches_filters,
+    )
+except ImportError:  # pragma: no cover - direct script/module import path
+    from _scan_scope import (  # type: ignore[no-redef]  # noqa: F401
+        TEXT_SUFFIXES, DEFAULT_MAX_FILE_BYTES, MAX_SCAN_FILE_COUNT, DEFAULT_GENERATED_PATH_SEGMENTS,
+        SCOPE_MODE_FULL_REPO, SCOPE_MODE_SOURCE_ONLY, SCOPE_MODE_DOGFOOD, SCOPE_MODE_SELF_AUDIT, SUPPORTED_SCOPE_MODES,
+        SCOPE_CLASS_RUNTIME_SOURCE, SCOPE_CLASS_TESTS, SCOPE_CLASS_FIXTURES, SCOPE_CLASS_DOCS_EVIDENCE,
+        SCOPE_CLASS_ROADMAP_EVIDENCE, SCOPE_CLASS_MAINTAINER_PROBES, SCOPE_CLASS_SUPPORT, SCOPE_CLASS_GENERATED,
+        SkippedTarget, _classify_relative_path, _resolve_scope_filters, _gate_scope_classes,
+        _select_external_analyzers, _iter_target_files, _git_changed_files, _path_matches_filters,
+    )
 
-SCOPE_MODE_FULL_REPO = "full-repo"
-SCOPE_MODE_SOURCE_ONLY = "source-only"
-SCOPE_MODE_DOGFOOD = "dogfood"
-SCOPE_MODE_SELF_AUDIT = "self-audit"
-SUPPORTED_SCOPE_MODES = (
-    SCOPE_MODE_SOURCE_ONLY,
-    SCOPE_MODE_FULL_REPO,
-    SCOPE_MODE_DOGFOOD,
-    SCOPE_MODE_SELF_AUDIT,
-)
 
-SCOPE_CLASS_RUNTIME_SOURCE = "runtime-source"
-SCOPE_CLASS_TESTS = "tests"
-SCOPE_CLASS_FIXTURES = "fixtures"
-SCOPE_CLASS_DOCS_EVIDENCE = "docs-evidence"
-SCOPE_CLASS_ROADMAP_EVIDENCE = "roadmap-evidence"
-SCOPE_CLASS_MAINTAINER_PROBES = "maintainer-probes"
-SCOPE_CLASS_SUPPORT = "support"
-SCOPE_CLASS_GENERATED = "generated"
 
-_NON_RUNTIME_PATH_CANDIDATES = (
-    ".github",
-    ".claude",
-    "archive",
-    "build",
-    "common",
-    "dist",
-    "docs",
-    "example",
-    "examples",
-    "fixture",
-    "fixtures",
-    "sample",
-    "samples",
-    "shared/report/examples",
-    "workspace",
-)
-_SOURCE_ONLY_EXCLUDE_CANDIDATES = _NON_RUNTIME_PATH_CANDIDATES + (
-    "shared/tools",
-    "test",
-    "tests",
-    "shared/tests",
-)
-_DOGFOOD_INCLUDE_CANDIDATES = (
-    "src",
-    "app",
-    "lib",
-    "shared/python",
-    "domains",
-    "tests",
-    "shared/tests",
-)
-_SELF_AUDIT_INCLUDE_CANDIDATES = (
-    "shared/python",
-    "domains",
-    "tests",
-    "shared/tests",
-    "shared/tools",
-    "docs/roadmap",
-)
 
 SEVERITY_RANK = {
     SEVERITY_LOW: 1,
@@ -248,14 +143,22 @@ SEVERITY_RANK = {
 
 # CI-06 (Magic Number) helpers
 
-# Profile signal catalog (wires build_profile_signals to the native detector set)
+# Profile signal catalog (wires build_profile_signals to the native detector set).
+#
+# Default-vs-opt-in is decided by ONE principled criterion: a native detector
+# runs by default only if ACI is confident (>= MEDIUM) in at least one of its
+# signals. Detectors whose every signal is CONFIDENCE_LOW -- i.e. ACI itself
+# signals it is not confident -- are opt-in (the `full` / `self-audit` profiles),
+# not applied by the default scan. Confidence is field-calibrated (see
+# examples/aci-field-precision/), so this criterion is grounded in measured
+# reliability, not taste. The detector-level run filter (_run_*_detectors keys on
+# `required_signals & active_signals`) means only WHOLLY-low-confidence,
+# single-purpose detectors can be cleanly withheld; CI-02 and CI-22 stay in the
+# default because each also emits a >= MEDIUM signal.
 _NATIVE_HYGIENE_SIGNALS: tuple[str, ...] = (
     "CI02_SPAGHETTI_CODE",
     "CI02_LONG_FUNCTION",
-    "CI04_GOD_CLASS",
     "CI03_TODO_HACK",
-    "CI05_COPY_PASTE_CODE",
-    "CI06_MAGIC_NUMBER",
     "CI07_UNUSED_PRIVATE_SYMBOL",
     "CI12_POLTERGEIST",
     "CI13_CIRCULAR_IMPORT",
@@ -266,14 +169,23 @@ _NATIVE_HYGIENE_SIGNALS: tuple[str, ...] = (
     "CI14_UNSAFE_DESERIALIZATION",
     "CI14_UNSAFE_YAML_LOAD",
     "CI14_SUPPLY_CHAIN_DRIFT",
-    "CI18_PARAMETER_CLUSTER",
+    "CI14_TAINTED_FLOW",
     "CI20_SCATTERED_CONSTANT",
     "CI21_BROAD_EXCEPTION_SWALLOW",
     "CI21_SILENT_EXCEPTION_RETURN",
     "CI22_RESOURCE_CLEANUP_GAP",
-    "CI23_CONTRACT_FIELD_DRIFT",
     "CI25_ENVIRONMENT_DRIFT",
     "CI26_RACE_HAZARD",
+)
+# Wholly-LOW-confidence detectors: opt-in (full / self-audit only), not default.
+# CI-04 (god class) and CI-05 (copy-paste) measured weakest in the field
+# (0% / 40% precision); CI-06/CI-18/CI-23 are low-confidence stylistic signals.
+_OPT_IN_NATIVE_SIGNALS: tuple[str, ...] = (
+    "CI04_GOD_CLASS",
+    "CI05_COPY_PASTE_CODE",
+    "CI06_MAGIC_NUMBER",
+    "CI18_PARAMETER_CLUSTER",
+    "CI23_CONTRACT_FIELD_DRIFT",
 )
 _EXTERNAL_EVIDENCE_SIGNALS: tuple[str, ...] = ("EXTERNAL_STATIC_ANALYSIS",)
 _HUMAN_JUDGMENT_SIGNALS: tuple[str, ...] = ()
@@ -284,19 +196,13 @@ _RUFF_DELEGATED_SIGNALS: frozenset[str] = frozenset({
     "CI21_BROAD_EXCEPTION_SWALLOW",
     "CI26_RACE_HAZARD",
 })
-_SUPPORT_ONLY_HTTP_SCOPE_CLASSES: frozenset[str] = frozenset({
-    SCOPE_CLASS_DOCS_EVIDENCE,
-    SCOPE_CLASS_ROADMAP_EVIDENCE,
-    SCOPE_CLASS_TESTS,
-    SCOPE_CLASS_MAINTAINER_PROBES,
-    SCOPE_CLASS_SUPPORT,
-})
 
 _PROFILE_SIGNALS: dict[str, tuple[str, ...]] = build_profile_signals(
     structure_signals=_STRUCTURE_SIGNALS,
     external_evidence_signals=_EXTERNAL_EVIDENCE_SIGNALS,
     human_judgment_signals=_HUMAN_JUDGMENT_SIGNALS,
     native_hygiene_signals=_NATIVE_HYGIENE_SIGNALS,
+    opt_in_native_signals=_OPT_IN_NATIVE_SIGNALS,
 )
 
 
@@ -335,10 +241,6 @@ class ScanSession:
     diff_from: str | None = None
 
 
-@dataclass(frozen=True)
-class SkippedTarget:
-    path: str
-    reason: str
 
 
 @dataclass(frozen=True)
@@ -366,246 +268,28 @@ class ScanArtifacts:
     suppressed_count: int
 
 
-def _is_supported_text_file(path: Path) -> bool:
-    return path.suffix.lower() in TEXT_SUFFIXES or path.name in {"Dockerfile", "Containerfile"}
 
 
-def _has_suffix(paths: list[Path], *suffixes: str) -> bool:
-    wanted = {suffix.lower() for suffix in suffixes}
-    return any(path.suffix.lower() in wanted for path in paths)
 
 
-def _existing_scope_paths(target_root: Path, candidates: tuple[str, ...]) -> tuple[str, ...]:
-    return tuple(
-        candidate.replace("\\", "/").strip("/")
-        for candidate in candidates
-        if (target_root / candidate).exists()
-    )
 
 
-def _resolve_scope_filters(
-    target_root: Path,
-    scope_mode: str,
-    include_paths: tuple[str, ...],
-    exclude_paths: tuple[str, ...],
-) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    normalized_include = tuple(item.replace("\\", "/").strip("/") for item in include_paths if item)
-    normalized_exclude = tuple(item.replace("\\", "/").strip("/") for item in exclude_paths if item)
-
-    if scope_mode == SCOPE_MODE_FULL_REPO:
-        return normalized_include, normalized_exclude
-
-    if scope_mode == SCOPE_MODE_SOURCE_ONLY:
-        preset_exclude = _existing_scope_paths(target_root, _SOURCE_ONLY_EXCLUDE_CANDIDATES)
-        return normalized_include, tuple(sorted(set(normalized_exclude) | set(preset_exclude)))
-
-    if scope_mode == SCOPE_MODE_DOGFOOD:
-        preset_include = _existing_scope_paths(target_root, _DOGFOOD_INCLUDE_CANDIDATES)
-        preset_exclude = _existing_scope_paths(target_root, _NON_RUNTIME_PATH_CANDIDATES)
-        merged_include = normalized_include or preset_include
-        merged_exclude = tuple(sorted(set(normalized_exclude) | set(preset_exclude)))
-        if merged_include:
-            return merged_include, merged_exclude
-        return _resolve_scope_filters(target_root, SCOPE_MODE_SOURCE_ONLY, normalized_include, normalized_exclude)
-
-    if scope_mode == SCOPE_MODE_SELF_AUDIT:
-        preset_include = _existing_scope_paths(target_root, _SELF_AUDIT_INCLUDE_CANDIDATES)
-        merged_include = normalized_include or preset_include
-        return merged_include, normalized_exclude
-
-    raise ValueError(f"Unsupported scope_mode: {scope_mode}")
 
 
-def _classify_relative_path(relative_path: str) -> str:
-    posix = relative_path.replace("\\", "/").strip("/")
-    pure = PurePosixPath(posix)
-    parts = set(pure.parts)
-    name = pure.name
-
-    if parts & DEFAULT_GENERATED_PATH_SEGMENTS:
-        return SCOPE_CLASS_GENERATED
-    if pure.parts[:2] == ("shared", "tools"):
-        return SCOPE_CLASS_MAINTAINER_PROBES
-    if pure.parts[:2] == ("docs", "roadmap"):
-        return SCOPE_CLASS_ROADMAP_EVIDENCE
-    if parts & {"example", "examples", "fixture", "fixtures", "sample", "samples"}:
-        return SCOPE_CLASS_FIXTURES
-    if parts & {"docs", "doc", ".github"}:
-        return SCOPE_CLASS_DOCS_EVIDENCE
-    if "tests" in parts or name.startswith("test_") or pure.stem.endswith("_test"):
-        return SCOPE_CLASS_TESTS
-    if pure.name in {"Dockerfile", "Containerfile"} or pure.suffix.lower() in {
-        ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".cs", ".kt", ".kts",
-        ".sh", ".bash", ".sql", ".tf", ".hcl", ".yaml", ".yml", ".toml", ".json",
-    }:
-        return SCOPE_CLASS_RUNTIME_SOURCE
-    return SCOPE_CLASS_SUPPORT
 
 
-def _gate_scope_classes(scope_mode: str) -> tuple[str, ...]:
-    if scope_mode in SUPPORTED_SCOPE_MODES:
-        return (SCOPE_CLASS_RUNTIME_SOURCE,)
-    raise ValueError(f"Unsupported scope_mode: {scope_mode}")
 
 
-def _select_external_analyzers(
-    profile_id: str,
-    target_files: list[Path],
-    target_root: Path,
-) -> tuple[str, ...]:
-    has_runtime_source = any(
-        _classify_relative_path(_relative_path(path, target_root)) == SCOPE_CLASS_RUNTIME_SOURCE
-        for path in target_files
-    )
-    available_suffixes = {
-        ".py": _has_suffix(target_files, ".py"),
-        ".js-ts": _has_suffix(target_files, ".js", ".jsx", ".ts", ".tsx"),
-        ".ts": _has_suffix(target_files, ".ts", ".tsx"),
-        ".sh": _has_suffix(target_files, ".sh", ".bash"),
-        ".sql": _has_suffix(target_files, ".sql"),
-    }
-
-    def _is_applicable(analyzer_id: str) -> bool:
-        if analyzer_id in {"ruff", "pyflakes", "mypy", "pytest"}:
-            return available_suffixes[".py"]
-        if analyzer_id == "semgrep":
-            return has_runtime_source
-        if analyzer_id == "eslint":
-            return available_suffixes[".js-ts"]
-        if analyzer_id == "tsc":
-            return available_suffixes[".ts"] and (target_root / "tsconfig.json").is_file()
-        if analyzer_id == "shellcheck":
-            return available_suffixes[".sh"]
-        if analyzer_id == "sqlfluff":
-            return available_suffixes[".sql"]
-        return False
-
-    return tuple(
-        analyzer_id
-        for analyzer_id in default_external_analyzers(profile_id)
-        if _is_applicable(analyzer_id)
-    )
 
 
-def _path_matches_filters(
-    path: Path,
-    target_root: Path,
-    include_paths: tuple[str, ...],
-    exclude_paths: tuple[str, ...],
-) -> bool:
-    relative = _relative_path(path, target_root)
-    if include_paths and not any(
-        relative == item or relative.startswith(f"{item.rstrip('/')}/") for item in include_paths
-    ):
-        return False
-    if any(
-        relative == item or relative.startswith(f"{item.rstrip('/')}/") for item in exclude_paths
-    ):
-        return False
-    return True
 
 
-def _is_binary_bytes(raw: bytes) -> bool:
-    return b"\x00" in raw
 
 
-def _is_generated_path(relative_path: str) -> bool:
-    parts = set(relative_path.split("/"))
-    return any(part in DEFAULT_GENERATED_PATH_SEGMENTS for part in parts)
 
 
-def _git_changed_files(target_root: Path, ref: str) -> frozenset[str]:
-    """Return target-root-relative POSIX paths of files changed since *ref*.
-
-    Runs ``git diff --name-only <ref> --`` from *target_root* and normalizes
-    the output (git-root-relative) to be relative to *target_root*.  Files
-    outside *target_root* are silently skipped.  Raises ValueError when git is
-    not available, the repository is not found, or the ref is invalid.
-    """
-    try:
-        diff_result = subprocess.run(
-            ["git", "diff", "--name-only", ref, "--"],
-            cwd=target_root,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        toplevel_result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=target_root,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except FileNotFoundError as exc:
-        raise ValueError("git is not available on PATH; --diff-from requires a git installation") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise ValueError(f"git diff timed out for ref {ref!r} in {target_root}") from exc
-    if diff_result.returncode != 0:
-        detail = diff_result.stderr.strip() or "no stderr"
-        raise ValueError(f"git diff --name-only {ref!r} failed in {target_root}: {detail}")
-    git_root = (
-        Path(toplevel_result.stdout.strip()).resolve()
-        if toplevel_result.returncode == 0
-        else target_root.resolve()
-    )
-    target_abs = target_root.resolve()
-    changed: set[str] = set()
-    for line in diff_result.stdout.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        abs_path = git_root / line
-        try:
-            changed.add(abs_path.relative_to(target_abs).as_posix())
-        except ValueError:
-            pass  # changed file is outside target_root; skip
-    return frozenset(changed)
 
 
-def _iter_target_files(
-    target_root: Path,
-    include_paths: tuple[str, ...],
-    exclude_paths: tuple[str, ...],
-) -> tuple[list[Path], list[SkippedTarget]]:
-    files: list[Path] = []
-    skipped: list[SkippedTarget] = []
-    for path in target_root.rglob("*"):
-        relative = _relative_path(path, target_root)
-        if path.is_symlink():
-            skipped.append(SkippedTarget(path=relative, reason="symlink-skipped"))
-            continue
-        if not path.is_file():
-            continue
-        # Apply include/exclude scope first: files outside the requested scope are
-        # silently dropped and never appear in skipped_targets.  This prevents
-        # generated-path noise (e.g. .git/, .claude/) from polluting skipped_targets
-        # when --include-path narrows the scan surface.
-        if not _path_matches_filters(path, target_root, include_paths, exclude_paths):
-            continue
-        # Generated paths that fall inside the requested scope are recorded as skipped
-        # so the caller can see what was intentionally bypassed.
-        if _is_generated_path(relative):
-            skipped.append(SkippedTarget(path=relative, reason="generated-path-skipped"))
-            continue
-        if not _is_supported_text_file(path):
-            skipped.append(SkippedTarget(path=relative, reason="unsupported-suffix"))
-            continue
-        if path.stat().st_size > DEFAULT_MAX_FILE_BYTES:
-            skipped.append(SkippedTarget(path=relative, reason="max-file-size-exceeded"))
-            continue
-        sample = path.read_bytes()[:1024]
-        if _is_binary_bytes(sample):
-            skipped.append(SkippedTarget(path=relative, reason="binary-skipped"))
-            continue
-        if len(files) >= MAX_SCAN_FILE_COUNT:
-            skipped.append(SkippedTarget(path=relative, reason="scan-file-count-limit-exceeded"))
-            continue
-        files.append(path)
-    return (
-        sorted(files, key=lambda p: _relative_path(p, target_root)),
-        sorted(skipped, key=lambda s: s.path),
-    )
 
 
 # ── CI-18 (Parameter Cluster) ──────────────────────────────────────────────
@@ -658,346 +342,16 @@ def _scan_side_program_leak(
 
 # ── CI-12 (Poltergeist) ───────────────────────────────────────────────────
 
-def _build_summary(findings: list[AciFinding]) -> dict[str, object]:
-    severity_counts = Counter(item.severity for item in findings)
-    confidence_counts = Counter(item.confidence for item in findings)
-    actor_counts = Counter(item.actor_label for item in findings)
-    triage_counts = Counter(item.triage_state for item in findings)
-    priority_counts = Counter(item.priority for item in findings)
-    baseline_counts = Counter(item.baseline_status for item in findings)
-    lifecycle_counts = Counter(item.lifecycle_state for item in findings)
-    owner_lane_counts = Counter(item.owner_lane for item in findings)
-    scope_class_counts = Counter(_classify_relative_path(item.target_file) for item in findings)
-    gated_count = sum(
-        1 for item in findings if _classify_relative_path(item.target_file) == SCOPE_CLASS_RUNTIME_SOURCE
+try:
+    from ._scan_report import (
+        _build_summary, _build_review_brief, _build_gate_result, _build_blockers, _build_residuals,
     )
-    advisory_scope_class_counts = Counter(
-        _classify_relative_path(item.target_file)
-        for item in findings
-        if _classify_relative_path(item.target_file) != SCOPE_CLASS_RUNTIME_SOURCE
+    from ._scan_postprocess import _deduplicate_findings, _filter_scope_noise, _apply_operations
+except ImportError:  # pragma: no cover - direct script/module import path
+    from _scan_report import (  # type: ignore[no-redef]
+        _build_summary, _build_review_brief, _build_gate_result, _build_blockers, _build_residuals,
     )
-    blocking = [
-        item
-        for item in findings
-        if item.severity in {SEVERITY_CRITICAL, SEVERITY_HIGH} and item.waiver_status == "none"
-        and _classify_relative_path(item.target_file) == SCOPE_CLASS_RUNTIME_SOURCE
-    ]
-    return {
-        "total_findings": len(findings),
-        "by_severity": dict(severity_counts),
-        "by_confidence": dict(confidence_counts),
-        "by_actor_label": dict(actor_counts),
-        "by_triage_state": dict(triage_counts),
-        "by_priority": dict(priority_counts),
-        "by_baseline_status": dict(baseline_counts),
-        "by_lifecycle_state": dict(lifecycle_counts),
-        "by_owner_lane": dict(owner_lane_counts),
-        "by_scope_class": dict(scope_class_counts),
-        "by_scope_policy": {
-            "gated": gated_count,
-            "advisory": len(findings) - gated_count,
-        },
-        "advisory_by_scope_class": dict(advisory_scope_class_counts),
-        "waived_count": sum(1 for item in findings if item.waiver_status != "none"),
-        "suppressed_count": 0,
-        "new_count": sum(1 for item in findings if item.baseline_status == "new"),
-        "existing_baseline_count": sum(
-            1 for item in findings if item.baseline_status == "existing-baseline"
-        ),
-        "blocker_count": len(blocking),
-        "residual_count": sum(1 for item in findings if item.triage_state == "accepted-residual"),
-    }
-
-
-def _top_counts(values: list[str], *, limit: int = 5) -> list[dict[str, object]]:
-    counter = Counter(values)
-    return [
-        {"name": name, "count": count}
-        for name, count in counter.most_common(limit)
-    ]
-
-
-def _build_review_brief(
-    findings: list[AciFinding],
-    blockers: list[dict[str, object]],
-    analyzer_runs: list[dict[str, object]],
-    session: ScanSession,
-    gate: dict[str, object],
-) -> dict[str, object]:
-    top_files = _top_counts([finding.target_file for finding in findings])
-    top_signals = _top_counts([finding.signal for finding in findings])
-    top_scope_classes = _top_counts([_classify_relative_path(finding.target_file) for finding in findings])
-    advisory_scope_classes = _top_counts(
-        [
-            _classify_relative_path(finding.target_file)
-            for finding in findings
-            if _classify_relative_path(finding.target_file) not in session.gate_scope_classes
-        ]
-    )
-    availability_note_states = {
-        "not-installed",
-        "version-or-runtime-problem",
-        "downstream-setup-required",
-    }
-    analyzer_failures = [
-        {
-            "analyzer_id": str(run.get("analyzer_id") or ""),
-            "runtime_state": str(run.get("runtime_state") or ""),
-        }
-        for run in analyzer_runs
-        if str(run.get("runtime_state") or "") not in {"executed", "no-tests-collected", "no-applicable-source"}
-        and str(run.get("runtime_state") or "") not in availability_note_states
-    ]
-    analyzer_availability_notes = [
-        {
-            "analyzer_id": str(run.get("analyzer_id") or ""),
-            "runtime_state": str(run.get("runtime_state") or ""),
-        }
-        for run in analyzer_runs
-        if str(run.get("runtime_state") or "") in availability_note_states
-    ]
-    blocker_headline = (
-        (
-            "1 blocking finding needs owner action."
-            if len(blockers) == 1
-            else f"{len(blockers)} blocking findings need owner action."
-        )
-        if blockers
-        else "No blocking findings remain in the gated scope."
-    )
-    advisory_count = sum(
-        1 for finding in findings if _classify_relative_path(finding.target_file) not in session.gate_scope_classes
-    )
-    advisory_headline = (
-        "No advisory-only findings remain outside the gate."
-        if advisory_count == 0
-        else (
-            f"{advisory_count} advisory-only finding{'s' if advisory_count != 1 else ''} "
-            f"{'sit' if advisory_count != 1 else 'sits'} outside the gate in "
-            f"{', '.join(str(item.get('name') or '') for item in advisory_scope_classes)}."
-        )
-    )
-    recommended_focus = ["Start with the hottest files and highest-severity signals."]
-    if analyzer_failures:
-        recommended_focus.append("Resolve analyzer runtime failures before trusting an all-clear.")
-    elif analyzer_availability_notes:
-        recommended_focus.append("Decide whether unavailable analyzers are required for this environment or CI lane.")
-    if advisory_count:
-        recommended_focus.append(
-            "Triage tests, fixtures, docs, roadmap, and support findings separately from runtime blockers."
-        )
-    return {
-        "gate_decision": gate.get("decision", "fail"),
-        "scope_mode": session.scope_mode,
-        "diff_from": session.diff_from,
-        "blocker_headline": blocker_headline,
-        "advisory_headline": advisory_headline,
-        "top_files": top_files,
-        "top_signals": top_signals,
-        "top_scope_classes": top_scope_classes,
-        "advisory_scope_classes": advisory_scope_classes,
-        "analyzer_failures": analyzer_failures,
-        "analyzer_availability_notes": analyzer_availability_notes,
-        "recommended_focus": recommended_focus,
-    }
-
-
-def _build_gate_result(
-    findings: list[AciFinding],
-    *,
-    severity_threshold: str,
-    fail_on_new_findings: bool,
-    fail_on_unreviewed_review_required: bool,
-    fail_on_analyzer_errors: bool,
-    analyzer_runs: list[dict[str, object]],
-) -> dict[str, object]:
-    threshold_rank = SEVERITY_RANK[severity_threshold]
-    blocking = [
-        item
-        for item in findings
-        if SEVERITY_RANK[item.severity] >= threshold_rank and item.waiver_status == "none"
-    ]
-    reasons: list[str] = []
-    if blocking:
-        reasons.append("severity-threshold")
-    if fail_on_new_findings and any(
-        item.baseline_status == "new" and item.waiver_status == "none" for item in findings
-    ):
-        reasons.append("new-findings-present")
-    unreviewed = [
-        item
-        for item in findings
-        if (
-            item.owner_lane == LANE_HUMAN_JUDGMENT
-            and item.waiver_status == "none"
-            and item.baseline_status == "new"
-        )
-    ]
-    if fail_on_unreviewed_review_required and unreviewed:
-        reasons.append("unreviewed-review-required")
-    analyzer_failures = [item for item in analyzer_runs if not item["ok"]]
-    if fail_on_analyzer_errors and analyzer_failures:
-        reasons.append("analyzer-runtime-error")
-    reason_details: list[dict[str, object]] = []
-    if "severity-threshold" in reasons:
-        reason_details.append(
-            {
-                "reason": "severity-threshold",
-                "count": len(blocking),
-                "finding_ids": [item.finding_id for item in blocking],
-            }
-        )
-    if "new-findings-present" in reasons:
-        new_findings = [
-            item for item in findings
-            if item.baseline_status == "new" and item.waiver_status == "none"
-        ]
-        reason_details.append(
-            {
-                "reason": "new-findings-present",
-                "count": len(new_findings),
-                "finding_ids": [item.finding_id for item in new_findings],
-            }
-        )
-    if "unreviewed-review-required" in reasons:
-        reason_details.append(
-            {
-                "reason": "unreviewed-review-required",
-                "count": len(unreviewed),
-                "finding_ids": [item.finding_id for item in unreviewed],
-            }
-        )
-    if "analyzer-runtime-error" in reasons:
-        reason_details.append(
-            {
-                "reason": "analyzer-runtime-error",
-                "count": len(analyzer_failures),
-                "analyzers": [item["analyzer_id"] for item in analyzer_failures],
-            }
-        )
-    return {
-        "decision": "fail" if reasons else "pass",
-        "blocking_severities": [
-            severity for severity, rank in SEVERITY_RANK.items() if rank >= threshold_rank
-        ],
-        "blocking_count": len(blocking),
-        "unreviewed_review_required_count": len(unreviewed),
-        "analyzer_failure_count": len(analyzer_failures),
-        "reasons": reasons,
-        "reason_details": reason_details,
-        "severity_threshold": severity_threshold,
-        "fail_on_new_findings": fail_on_new_findings,
-        "fail_on_unreviewed_review_required": fail_on_unreviewed_review_required,
-        "fail_on_analyzer_errors": fail_on_analyzer_errors,
-    }
-
-
-def _build_blockers(findings: list[AciFinding], gate: dict[str, object]) -> list[dict[str, object]]:
-    threshold_levels = set(cast("list[str]", gate["blocking_severities"]))
-    blockers: list[dict[str, object]] = []
-    for finding in findings:
-        if finding.severity not in threshold_levels:
-            continue
-        if finding.waiver_status != "none":
-            continue
-        blockers.append(
-            {
-                "blocker_id": f"B-{finding.finding_id}",
-                "finding_id": finding.finding_id,
-                "signal": finding.signal,
-                "severity": finding.severity,
-                "target_file": finding.target_file,
-                "line": finding.line,
-                "reason": finding.reason,
-                "required_decision": "resolve-or-waive",
-                "resume_condition": "all blockers resolved or explicitly waived",
-            }
-        )
-    return blockers
-
-
-def _build_residuals(findings: list[AciFinding]) -> list[dict[str, object]]:
-    residuals: list[dict[str, object]] = []
-    for finding in findings:
-        if finding.triage_state != "accepted-residual":
-            continue
-        residuals.append(
-            {
-                "residual_id": f"R-{finding.finding_id}",
-                "classification": "accepted-risk",
-                "reason": finding.reason,
-                "target_file": finding.target_file,
-                "line": finding.line,
-                "next_wave": "recheck when the owning boundary changes",
-            }
-        )
-    return residuals
-
-
-def _deduplicate_findings(findings: list[AciFinding]) -> list[AciFinding]:
-    # 1. exact fingerprint dedup
-    deduplicated: dict[str, AciFinding] = {}
-    for finding in findings:
-        deduplicated.setdefault(finding.fingerprint, finding)
-    unique = list(deduplicated.values())
-
-    # 2. cross-lane dedup: when the external-analyzer lane (ruff/etc.) already
-    #    reports a CI-ID at a location, drop the native-static finding for the
-    #    same (ci_id, file, line). ACI complements the external linter rather than
-    #    re-reporting what it already covers. Native findings are kept untouched
-    #    when no external finding overlaps (e.g. the external lane is disabled).
-    external_locs = {
-        (f.ci_id, f.target_file, f.line)
-        for f in unique
-        if f.owner_lane == LANE_EXTERNAL_ANALYZER and f.line is not None
-    }
-    if not external_locs:
-        return unique
-    result: list[AciFinding] = []
-    for finding in unique:
-        if (
-            finding.owner_lane == LANE_NATIVE_STATIC
-            and finding.line is not None
-            and any((finding.ci_id, finding.target_file, finding.line + dl) in external_locs for dl in (0, -1, 1))
-        ):
-            continue
-        result.append(finding)
-    return result
-
-
-def _filter_scope_noise(findings: list[AciFinding]) -> list[AciFinding]:
-    filtered: list[AciFinding] = []
-    for finding in findings:
-        scope_class = _classify_relative_path(finding.target_file)
-        if finding.signal == "CI14_INSECURE_HTTP" and scope_class in _SUPPORT_ONLY_HTTP_SCOPE_CLASSES:
-            continue
-        filtered.append(finding)
-    return filtered
-
-
-def _apply_operations(
-    findings: list[AciFinding],
-    operations: OperationsState,
-) -> tuple[list[AciFinding], int]:
-    visible_findings: list[AciFinding] = []
-    suppressed_count = 0
-    for finding in findings:
-        suppression = find_matching_suppression(finding, operations)
-        if suppression is not None:
-            suppressed_count += 1
-            continue
-        baseline_status = "existing-baseline" if is_existing_baseline(finding, operations) else "new"
-        waiver = find_active_waiver(finding, operations)
-        visible_findings.append(
-            replace(
-                finding,
-                baseline_status=baseline_status,
-                waiver_status="active-waiver" if waiver is not None else "none",
-                lifecycle_state="accepted" if waiver is not None else finding.lifecycle_state,
-                triage_state="accepted-residual" if waiver is not None else finding.triage_state,
-            )
-        )
-    return visible_findings, suppressed_count
+    from _scan_postprocess import _deduplicate_findings, _filter_scope_noise, _apply_operations  # type: ignore[no-redef]
 
 
 def _validate_scan_request(resolved_root: Path, target_root: Path, profile_id: str, include_paths: tuple[str, ...]) -> None:
@@ -1262,6 +616,7 @@ def _build_scan_report(session: ScanSession, operations_file: Path | None, artif
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "verification_status": "executed",
         "external_analyzer_runs": artifacts.analyzer_runs,
+        "detection_disclosure": detection_disclosure(),
         "known_limits": known_limits(),
         "operations_file": None if operations_file is None else operations_file.resolve().as_posix(),
         "summary": summary,
