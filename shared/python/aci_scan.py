@@ -143,14 +143,22 @@ SEVERITY_RANK = {
 
 # CI-06 (Magic Number) helpers
 
-# Profile signal catalog (wires build_profile_signals to the native detector set)
+# Profile signal catalog (wires build_profile_signals to the native detector set).
+#
+# Default-vs-opt-in is decided by ONE principled criterion: a native detector
+# runs by default only if ACI is confident (>= MEDIUM) in at least one of its
+# signals. Detectors whose every signal is CONFIDENCE_LOW -- i.e. ACI itself
+# signals it is not confident -- are opt-in (the `full` / `self-audit` profiles),
+# not applied by the default scan. Confidence is field-calibrated (see
+# examples/aci-field-precision/), so this criterion is grounded in measured
+# reliability, not taste. The detector-level run filter (_run_*_detectors keys on
+# `required_signals & active_signals`) means only WHOLLY-low-confidence,
+# single-purpose detectors can be cleanly withheld; CI-02 and CI-22 stay in the
+# default because each also emits a >= MEDIUM signal.
 _NATIVE_HYGIENE_SIGNALS: tuple[str, ...] = (
     "CI02_SPAGHETTI_CODE",
     "CI02_LONG_FUNCTION",
-    "CI04_GOD_CLASS",
     "CI03_TODO_HACK",
-    "CI05_COPY_PASTE_CODE",
-    "CI06_MAGIC_NUMBER",
     "CI07_UNUSED_PRIVATE_SYMBOL",
     "CI12_POLTERGEIST",
     "CI13_CIRCULAR_IMPORT",
@@ -162,14 +170,22 @@ _NATIVE_HYGIENE_SIGNALS: tuple[str, ...] = (
     "CI14_UNSAFE_YAML_LOAD",
     "CI14_SUPPLY_CHAIN_DRIFT",
     "CI14_TAINTED_FLOW",
-    "CI18_PARAMETER_CLUSTER",
     "CI20_SCATTERED_CONSTANT",
     "CI21_BROAD_EXCEPTION_SWALLOW",
     "CI21_SILENT_EXCEPTION_RETURN",
     "CI22_RESOURCE_CLEANUP_GAP",
-    "CI23_CONTRACT_FIELD_DRIFT",
     "CI25_ENVIRONMENT_DRIFT",
     "CI26_RACE_HAZARD",
+)
+# Wholly-LOW-confidence detectors: opt-in (full / self-audit only), not default.
+# CI-04 (god class) and CI-05 (copy-paste) measured weakest in the field
+# (0% / 40% precision); CI-06/CI-18/CI-23 are low-confidence stylistic signals.
+_OPT_IN_NATIVE_SIGNALS: tuple[str, ...] = (
+    "CI04_GOD_CLASS",
+    "CI05_COPY_PASTE_CODE",
+    "CI06_MAGIC_NUMBER",
+    "CI18_PARAMETER_CLUSTER",
+    "CI23_CONTRACT_FIELD_DRIFT",
 )
 _EXTERNAL_EVIDENCE_SIGNALS: tuple[str, ...] = ("EXTERNAL_STATIC_ANALYSIS",)
 _HUMAN_JUDGMENT_SIGNALS: tuple[str, ...] = ()
@@ -186,6 +202,7 @@ _PROFILE_SIGNALS: dict[str, tuple[str, ...]] = build_profile_signals(
     external_evidence_signals=_EXTERNAL_EVIDENCE_SIGNALS,
     human_judgment_signals=_HUMAN_JUDGMENT_SIGNALS,
     native_hygiene_signals=_NATIVE_HYGIENE_SIGNALS,
+    opt_in_native_signals=_OPT_IN_NATIVE_SIGNALS,
 )
 
 

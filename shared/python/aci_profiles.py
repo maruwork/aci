@@ -72,7 +72,11 @@ def build_profile_signals(
     external_evidence_signals: tuple[str, ...],
     human_judgment_signals: tuple[str, ...],
     native_hygiene_signals: tuple[str, ...],
+    opt_in_native_signals: tuple[str, ...] = (),
 ) -> dict[str, tuple[str, ...]]:
+    # opt_in_native_signals are wholly-low-confidence native detectors that the
+    # default scan does NOT apply; only the exhaustive profiles (full, self-audit)
+    # opt into them. See aci_scan._OPT_IN_NATIVE_SIGNALS for the criterion.
     return {
         PROFILE_STARTUP: (
             *structure_signals,
@@ -107,12 +111,14 @@ def build_profile_signals(
             *external_evidence_signals,
             *human_judgment_signals,
             *native_hygiene_signals,
+            *opt_in_native_signals,
         ),
         PROFILE_SELF_AUDIT: (
             *structure_signals,
             *external_evidence_signals,
             *human_judgment_signals,
             *native_hygiene_signals,
+            *opt_in_native_signals,
         ),
         PROFILE_BUILD_PREFLIGHT: (
             SIGNAL_RESPONSIBILITY_SPROUT,

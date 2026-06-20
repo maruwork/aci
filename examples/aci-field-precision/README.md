@@ -103,6 +103,24 @@ heuristic remains a genuine accuracy weakness (documented in
 rather than ripped out, because it still has value on first-party code under
 active change.
 
+### Default check selection — one principled criterion, not arbitrary cuts
+
+"Don't apply all of ACI's checks by default" is decided by a single,
+verbalizable criterion rather than a hand-picked threshold:
+
+> A native detector runs in the **default** scan only if ACI is confident
+> (`>= MEDIUM`) in at least one of its signals. A detector whose every signal is
+> `CONFIDENCE_LOW` — ACI itself signalling it is not confident — is **opt-in**
+> (the `full` / `self-audit` profiles), not applied by default.
+
+Because confidence is field-calibrated, this is grounded in measured reliability,
+not taste. It withholds exactly the wholly-low-confidence detectors from the
+default — `CI-04` (god class, 0% field), `CI-05` (copy-paste, 40%), and the
+low-confidence stylistic `CI-06` / `CI-18` / `CI-23` — while `full` still applies
+everything. (`CI-02` and `CI-22` stay in the default because each also emits a
+`>= MEDIUM` signal, and the run filter is detector-level.) The default scan thus
+surfaces only what ACI stands behind; exhaustive review is an explicit opt-in.
+
 The mandatory `detection_disclosure` on every report ("detection is not 100%")
 is now backed by a measured number: **~76% native detection precision on real
 third-party code, and ~4% review-worthiness on mature code.**

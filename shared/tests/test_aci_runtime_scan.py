@@ -590,9 +590,13 @@ def test_ruff_unavailable_keeps_overlapping_native_signals(tmp_path: Path, monke
 
     signals = {item["signal"] for item in report["findings"]}
     assert "CI03_TODO_HACK" in signals
-    assert "CI18_PARAMETER_CLUSTER" in signals
+    # CI-18 is a wholly-low-confidence detector and is opt-in (full only), so it
+    # does not fire under the default quick-gate even when ruff is unavailable.
+    assert "CI18_PARAMETER_CLUSTER" not in signals
     assert "CI21_BROAD_EXCEPTION_SWALLOW" in signals
     assert "CI26_RACE_HAZARD" in signals
+    # CI02_LONG_FUNCTION stays in the default set: the CI-02 detector also emits
+    # the >= MEDIUM CI02_SPAGHETTI_CODE signal, so the detector still runs.
     assert "CI02_LONG_FUNCTION" in signals
 
 
