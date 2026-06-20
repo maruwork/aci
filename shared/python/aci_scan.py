@@ -42,8 +42,10 @@ Artifact hygiene and generated-output boundaries (T52):
 from __future__ import annotations
 
 import ast
+import dataclasses
 from dataclasses import dataclass
 from datetime import datetime, UTC
+import hashlib
 from pathlib import Path
 import re
 from typing import Protocol
@@ -557,7 +559,75 @@ def _collect_scan_findings(
     findings.extend(external_findings)
     if session.diff_from is not None:
         findings = _restrict_findings_to_changed_lines(findings, session.target_root, session.diff_from)
+    findings = _stabilize_fingerprints(findings, session.target_root)
     return target_files, skipped_targets, findings, analyzer_runs
+
+
+def _enclosing_qualname_spans(source: str) -> list[tuple[int, int, str]]:
+    """Return (start_line, end_line, dotted_name) for every function/class.
+
+    Used to anchor a finding to the *symbol* it lives in rather than its line
+    number, so the identity is stable when unrelated edits shift lines around.
+    """
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError):
+        return []
+    spans: list[tuple[int, int, str]] = []
+
+    def walk(node: ast.AST, prefix: str) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                qualname = prefix + child.name
+                end = getattr(child, "end_lineno", None) or child.lineno
+                spans.append((child.lineno, end, qualname))
+                walk(child, qualname + ".")
+            else:
+                walk(child, prefix)
+
+    walk(tree, "")
+    return spans
+
+
+def _qualname_at(spans: list[tuple[int, int, str]], line: int) -> str:
+    best: tuple[int, int, str] | None = None
+    for start, end, qualname in spans:
+        if start <= line <= end and (best is None or (end - start) < (best[1] - best[0])):
+            best = (start, end, qualname)
+    return best[2] if best else ""
+
+
+def _stabilize_fingerprints(findings: list[AciFinding], target_root: Path) -> list[AciFinding]:
+    """Recompute each finding's fingerprint from a line-number-independent key.
+
+    The default fingerprint includes the line number and the (volatile) reason
+    text, so an unrelated edit above a finding -- or a change to a function's
+    length -- shifts its fingerprint and a baseline/waiver keyed on the old value
+    stops matching, re-surfacing pre-existing findings as "new". This keys on the
+    enclosing symbol plus the flagged line's own (whitespace-normalized) content,
+    which is stable under line shifts and changes only when the flagged code or
+    its symbol actually changes.
+    """
+    if not findings:
+        return findings
+    cache: dict[str, tuple[list[tuple[int, int, str]], list[str]]] = {}
+    stabilized: list[AciFinding] = []
+    for finding in findings:
+        rel = finding.target_file
+        if rel not in cache:
+            try:
+                source = (target_root / rel).read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                source = ""
+            cache[rel] = (_enclosing_qualname_spans(source), source.splitlines())
+        spans, lines = cache[rel]
+        line = finding.line
+        qualname = _qualname_at(spans, line) if line else ""
+        content = " ".join(lines[line - 1].split()) if line and 1 <= line <= len(lines) else ""
+        stable_key = "|".join([finding.ci_id, finding.signal, rel, qualname, content])
+        new_fp = hashlib.sha256(stable_key.encode("utf-8")).hexdigest()[:16]
+        stabilized.append(dataclasses.replace(finding, fingerprint=new_fp))
+    return stabilized
 
 
 def _construct_spans(source: str) -> dict[int, int]:

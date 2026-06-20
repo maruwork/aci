@@ -146,6 +146,32 @@ Reproducible: `examples/aci-field-precision/diff-mode-scan.json`; behaviour lock
 by `test_diff_from_scopes_findings_to_changed_lines` and
 `test_construct_spans_maps_def_to_end_line`.
 
+### 2f. Baseline stability — a second "only new issues" defect, found and fixed
+
+Asking the same operational question of the *other* "show only new issues"
+mechanism — baselining ACI on a legacy codebase — exposed a sibling defect.
+Findings are matched to a baseline by fingerprint, but the fingerprint included
+the **line number** (and the volatile reason text, e.g. "161 lines"). So a single
+unrelated line added above a finding shifted its fingerprint, the baseline no
+longer matched it, and it **re-surfaced as "new"** — making the baseline gate
+useless on active code.
+
+Verified: the same `except Exception:` handler changed fingerprint
+(`e58d2f06…` → `7aa3b0a0…`) after one unrelated comment line was prepended.
+
+Fix: identify a finding by its **enclosing symbol + the flagged line's own
+content**, not its line number or the volatile reason. Now the fingerprint is
+stable when unrelated edits shift lines, still distinguishes findings in
+different functions, and changes only when the flagged code (or its symbol)
+actually changes. Locked by `test_fingerprint_is_stable_under_unrelated_line_shifts`,
+`test_fingerprint_distinguishes_findings_in_different_symbols`, and
+`test_structural_fingerprint_stable_when_construct_grows`. (Migration: existing
+baseline/waiver files keyed on the old fingerprints must be regenerated.)
+
+Both "only new issues" paths — diff mode (§2e) and baseline (here) — were broken
+by the same root cause: encoding a finding's identity by line number. Both are
+now line-shift-stable.
+
 ## 3. Multi-language source→sink taint, precision-gated
 
 The default scan carries a **closed** semgrep taint-mode baseline (JavaScript +

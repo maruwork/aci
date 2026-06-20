@@ -769,6 +769,43 @@ def test_construct_spans_handles_async_and_decorated() -> None:
     assert 1 not in spans  # the decorator line is not a construct anchor
 
 
+def test_fingerprint_is_stable_under_unrelated_line_shifts(tmp_path: Path) -> None:
+    # baseline / waiver match on the fingerprint; it must not change when an
+    # unrelated edit above a finding shifts its line number, or pre-existing
+    # findings re-surface as "new" on every PR.
+    base = "def f():\n    try:\n        pass\n    except Exception:\n        pass\n"
+
+    def fingerprint(src: str) -> str:
+        _write(tmp_path / "m.py", src)
+        findings = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)["findings"]
+        return next(f["fingerprint"] for f in findings if f["signal"] == "CI21_BROAD_EXCEPTION_SWALLOW")
+
+    assert fingerprint(base) == fingerprint("# unrelated comment\n# another\n" + base)
+
+
+def test_fingerprint_distinguishes_findings_in_different_symbols(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "m.py",
+        "def f():\n    try:\n        pass\n    except Exception:\n        pass\n"
+        "def g():\n    try:\n        pass\n    except Exception:\n        pass\n",
+    )
+    findings = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)["findings"]
+    fps = [f["fingerprint"] for f in findings if f["signal"] == "CI21_BROAD_EXCEPTION_SWALLOW"]
+    assert len(fps) == 2 and len(set(fps)) == 2, f"same-signal findings in different functions must differ: {fps}"
+
+
+def test_structural_fingerprint_stable_when_construct_grows(tmp_path: Path) -> None:
+    # the long-function reason text includes the line count; the fingerprint must
+    # not depend on that, so adding a line inside the function keeps its identity.
+    def fingerprint(extra: str) -> str:
+        body = "".join(f"    if x == {i}:\n        y = {i}\n" for i in range(80))
+        _write(tmp_path / "m.py", f"def big(x):\n{body}{extra}    return y\n")
+        findings = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)["findings"]
+        return next(f["fingerprint"] for f in findings if f["signal"] == "CI02_LONG_FUNCTION")
+
+    assert fingerprint("") == fingerprint("    z = 0\n")
+
+
 # ── suppression tests ──────────────────────────────────────────────────────
 
 def test_suppression_by_signal_removes_finding(tmp_path: Path) -> None:
