@@ -662,6 +662,40 @@ def test_diff_from_invalid_ref_raises_value_error(tmp_path: Path) -> None:
             assert "no-such-ref" in str(exc)
 
 
+def test_construct_spans_maps_def_to_end_line() -> None:
+    # the change-aware diff filter scopes a structural finding to its whole
+    # function/class span, so a change inside the body counts as touching it.
+    from aci.aci_scan import _construct_spans
+
+    src = "def outer():\n" + "".join("    pass\n" for _ in range(8)) + "class C:\n    def m(self):\n        return 1\n"
+    spans = _construct_spans(src)
+    assert spans[1] == 9          # def outer() spans lines 1..9
+    assert spans[10] == 12        # class C spans 10..12
+    assert spans[11] == 12        # def m spans 11..12
+
+
+def test_diff_from_scopes_findings_to_changed_lines(tmp_path: Path, monkeypatch) -> None:
+    # Two broad-except functions in one changed file. Only the second function's
+    # lines are "changed"; file-level diff would report both, change-aware diff
+    # keeps only the one the change actually touched.
+    _write(
+        tmp_path / "m.py",
+        "def first():\n    try:\n        pass\n    except Exception:\n        pass\n"
+        "def second():\n    try:\n        pass\n    except Exception:\n        pass\n",
+    )
+    monkeypatch.setattr("aci.aci_scan._git_changed_files", lambda root, ref: frozenset(["m.py"]))
+    monkeypatch.setattr("aci.aci_scan._git_changed_lines", lambda root, ref: {"m.py": {7, 8, 9, 10}})
+
+    report = scan_target(
+        tmp_path, "full", "core-only", include_external_analyzers=False, diff_from="HEAD~1"
+    )
+    ci21_lines = sorted(
+        item["line"] for item in report["findings"] if item["signal"] == "CI21_BROAD_EXCEPTION_SWALLOW"
+    )
+    assert ci21_lines, "the changed function's broad-except should be kept"
+    assert all(6 <= line <= 10 for line in ci21_lines), f"unchanged function leaked: {ci21_lines}"
+
+
 # ── suppression tests ──────────────────────────────────────────────────────
 
 def test_suppression_by_signal_removes_finding(tmp_path: Path) -> None:

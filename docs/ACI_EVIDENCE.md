@@ -122,6 +122,30 @@ findings. A truly rigorous public benchmark would label more — the human-judgm
 ceiling is real and is stated, not hidden. Raw per-CI-ID and per-project counts:
 `examples/aci-field-precision/large-scan-summary.json`.
 
+### 2e. Change-review (diff) mode — an operational defect found by testing, then fixed
+
+Testing ACI's *actual* intended use — reviewing a change, not auditing a whole
+repo — surfaced a defect that whole-repo testing could not. On **15 real merged
+PRs** (textual, poetry, httpx), the old file-level diff mode produced **70
+findings, 83% of them >40 lines from any changed line** — pre-existing issues in
+touched files. Example: poetry PR #10917 (resolve relative URLs) was told its
+`Executor` class is a god class and a function is too long — both untouched by
+the PR.
+
+Root cause: `--diff-from` scoped to changed *files*, then scanned them whole.
+Fix: **change-aware scoping** — keep a finding only when its flagged construct (a
+function/class line span for structural signals, the exact line for line-specific
+ones) intersects the lines the change actually touched.
+
+| | findings on the 15 PRs |
+|---|---|
+| before (file-level) | 70 (83% incidental) |
+| after (change-aware) | **8** — each a structural concern the PR modified *inside* |
+
+Reproducible: `examples/aci-field-precision/diff-mode-scan.json`; behaviour locked
+by `test_diff_from_scopes_findings_to_changed_lines` and
+`test_construct_spans_maps_def_to_end_line`.
+
 ## 3. Multi-language source→sink taint, precision-gated
 
 The default scan carries a **closed** semgrep taint-mode baseline (JavaScript +

@@ -41,6 +41,7 @@ Artifact hygiene and generated-output boundaries (T52):
 """
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
 from datetime import datetime, UTC
 from pathlib import Path
@@ -118,7 +119,7 @@ try:
         SCOPE_CLASS_RUNTIME_SOURCE, SCOPE_CLASS_TESTS, SCOPE_CLASS_FIXTURES, SCOPE_CLASS_DOCS_EVIDENCE,
         SCOPE_CLASS_ROADMAP_EVIDENCE, SCOPE_CLASS_MAINTAINER_PROBES, SCOPE_CLASS_SUPPORT, SCOPE_CLASS_GENERATED,
         SkippedTarget, _classify_relative_path, _resolve_scope_filters, _gate_scope_classes,
-        _select_external_analyzers, _iter_target_files, _git_changed_files, _path_matches_filters,
+        _select_external_analyzers, _iter_target_files, _git_changed_files, _git_changed_lines, _path_matches_filters,
     )
 except ImportError:  # pragma: no cover - direct script/module import path
     from _scan_scope import (  # type: ignore[no-redef]  # noqa: F401
@@ -127,7 +128,7 @@ except ImportError:  # pragma: no cover - direct script/module import path
         SCOPE_CLASS_RUNTIME_SOURCE, SCOPE_CLASS_TESTS, SCOPE_CLASS_FIXTURES, SCOPE_CLASS_DOCS_EVIDENCE,
         SCOPE_CLASS_ROADMAP_EVIDENCE, SCOPE_CLASS_MAINTAINER_PROBES, SCOPE_CLASS_SUPPORT, SCOPE_CLASS_GENERATED,
         SkippedTarget, _classify_relative_path, _resolve_scope_filters, _gate_scope_classes,
-        _select_external_analyzers, _iter_target_files, _git_changed_files, _path_matches_filters,
+        _select_external_analyzers, _iter_target_files, _git_changed_files, _git_changed_lines, _path_matches_filters,
     )
 
 
@@ -554,7 +555,63 @@ def _collect_scan_findings(
         next_id,
     )
     findings.extend(external_findings)
+    if session.diff_from is not None:
+        findings = _restrict_findings_to_changed_lines(findings, session.target_root, session.diff_from)
     return target_files, skipped_targets, findings, analyzer_runs
+
+
+def _construct_spans(source: str) -> dict[int, int]:
+    """Map each function/class definition line to the construct's last line.
+
+    Lets a structural finding (anchored at the def line) be scoped to the whole
+    function/class span, so a change anywhere inside it counts as touching it.
+    """
+    spans: dict[int, int] = {}
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError):
+        return spans
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            end = getattr(node, "end_lineno", None) or node.lineno
+            spans[node.lineno] = max(spans.get(node.lineno, 0), end)
+    return spans
+
+
+def _restrict_findings_to_changed_lines(
+    findings: list[AciFinding], target_root: Path, ref: str
+) -> list[AciFinding]:
+    """Keep only findings that overlap the lines a change actually touched.
+
+    Diff scoping is otherwise file-level: the whole changed file is scanned, so
+    pre-existing issues in a touched file are reported even though the change
+    never went near them. This narrows the result to findings whose flagged
+    construct (a function/class span for structural signals, the exact line for
+    line-specific ones) intersects the changed lines.
+    """
+    try:
+        changed_lines = _git_changed_lines(target_root, ref)
+    except ValueError:
+        return findings  # cannot compute line diff; leave file-level result untouched
+    spans_by_file: dict[str, dict[int, int]] = {}
+    kept: list[AciFinding] = []
+    for finding in findings:
+        line = finding.line
+        if line is None:
+            continue  # no line anchor: cannot attribute to a changed line
+        changed = changed_lines.get(finding.target_file)
+        if not changed:
+            continue  # file had no changed lines (e.g. pure rename/metadata)
+        if finding.target_file not in spans_by_file:
+            path = target_root / finding.target_file
+            try:
+                spans_by_file[finding.target_file] = _construct_spans(path.read_text(encoding="utf-8", errors="ignore"))
+            except OSError:
+                spans_by_file[finding.target_file] = {}
+        end = spans_by_file[finding.target_file].get(line, line)
+        if not changed.isdisjoint(range(line, end + 1)):
+            kept.append(finding)
+    return kept
 
 
 def _report_findings(findings: list[AciFinding]) -> list[dict[str, object]]:

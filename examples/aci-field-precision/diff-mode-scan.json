@@ -1,0 +1,22 @@
+{
+ "test": "ACI diff/change-review mode on real merged PRs",
+ "corpus": "15 recent non-merge commits across textual, poetry, httpx (5 each)",
+ "before_file_level": {
+  "total_findings": 70,
+  "distance_to_nearest_changed_line": {
+   "<=10": 3,
+   "<=40": 9,
+   ">40 (incidental)": 58
+  },
+  "note": "file-level diff scans whole changed files; 83% of findings were >40 lines from any change -- pre-existing issues in touched files"
+ },
+ "after_change_aware": {
+  "total_findings": 8,
+  "by_ci_id": {
+   "CI-04": 6,
+   "CI-02": 2
+  },
+  "note": "change-aware scoping keeps only findings whose construct (function/class span) or exact line overlaps the changed lines"
+ },
+ "result": "70 file-level findings -> 8 change-relevant findings; the 8 are structural concerns (god class / long function) the PR actually modified inside"
+}
