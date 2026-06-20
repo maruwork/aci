@@ -147,8 +147,38 @@ Closure gate (mechanical):
   lanes; G1 closes the remaining executable lanes. ✅
 - **Complete general-purpose (orchestration)** — G1 + G2 + G3 + G4 closed: every
   executable lane live-CI-proven, codeql wired, multi-language taint proven, and
-  the product positioned honestly. **G1+G2+G3 closed; G4 (honest positioning)
-  remains.**
+  the product positioned honestly. ✅ **REACHED (2026-06-20); CI green on the
+  branch (test-linux + codeql-e2e + platform-smoke all pass).**
+
+## Post-completion hardening (the honest residuals of G3)
+
+G3's gate proved the taint rules *fire*; "fires" is not "is precise" and JS+Python
+is not "multi-language". These two residuals were called out openly and then
+closed with measurement, not assertion:
+
+- **H1 — taint precision is now measured, not assumed.**
+  `shared/tools/aci_taint_eval.py` runs the orchestrated semgrep taint lane over a
+  curated corpus of source→sink **positives** (direct, one-hop, multi-hop, several
+  sink kinds) and **control** flows that must stay silent (a constant fed to the
+  sink, a tainted value that never reaches the sink, a source with no dangerous
+  sink). `test_aci_taint_eval.py` gates **recall = 1.0 and false-positive
+  rate = 0** on that corpus. The controls are the point: they prove the rules
+  *discriminate* a real flow from a look-alike, which a bare `eval()`-pattern match
+  cannot. Honest caveat: this is a controlled-set precision gate; a field
+  false-positive rate still needs a labelled real-world corpus + human
+  adjudication (same caveat as the native independent-eval noise surface).
+
+- **H2 — taint coverage extended from 2 languages to 3, measured the same way.**
+  A Go command-injection rule (`aci.ci14.taint-go-command-injection`:
+  `r.URL.Query().Get` / `r.FormValue` / `os.Args` → `exec.Command`) was added and
+  passes the same recall=1.0 / FP=0 gate alongside JS and Python. Because the
+  harness scores any new language by the same standard, adding further languages is
+  a bounded, *measured* increment — not an open-ended claim.
+
+Closure gate (mechanical):
+- `pytest shared/tests/test_aci_taint_eval.py` (semgrep installed) asserts
+  recall=1.0 and false-positive-rate=0 across the JS + Python + Go corpus; CI's
+  Linux job installs semgrep so this runs there.
 
 ## Honest ceiling (stated, not hidden)
 

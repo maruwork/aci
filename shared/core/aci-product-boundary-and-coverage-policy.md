@@ -89,7 +89,12 @@ This means:
   output into CI-14 findings when the tool is installed). gitleaks runs via a
   bounded temp-report-file invocation; the others are JSON-on-stdout. `semgrep`
   also carries bundled taint-mode rules, so the default lane proves
-  source→sink taint for JavaScript and Python, not only bare patterns.
+  source→sink taint for JavaScript, Python, and Go, not only bare patterns.
+  Those rules are precision-gated by `shared/tools/aci_taint_eval.py` (perfect
+  recall and zero false positives on a curated source→sink + control corpus);
+  adding further languages is an incremental, measured extension. Real-world
+  precision on unlabelled code still needs human adjudication — the gate proves
+  discrimination on a controlled set, not a field false-positive rate.
 - `codeql` is **also execution-ready**: the shelf has a database-build → analyze
   → SARIF → normalized-CI-14 adapter (per-language DB create, then the
   security-and-quality suite). It stays **default-opt-in** because the

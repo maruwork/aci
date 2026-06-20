@@ -155,13 +155,14 @@
       ],
       "kind": "coverage-boundary",
       "title": "Native taint flow is intra-procedural only (orchestrated lane covers the rest)",
-      "summary": "The native CI14_TAINTED_FLOW detector tracks untrusted input to a dangerous sink within a single Python function, through assignments, f-strings, concatenation, and string methods. It does not itself follow taint across function calls, through container elements, or through object attributes. Inter-procedural and multi-language source→sink taint is instead delivered by the orchestrated external-analyzer lane: the bundled semgrep taint-mode rules (JavaScript and Python source→sink, run by default) and the execution-ready codeql data-flow adapter (multi-language, opt-in because the per-language database build is heavy).",
+      "summary": "The native CI14_TAINTED_FLOW detector tracks untrusted input to a dangerous sink within a single Python function, through assignments, f-strings, concatenation, and string methods. It does not itself follow taint across function calls, through container elements, or through object attributes. Inter-procedural and multi-language source→sink taint is instead delivered by the orchestrated external-analyzer lane: the bundled semgrep taint-mode rules (JavaScript, Python, and Go source→sink, run by default, precision-gated by shared/tools/aci_taint_eval.py at full recall and zero false positives on a curated control corpus) and the execution-ready codeql data-flow adapter (multi-language, opt-in because the per-language database build is heavy).",
       "operator_guidance": "A clean native CI14_TAINTED_FLOW result does not by itself rule out injection that flows through helper functions or data structures. For that depth, enable the orchestrated taint lane (semgrep is on by default; codeql is opt-in) rather than reaching outside ACI; both normalize their source→sink findings into CI-14.",
       "source_refs": [
         "docs/CI_REFERENCE.md",
         "shared/python/detectors/ci_14_taint.py",
         "shared/python/package_assets/analyzers/aci-semgrep-rules.yml",
-        "shared/tests/fixtures/taint_multilang/README.md"
+        "shared/tests/fixtures/taint_multilang/README.md",
+        "shared/tools/aci_taint_eval.py"
       ]
     }
   ],

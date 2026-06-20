@@ -126,7 +126,9 @@ _KNOWN_LIMITS: tuple[dict[str, object], ...] = (
             "through object attributes. Inter-procedural and multi-language "
             "source→sink taint is instead delivered by the orchestrated "
             "external-analyzer lane: the bundled semgrep taint-mode rules "
-            "(JavaScript and Python source→sink, run by default) and the "
+            "(JavaScript, Python, and Go source→sink, run by default, "
+            "precision-gated by shared/tools/aci_taint_eval.py at full recall "
+            "and zero false positives on a curated control corpus) and the "
             "execution-ready codeql data-flow adapter (multi-language, opt-in "
             "because the per-language database build is heavy)."
         ),
@@ -142,6 +144,7 @@ _KNOWN_LIMITS: tuple[dict[str, object], ...] = (
             "shared/python/detectors/ci_14_taint.py",
             "shared/python/package_assets/analyzers/aci-semgrep-rules.yml",
             "shared/tests/fixtures/taint_multilang/README.md",
+            "shared/tools/aci_taint_eval.py",
         ],
     },
 )
