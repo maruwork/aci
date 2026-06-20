@@ -18,12 +18,12 @@ import re
 
 try:
     from ..aci_findings import (
-        AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED, CONFIDENCE_MEDIUM,
+        AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED, CONFIDENCE_MEDIUM, CONFIDENCE_LOW,
     )
     from ._helpers import _relative_path, _line_excerpt, _build_parent_map, _cached_parse
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
-        AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED, CONFIDENCE_MEDIUM,
+        AciFinding, build_finding, LANE_NATIVE_STATIC, VERIFICATION_EXECUTED, CONFIDENCE_MEDIUM, CONFIDENCE_LOW,
     )
     from detectors._helpers import _relative_path, _line_excerpt, _build_parent_map, _cached_parse  # type: ignore[no-redef]
 
@@ -454,7 +454,11 @@ def _build_resource_finding(context: _ResourceFindingContext, index: int, line: 
                 "the lifecycle may not be closed on exception paths."),
         evidence_ref="shared/core/aci-code-inspection-execution-spec.md",
         recommended_action="Wrap resource-opening calls in a 'with' statement to ensure deterministic cleanup.",
-        confidence=CONFIDENCE_MEDIUM, priority="P2", owner_lane=LANE_NATIVE_STATIC,
+        # Confidence calibrated to measured field precision (~50% on real code:
+        # FPs where the resource is handed to the caller or closed in finally).
+        # See examples/aci-field-precision/. The fire-and-forget signal below is
+        # unmeasured in that corpus and keeps its own confidence.
+        confidence=CONFIDENCE_LOW, priority="P2", owner_lane=LANE_NATIVE_STATIC,
         verification_status=VERIFICATION_EXECUTED,
     )
 

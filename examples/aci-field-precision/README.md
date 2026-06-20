@@ -72,17 +72,40 @@ named as the thing blocking an honest precision claim.
 - Adjudication is a careful single-rubric review (one maintainer pass), not
   multi-reviewer consensus.
 
-## What the evidence demands (recorded, not yet acted on)
+## How this fed back: balancing the whole tool (not point-fixing one number)
 
-- **CI-04 (0% field precision)** is the clearest defect: the LCOM "unrelated
-  responsibility groups" heuristic mis-classifies cohesive many-method classes.
-  It should be retuned, down-ranked, or threshold-raised before CI-04 is trusted
-  on real OO code.
-- **CI-05 (40%)** and **CI-22 (50%)** need precision work (trivial-similarity
-  suppression; recognising caller-managed / `finally`-closed resources).
-- The mandatory `detection_disclosure` on every report ("detection is not 100%")
-  is now backed by a measured number: **~76% native detection precision on real
-  third-party code, and ~4% review-worthiness on mature code.**
+The right response to "CI-04 is 0%" is not to tunnel-fix the worst detector but
+to **balance the whole tool** so every detector's standing matches its measured
+field reliability. Two layers already provided most of that balance, and one
+small calibration closed the rest:
+
+- **Gate layer — already balanced.** The default `severity_threshold` is `high`,
+  and the gate ranks by *severity*, not confidence. Every field-weak structural
+  detector (CI-04/05/22, all `low`/`medium` severity) is therefore **advisory by
+  default** — it cannot fail a build. The 24% FP and 96%-not-review-worthy live
+  entirely in advisory output, never in blockers.
+- **Confidence layer — mostly already aligned.** CI-04 already emitted
+  `CONFIDENCE_LOW` (matching its 0% field precision); CI-14/CI-26/CI-03 emit
+  `HIGH` (matching ~100%). The team's prior confidence assignments largely
+  agreed with the field measurement.
+- **Calibration applied (where evidence sufficed).** Two detectors emitted
+  confidence above their measured field reliability and were lowered to
+  `CONFIDENCE_LOW`: `CI22_RESOURCE_CLEANUP_GAP` (~50%, n=6) and `CI05_COPY_PASTE`
+  (~40%, n=5). Left unchanged on purpose: CI-04 (already LOW), `CI07` (n=1 — too
+  little evidence to recalibrate), and `CI22_FIRE_AND_FORGET` (zero findings in
+  this corpus — unmeasured).
+
+Net: no native detector now states a confidence above its proven field
+reliability, and the gate keeps every field-weak detector advisory — the whole
+tool is balanced, rather than one detector point-patched. CI-04's clustering
+heuristic remains a genuine accuracy weakness (documented in
+`KL-ACI-FIELD-PRECISION`); it is left available-but-low-confidence-and-advisory
+rather than ripped out, because it still has value on first-party code under
+active change.
+
+The mandatory `detection_disclosure` on every report ("detection is not 100%")
+is now backed by a measured number: **~76% native detection precision on real
+third-party code, and ~4% review-worthiness on mature code.**
 
 Files: `labels.json` (the adjudicated dataset), `benchmark.md` (the
 `aci_precision_benchmark.py` report), `findings.json` (portable finding records).
