@@ -49,6 +49,8 @@ ANALYZER_EXECUTION_SUPPORT_LEVELS: dict[str, str] = {
 
 VERSION_PROBE_TIMEOUT_SECONDS: int = 10
 ANALYZER_TIMEOUT_SECONDS: int = 60
+# codeql builds a database then runs query suites; each step can take minutes.
+CODEQL_TIMEOUT_SECONDS: int = 900
 ANALYZER_MAX_OUTPUT_CHARS: int = 10 * 1024 * 1024  # 10 M chars per stream (≈10 MB for ASCII output)
 
 MINIMUM_ANALYZER_VERSIONS: dict[str, tuple[int, ...]] = {
@@ -96,6 +98,9 @@ _EXECUTION_READY_ANALYZERS: frozenset[str] = frozenset({
     "trivy",
     # Secret scanner with a JSON file-report model (run via a temp report path).
     "gitleaks",
+    # Multi-language taint engine: build a database per interpreted language, then
+    # analyze to SARIF (a heavier, multi-step model than a single invocation).
+    "codeql",
 })
 _ANALYZER_VERSION_POLICY: dict[str, dict[str, str]] = {
     "codeql": {
@@ -449,11 +454,13 @@ try:
     from ._analyzer_commands import (
         _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
         _gitleaks_command, _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
+        _codeql_languages, _codeql_db_create_command, _codeql_analyze_command,
     )
 except ImportError:  # pragma: no cover - direct script/module import path
     from _analyzer_commands import (  # type: ignore[no-redef]
         _analyzer_command, _find_python_files, _find_shell_files, _find_tsconfig,
         _gitleaks_command, _mypy_command, _semgrep_command, _shellcheck_command, _tsc_command,
+        _codeql_languages, _codeql_db_create_command, _codeql_analyze_command,
     )
 
 
@@ -510,6 +517,72 @@ def _external_relative(filename: str, target_root: Path) -> str:
         return path.resolve().relative_to(target_root.resolve()).as_posix()
     except ValueError:
         return path.as_posix() if filename else ""
+
+
+_CODEQL_CWE_CI: tuple[tuple[str, str], ...] = (
+    ("cwe-079", "CI-14"), ("cwe-089", "CI-14"), ("cwe-078", "CI-14"),
+    ("cwe-094", "CI-14"), ("cwe-502", "CI-14"), ("cwe-022", "CI-14"),
+    ("cwe-798", "CI-14"), ("cwe-327", "CI-14"), ("cwe-352", "CI-14"),
+)
+
+
+def _codeql_ci_id(rule: dict[str, object] | None) -> str:
+    """Map a codeql rule's tags to a CI-ID. Security rules -> CI-14; otherwise a
+    conservative default."""
+    tags: list[str] = []
+    if isinstance(rule, dict):
+        props = rule.get("properties")
+        if isinstance(props, dict) and isinstance(props.get("tags"), list):
+            tags = [str(t).lower() for t in props["tags"]]
+    joined = " ".join(tags)
+    for needle, ci_id in _CODEQL_CWE_CI:
+        if needle in joined:
+            return ci_id
+    if "security" in joined:
+        return "CI-14"
+    return "CI-14"
+
+
+def _codeql_findings(sarif_text: str, target_root: Path, next_id: int) -> list[AciFinding]:
+    findings: list[AciFinding] = []
+    payload = json.loads(sarif_text or "{}")
+    for run in payload.get("runs", []) or []:
+        driver = ((run.get("tool") or {}).get("driver") or {})
+        rules_by_id = {r.get("id"): r for r in (driver.get("rules") or []) if isinstance(r, dict)}
+        for result in run.get("results", []) or []:
+            if not isinstance(result, dict):
+                continue
+            rule_id = str(result.get("ruleId") or "")
+            message = ((result.get("message") or {}).get("text")) or rule_id
+            location = (result.get("locations") or [{}])[0] or {}
+            physical = (location.get("physicalLocation") or {})
+            uri = ((physical.get("artifactLocation") or {}).get("uri")) or ""
+            line = (physical.get("region") or {}).get("startLine") or 1
+            findings.append(
+                build_finding(
+                    finding_id=f"F-EXT-{next_id + len(findings):04d}",
+                    ci_id=_codeql_ci_id(rules_by_id.get(rule_id)),
+                    signal="EXT_CODEQL",
+                    severity="high",
+                    confidence="medium",
+                    actor_label=LANE_EXTERNAL_ANALYZER,
+                    triage_state="review-first",
+                    priority="P1",
+                    fixability="owner-decision",
+                    baseline_status="new",
+                    waiver_status="none",
+                    lifecycle_state="open",
+                    owner_lane=LANE_EXTERNAL_ANALYZER,
+                    target_file=_external_relative(uri, target_root),
+                    line=int(line) if isinstance(line, int) else 1,
+                    excerpt=str(rule_id),
+                    reason=f"codeql ({rule_id}): {str(message)[:160]}",
+                    evidence_ref=f"codeql:{rule_id}",
+                    recommended_action="Review the codeql data-flow path and fix or justify the flagged sink.",
+                    verification_status=VERIFICATION_EXECUTED,
+                )
+            )
+    return findings
 
 
 def _osv_scanner_findings(stdout: str, target_root: Path, next_id: int) -> list[AciFinding]:
@@ -647,6 +720,7 @@ def _execute_analyzer_command(
     command: list[str],
     *,
     cwd: Path,
+    timeout: int = ANALYZER_TIMEOUT_SECONDS,
 ) -> tuple[subprocess.CompletedProcess[str] | None, AnalyzerRunResult | None]:
     # Resolve the tool to its real path so npm shims (.CMD on Windows) launch
     # under subprocess(shell=False); on POSIX this is a no-op.
@@ -659,7 +733,7 @@ def _execute_analyzer_command(
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=ANALYZER_TIMEOUT_SECONDS,
+            timeout=timeout,
             check=False,
             cwd=str(cwd),
         )
@@ -771,6 +845,56 @@ def _run_gitleaks(target_root: Path, next_id: int) -> AnalyzerRunResult:
         shutil.rmtree(scratch, ignore_errors=True)
 
 
+def _run_codeql(target_root: Path, next_id: int) -> AnalyzerRunResult:
+    """codeql is multi-step: build a database per interpreted language, analyze it
+    to SARIF, then normalize. DB-build needs no compile step for python/javascript;
+    compiled languages are out of scope for this bounded adapter."""
+    languages = _codeql_languages(target_root)
+    if not languages:
+        return _no_source_result("codeql", True)
+    scratch = Path(tempfile.mkdtemp(prefix="aci_codeql_"))
+    findings: list[AciFinding] = []
+    ran = False
+    last_exit = 0
+    last_stderr = ""
+    try:
+        for language in languages:
+            db_dir = scratch / f"db-{language}"
+            sarif_path = scratch / f"{language}.sarif"
+            create = _codeql_db_create_command(db_dir, language, target_root)
+            created, error_result = _execute_analyzer_command(
+                "codeql", create, cwd=target_root, timeout=CODEQL_TIMEOUT_SECONDS)
+            if error_result is not None or created is None or created.returncode != 0:
+                last_stderr = (created.stderr if created else (error_result.stderr if error_result else "")) or last_stderr
+                continue
+            analyze = _codeql_analyze_command(db_dir, sarif_path, language)
+            analyzed, analyze_error = _execute_analyzer_command(
+                "codeql", analyze, cwd=target_root, timeout=CODEQL_TIMEOUT_SECONDS)
+            if analyze_error is not None or analyzed is None:
+                last_stderr = (analyze_error.stderr if analyze_error else "") or last_stderr
+                continue
+            ran = True
+            last_exit = analyzed.returncode
+            last_stderr = analyzed.stderr or last_stderr
+            try:
+                sarif_text = sarif_path.read_text(encoding="utf-8") if sarif_path.exists() else "{}"
+                findings.extend(_codeql_findings(sarif_text, target_root, next_id + len(findings)))
+            except (OSError, json.JSONDecodeError):
+                continue
+        runtime_state = VERIFICATION_EXECUTED if ran else "runtime-failure"
+        return AnalyzerRunResult(
+            analyzer_id="codeql",
+            ok=ran,
+            exit_code=last_exit if ran else None,
+            runtime_state=runtime_state,
+            stdout="",
+            stderr=last_stderr[:ANALYZER_MAX_OUTPUT_CHARS],
+            findings=tuple(findings),
+        )
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
 def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerRunResult:
     readiness = _readiness_for(analyzer_id)
     if readiness.availability_state != "ready":
@@ -785,6 +909,8 @@ def run_analyzer(analyzer_id: str, target_root: Path, next_id: int) -> AnalyzerR
         )
     if analyzer_id == "gitleaks":
         return _run_gitleaks(target_root, next_id)
+    if analyzer_id == "codeql":
+        return _run_codeql(target_root, next_id)
     command, skipped_source_count, no_source = _resolve_analyzer_command(analyzer_id, target_root)
 
     if command is None:

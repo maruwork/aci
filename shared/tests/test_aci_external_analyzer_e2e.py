@@ -203,3 +203,27 @@ def test_osv_scanner_lane_runs_and_normalizes_dependency_findings(tmp_path: Path
     vulns = [f for f in result.findings if f.signal == "EXT_OSV_SCANNER"]
     assert vulns, "expected osv-scanner to flag a known-vulnerable dependency"
     assert vulns[0].ci_id == "CI-14"
+
+
+@pytest.mark.skipif(shutil.which("codeql") is None, reason="codeql not installed")
+def test_codeql_lane_detects_taint_flow(tmp_path: Path) -> None:
+    # codeql is opt-in and heavy (database build + analyze, minutes); run the lane
+    # directly to prove it produces a real multi-language data-flow finding.
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "app.py").write_text(
+        "from flask import Flask, request\n"
+        "app = Flask(__name__)\n"
+        "@app.route('/x')\n"
+        "def x():\n"
+        "    code = request.args.get('c')\n"
+        "    return eval(code)\n",
+        encoding="utf-8",
+    )
+    result = run_analyzer("codeql", tmp_path, 0)
+
+    assert result.runtime_state == "executed", f"codeql did not run: {result.stderr!r}"
+    codeql = [f for f in result.findings if f.signal == "EXT_CODEQL"]
+    assert codeql, "expected codeql to flag the request->eval code-injection flow"
+    assert any("code-injection" in f.evidence_ref for f in codeql)
+    assert all(f.ci_id.startswith("CI-") for f in codeql)

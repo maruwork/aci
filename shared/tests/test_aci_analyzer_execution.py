@@ -86,24 +86,25 @@ def test_missing_analyzer_returns_not_installed(tmp_path: Path, monkeypatch) -> 
     assert result.runtime_state == "not-installed"
 
 
-def test_project_local_setup_analyzer_keeps_support_level_when_not_installed(monkeypatch) -> None:
+def test_codeql_reports_not_installed_when_absent(monkeypatch) -> None:
     monkeypatch.setattr(execmod, "which", lambda analyzer_id: None)
     readiness = execmod._readiness_for("codeql")
 
     assert readiness.availability_state == "not-installed"
-    assert readiness.execution_support_level == "availability-check-only"
+    # codeql now has an execution adapter (database build + analyze), so it is
+    # execution-ready; it stays opt-in (not run by default) because it is heavy.
+    assert readiness.execution_support_level == "execution-ready"
     assert readiness.default_policy == "opt-in"
 
 
-def test_availability_only_analyzer_reports_downstream_setup_when_visible(monkeypatch) -> None:
+def test_codeql_is_ready_when_installed_and_version_ok(monkeypatch) -> None:
     monkeypatch.setattr(execmod, "which", lambda analyzer_id: f"C:/fake/{analyzer_id}.exe")
-    monkeypatch.setattr(execmod, "_probe_version", lambda analyzer_id, executable_path: ("CodeQL 2.0.0", True))
+    monkeypatch.setattr(execmod, "_probe_version", lambda analyzer_id, executable_path: ("CodeQL 2.25.6", True))
 
     readiness = execmod._readiness_for("codeql")
 
-    assert readiness.availability_state == "downstream-setup-required"
-    assert readiness.execution_support_level == "availability-check-only"
-    assert readiness.remediation_hint
+    assert readiness.availability_state == "ready"
+    assert readiness.execution_support_level == "execution-ready"
 
 
 def test_sarif_ready_readiness_summary_contains_known_states() -> None:
@@ -138,7 +139,7 @@ def test_analyzer_availability_exposes_setup_and_version_policy(monkeypatch) -> 
     assert rows["ruff"]["setup_hint"]
     assert rows["ruff"]["version_policy"] == "aci-maintained-pin"
     assert rows["ruff"]["install_spec"] == "ruff==0.4.8"
-    assert rows["codeql"]["execution_support_level"] == "availability-check-only"
+    assert rows["codeql"]["execution_support_level"] == "execution-ready"
     assert rows["codeql"]["support_level"] == "opt-in"
 
 
@@ -166,8 +167,35 @@ def test_deep_security_analyzers_are_execution_ready() -> None:
     assert rows["osv-scanner"]["execution_support_level"] == "execution-ready"
     assert rows["trivy"]["execution_support_level"] == "execution-ready"
     assert rows["gitleaks"]["execution_support_level"] == "execution-ready"
-    # codeql stays availability-only: it needs a built database, not a single invocation.
-    assert rows["codeql"]["execution_support_level"] == "availability-check-only"
+    assert rows["codeql"]["execution_support_level"] == "execution-ready"
+
+
+def test_codeql_sarif_is_normalized_into_findings(tmp_path: Path) -> None:
+    sarif = json.dumps({
+        "runs": [{
+            "tool": {"driver": {"rules": [
+                {"id": "py/code-injection", "properties": {"tags": ["security", "external/cwe/cwe-094"]}},
+            ]}},
+            "results": [{
+                "ruleId": "py/code-injection",
+                "message": {"text": "This code execution depends on a user-provided value."},
+                "locations": [{"physicalLocation": {
+                    "artifactLocation": {"uri": "app.py"}, "region": {"startLine": 7}}}],
+            }],
+        }]
+    })
+    findings = execmod._codeql_findings(sarif, tmp_path, 0)
+    assert len(findings) == 1
+    assert findings[0].signal == "EXT_CODEQL"
+    assert findings[0].ci_id == "CI-14"
+    assert findings[0].target_file == "app.py"
+    assert findings[0].line == 7
+    assert findings[0].evidence_ref == "codeql:py/code-injection"
+
+
+def test_codeql_empty_sarif_is_safe(tmp_path: Path) -> None:
+    assert execmod._codeql_findings("", tmp_path, 0) == []
+    assert execmod._codeql_findings("{}", tmp_path, 0) == []
 
 
 def test_gitleaks_report_is_normalized_into_findings(tmp_path: Path) -> None:

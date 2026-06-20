@@ -114,6 +114,30 @@ jobs:
             --output-format json
         continue-on-error: true
 
+  codeql-e2e:
+    # codeql is heavy (a ~600 MB bundle plus a per-language database build), so it
+    # gets its own Linux job that installs the bundle and runs only the codeql
+    # lane e2e — proving the database-build -> analyze -> SARIF -> normalized
+    # finding pipeline end-to-end rather than only at the SARIF-parser level.
+    name: codeql lane (live)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          pip install setuptools==79.0.1
+          pip install -e .
+      - name: Install codeql bundle
+        run: |
+          curl -sSL -o "$HOME/codeql-bundle.tar.gz" https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.25.6/codeql-bundle-linux64.tar.gz
+          tar -xzf "$HOME/codeql-bundle.tar.gz" -C "$HOME"
+          echo "$HOME/codeql" >> "$GITHUB_PATH"
+      - name: Run codeql lane e2e
+        run: pytest shared/tests/test_aci_external_analyzer_e2e.py -k codeql -v
+
   platform-smoke:
     name: Platform verification (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}

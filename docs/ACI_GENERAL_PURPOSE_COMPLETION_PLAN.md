@@ -29,7 +29,19 @@ orchestration of best-in-class analyzers**, honestly bounded.
   bugs (sqlfluff `--dialect`, gitleaks `detect`→`dir`, tsc exit-2, eslint flat
   config / unmatched-glob, Windows `.CMD` resolution) that parser-only tests could
   not catch. CI installs every tool so the e2e run there.
-- **remaining**: codeql (G2, opt-in / DB-build).
+- **G2 done — codeql is execution-ready and live-verified**: a database-build →
+  analyze (security-and-quality suite) → SARIF → normalized EXT_CODEQL pipeline.
+  Live run flags a real data-flow finding (flask `request.args` → `eval`,
+  `py/code-injection`) mapped to CI-14. codeql stays catalog `opt-in` (heavy, not
+  run by default) but is now execution-ready. SARIF parser is unit-tested; the
+  live e2e runs in a dedicated Linux CI job that installs the codeql bundle. Live
+  runs surfaced two more real bugs (no query suite → empty SARIF; pack default
+  suite is narrower than security-and-quality).
+- **G3 partially met by G2**: that codeql finding *is* multi-language source→sink
+  taint (proven for Python). Remaining G3 work is JS taint coverage + a dedicated
+  taint fixture pack.
+- **all 13 cataloged analyzers are now execution-ready; none remain
+  availability-only.**
 
 ## Phase G1 — Every executable lane live-verified in CI
 

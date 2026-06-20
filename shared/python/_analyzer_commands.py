@@ -243,3 +243,45 @@ def _gitleaks_command(target_root: Path, report_path: Path) -> list[str]:
         "--report-path", str(report_path),
         "--exit-code", "0",
     ]
+
+
+# codeql interpreted languages that need no build command for database create.
+_CODEQL_LANGUAGE_SUFFIXES: tuple[tuple[str, frozenset[str]], ...] = (
+    ("python", frozenset({".py"})),
+    ("javascript", frozenset({".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"})),
+)
+
+
+def _codeql_languages(target_root: Path) -> list[str]:
+    present: set[str] = set()
+    for p in target_root.rglob("*"):
+        if not p.is_file() or any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in _relative_parts(p, target_root)):
+            continue
+        suffix = p.suffix.lower()
+        for language, suffixes in _CODEQL_LANGUAGE_SUFFIXES:
+            if suffix in suffixes:
+                present.add(language)
+    order = [lang for lang, _ in _CODEQL_LANGUAGE_SUFFIXES]
+    return [lang for lang in order if lang in present]
+
+
+def _codeql_db_create_command(db_dir: Path, language: str, target_root: Path) -> list[str]:
+    return [
+        "codeql", "database", "create", str(db_dir),
+        f"--language={language}",
+        f"--source-root={target_root}",
+        "--overwrite", "--quiet",
+    ]
+
+
+def _codeql_analyze_command(db_dir: Path, sarif_out: Path, language: str) -> list[str]:
+    # Run the language's security-and-quality suite explicitly; the pack's default
+    # (code-scanning) is narrower and the security data-flow queries (e.g.
+    # py/code-injection) live in this suite.
+    return [
+        "codeql", "database", "analyze", str(db_dir),
+        f"codeql/{language}-queries:codeql-suites/{language}-security-and-quality.qls",
+        "--format=sarif-latest",
+        f"--output={sarif_out}",
+        "--rerun", "--quiet",
+    ]
