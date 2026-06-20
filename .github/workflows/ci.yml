@@ -130,6 +130,10 @@ jobs:
         run: |
           pip install setuptools==79.0.1
           pip install -e .
+          # The codeql lane e2e is driven by pytest; this job does not install
+          # the full multi-analyzer set, only the pinned dev tools that include
+          # pytest (without it the step exits 127 -- command not found).
+          pip install -r requirements-dev-analyzers.txt
       - name: Install codeql bundle
         run: |
           curl -sSL -o "$HOME/codeql-bundle.tar.gz" https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.25.6/codeql-bundle-linux64.tar.gz
