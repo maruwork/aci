@@ -1,0 +1,1136 @@
+[
+ {
+  "fingerprint": "ca9e49383e77ab87",
+  "ci_id": "CI-14",
+  "signal": "CI14_SUBPROCESS_SHELL_TRUE",
+  "package": "click",
+  "file": "_termui_impl.py",
+  "line": 427,
+  "reason": "subprocess with shell=True can widen command injection risk and obscure execution boundaries."
+ },
+ {
+  "fingerprint": "ac13f3ffc26800d3",
+  "ci_id": "CI-14",
+  "signal": "CI14_SUBPROCESS_SHELL_TRUE",
+  "package": "click",
+  "file": "_termui_impl.py",
+  "line": 552,
+  "reason": "subprocess with shell=True can widen command injection risk and obscure execution boundaries."
+ },
+ {
+  "fingerprint": "a6c811c9ca88fa9a",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 150,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "5d362a092937c5d1",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 159,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "84e7544ac1ea87b0",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 574,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "a68342d5a3cd7835",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 70,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "183cde589a70be2d",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 117,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "ac384f034914577d",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 129,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "7d3201f993f97f9f",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 142,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "b3cce0894ea3e8f8",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 527,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "1520f47ad8cf2fca",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 551,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "e06e780c0b19ed02",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 592,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "606c685771474772",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 599,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "90e318a860e7e218",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 163,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "acc1e1f53944f26c",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 132,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "a30af6e97d251fec",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 574,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "c6eb1a862b9d942b",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 117,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "06943786706f452f",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 142,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "0c0e33abe0517a45",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 132,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "20a36a56b5f59952",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "click",
+  "file": "_compat.py",
+  "line": 434,
+  "reason": "'os.open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "b454e57a8b37bc08",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "click",
+  "file": "_termui_impl.py",
+  "line": 427,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "238c64acc56b4136",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "click",
+  "file": "_termui_impl.py",
+  "line": 669,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "6b9835d9be57306e",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "click",
+  "file": "_termui_impl.py",
+  "line": 552,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "22dfd22648526ada",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "click",
+  "file": "_termui_impl.py",
+  "line": 631,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "222dc1cdb50e9e08",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "_winconsole.py",
+  "line": 195,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "5c31d0edecf6d391",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "click",
+  "file": "core.py",
+  "line": 2093,
+  "reason": "Function '__init__' is tangled: nesting depth 5 and cyclomatic complexity 18. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "5b1fc9f8da9bc3f7",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "core.py",
+  "line": 2404,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "bf1a41045dadbe3a",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "testing.py",
+  "line": 329,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "6af159c86157f5a5",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "testing.py",
+  "line": 339,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "ad2891e465b4ef57",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "click",
+  "file": "utils.py",
+  "line": 39,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "03c214257e3d9607",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "click",
+  "file": "utils.py",
+  "line": 136,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "d58b68451b2b4fc2",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "click",
+  "file": "core.py",
+  "line": 2633,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: core.py, types.py"
+ },
+ {
+  "fingerprint": "031d7aedd125f4a2",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "click",
+  "file": "_termui_impl.py",
+  "line": 485,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "8ed049e2cd6ac5f9",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "click",
+  "file": "core.py",
+  "line": 169,
+  "reason": "Class 'Context' has 26 methods split into 8 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "32d94653ce9c2967",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "click",
+  "file": "core.py",
+  "line": 1164,
+  "reason": "Class 'Command' has 17 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "d67443c3f05eefdc",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "click",
+  "file": "core.py",
+  "line": 2984,
+  "reason": "Function '__init__' hides 2 implicit field(s) (\"default\", \"nargs\") inside **attrs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "21cf57fe4844064f",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "click",
+  "file": "testing.py",
+  "line": 105,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "ee0a0817cfdb0e7b",
+  "ci_id": "CI-14",
+  "signal": "CI14_UNSAFE_DESERIALIZATION",
+  "package": "jinja2",
+  "file": "bccache.py",
+  "line": 73,
+  "reason": "pickle.load can deserialize attacker-controlled data and trigger unsafe code paths."
+ },
+ {
+  "fingerprint": "c1bcb29238726a02",
+  "ci_id": "CI-14",
+  "signal": "CI14_UNSAFE_DESERIALIZATION",
+  "package": "jinja2",
+  "file": "bccache.py",
+  "line": 79,
+  "reason": "marshal.load can deserialize attacker-controlled data and trigger unsafe code paths."
+ },
+ {
+  "fingerprint": "44a583548d8c0e48",
+  "ci_id": "CI-14",
+  "signal": "CI14_DYNAMIC_CODE_EXECUTION",
+  "package": "jinja2",
+  "file": "debug.py",
+  "line": 145,
+  "reason": "Dynamic code execution through eval/exec expands the attack surface and weakens reviewability."
+ },
+ {
+  "fingerprint": "5840aee7768b0c34",
+  "ci_id": "CI-14",
+  "signal": "CI14_DYNAMIC_CODE_EXECUTION",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 1228,
+  "reason": "Dynamic code execution through eval/exec expands the attack surface and weakens reviewability."
+ },
+ {
+  "fingerprint": "04757e8b9688b107",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "bccache.py",
+  "line": 391,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "0bb6856de9a488ef",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "bccache.py",
+  "line": 406,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "a51bbd78568cf3c3",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 1294,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2ef00ca0f75c970c",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 1317,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "c7d5de74e937fc68",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 1347,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "f42fd9506d334c2b",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 1372,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "1a50943a7c2a6888",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 476,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "927f34400e7f8818",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "jinja2",
+  "file": "filters.py",
+  "line": 699,
+  "reason": "'random.choice' draws on the global PRNG; if this value feeds logic, IDs, or output it makes runs non-reproducible. Confirm the randomness is intended."
+ },
+ {
+  "fingerprint": "89c40daf927b9834",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "jinja2",
+  "file": "lexer.py",
+  "line": 669,
+  "reason": "Function 'tokeniter' is tangled: nesting depth 7 and cyclomatic complexity 43. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "0296cfedacc2c675",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "jinja2",
+  "file": "meta.py",
+  "line": 62,
+  "reason": "Function 'find_referenced_templates' is tangled: nesting depth 6 and cyclomatic complexity 12. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "ebd6afb6988ea703",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "nativetypes.py",
+  "line": 111,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "c5a8ffad052ddb6d",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "nativetypes.py",
+  "line": 126,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2e3a34c1c787e44b",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "sandbox.py",
+  "line": 298,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "1d7e186d0e0bf6cc",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "jinja2",
+  "file": "tests.py",
+  "line": 174,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2eb22f79ad7c48de",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "jinja2",
+  "file": "tests.py",
+  "line": 174,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "e60c1b08b64696ce",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "jinja2",
+  "file": "visitor.py",
+  "line": 61,
+  "reason": "Function 'generic_visit' is tangled: nesting depth 5 and cyclomatic complexity 9. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "2f5b33039820d21a",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 1297,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: environment.py, nativetypes.py"
+ },
+ {
+  "fingerprint": "634304d88df3bb4a",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "jinja2",
+  "file": "ext.py",
+  "line": 597,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: ext.py, parser.py"
+ },
+ {
+  "fingerprint": "e10cf4193939440f",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "jinja2",
+  "file": "compiler.py",
+  "line": 829,
+  "reason": "Function 'visit_Template' has 91 code lines and cyclomatic complexity 17: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "0a852c0fe5660de3",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "jinja2",
+  "file": "compiler.py",
+  "line": 1181,
+  "reason": "Function 'visit_For' has 107 code lines and cyclomatic complexity 29: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "a5be1c3309829f73",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "jinja2",
+  "file": "compiler.py",
+  "line": 300,
+  "reason": "Class 'CodeGenerator' has 92 methods split into 5 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "0e21482fe94ff31f",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 144,
+  "reason": "Class 'Environment' has 31 methods split into 9 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "81c9d3ff101d57db",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "jinja2",
+  "file": "ext.py",
+  "line": 355,
+  "reason": "Function 'parse' has 96 code lines and cyclomatic complexity 25: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "3f1069d93d4c64c8",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "jinja2",
+  "file": "ext.py",
+  "line": 251,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "583f74044e82d678",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "jinja2",
+  "file": "lexer.py",
+  "line": 669,
+  "reason": "Function 'tokeniter' has 119 code lines and cyclomatic complexity 43: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "b64576c90ff30052",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "jinja2",
+  "file": "runtime.py",
+  "line": 263,
+  "reason": "Function 'call' hides 2 implicit field(s) (\"_block_vars\", \"_loop_vars\") inside **kwargs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "cfd9195c62ef5163",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "jinja2",
+  "file": "environment.py",
+  "line": 498,
+  "reason": "Function takes 7 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "606af665c443b5d9",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "jinja2",
+  "file": "ext.py",
+  "line": 527,
+  "reason": "Function takes 7 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "9cb0a09e1eae4888",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "jinja2",
+  "file": "filters.py",
+  "line": 1786,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "9a7af5e42159249e",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "jinja2",
+  "file": "filters.py",
+  "line": 1802,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "6e2e251e00e2ee01",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "jinja2",
+  "file": "runtime.py",
+  "line": 665,
+  "reason": "Function takes 7 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "248d50ffd795fdda",
+  "ci_id": "CI-14",
+  "signal": "CI14_DYNAMIC_CODE_EXECUTION",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 227,
+  "reason": "Dynamic code execution through eval/exec expands the attack surface and weakens reviewability."
+ },
+ {
+  "fingerprint": "26ec5fb9ca535138",
+  "ci_id": "CI-26",
+  "signal": "CI26_RACE_HAZARD",
+  "package": "attr",
+  "file": "_config.py",
+  "line": 19,
+  "reason": "Function 'set_run_validators' modifies module-level state '_run_validators' via 'global'; concurrent calls share this mutable state without explicit synchronization."
+ },
+ {
+  "fingerprint": "4819ffcbc291ae5f",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "attr",
+  "file": "_funcs.py",
+  "line": 28,
+  "reason": "Function 'asdict' is tangled: nesting depth 5 and cyclomatic complexity 13. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "7646a3b371700cde",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "attr",
+  "file": "_funcs.py",
+  "line": 232,
+  "reason": "Function 'astuple' is tangled: nesting depth 5 and cyclomatic complexity 17. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "68f8af4820ee9562",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 3282,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: _make.py, validators.py"
+ },
+ {
+  "fingerprint": "032c2699239afefc",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 2143,
+  "reason": "Function '_attrs_to_init_script' has 201 code lines and cyclomatic complexity 43: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "db8582a842436dcf",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 849,
+  "reason": "Function '_create_slots_class' has 88 code lines and cyclomatic complexity 29: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "61a17d844fdf9342",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 1435,
+  "reason": "Function 'wrap' has 118 code lines and cyclomatic complexity 37: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "f4905986387cffed",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 3162,
+  "reason": "Function 'make_class' hides 2 implicit field(s) (\"eq\", \"order\") inside **attributes_arguments; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "bcbaa050d8eeb849",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 90,
+  "reason": "Private class '_CacheHashWrapper' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "5940a3898befbef3",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "attr",
+  "file": "_funcs.py",
+  "line": 154,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "0f750aa049560e9f",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 1986,
+  "reason": "Function takes 11 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "289e2defab7996cf",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 2143,
+  "reason": "Function takes 12 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "0c2caf930de13dbd",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 2483,
+  "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "65b28bc1965dc0e7",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 2728,
+  "reason": "Function takes 16 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "603f35c7a88d22f0",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "attr",
+  "file": "_make.py",
+  "line": 2919,
+  "reason": "Function takes 16 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "00592115492fdad7",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "packaging",
+  "file": "_manylinux.py",
+  "line": 219,
+  "reason": "Function 'platform_tags' is tangled: nesting depth 5 and cyclomatic complexity 10. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "fe71782eab014b06",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "packaging",
+  "file": "metadata.py",
+  "line": 337,
+  "reason": "Function 'parse_email' is tangled: nesting depth 5 and cyclomatic complexity 23. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "3acfd9881fe4c44a",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "packaging",
+  "file": "metadata.py",
+  "line": 777,
+  "reason": "Function 'from_raw' is tangled: nesting depth 5 and cyclomatic complexity 9. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "10b6af2d9be3dfc7",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "packaging",
+  "file": "metadata.py",
+  "line": 954,
+  "reason": "Function '_write_metadata' is tangled: nesting depth 5 and cyclomatic complexity 13. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "6cadcab62e3ef84d",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "packaging",
+  "file": "metadata.py",
+  "line": 213,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "65d67540aafc0205",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "packaging",
+  "file": "metadata.py",
+  "line": 883,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "eb2efb562d82c82d",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "packaging",
+  "file": "requirements.py",
+  "line": 29,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "a98d71ef31c57f26",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "packaging",
+  "file": "requirements.py",
+  "line": 32,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "48a8629195571f7e",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "packaging",
+  "file": "specifiers.py",
+  "line": 118,
+  "reason": "Class 'Specifier' has 18 methods split into 7 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "ce97b96ed0a9ab1a",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "packaging",
+  "file": "tags.py",
+  "line": 380,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "f8169ed36096b8c1",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "packaging",
+  "file": "version.py",
+  "line": 310,
+  "reason": "Class 'Version' has 18 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "abda31f5e60fcb6d",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "packaging",
+  "file": "version.py",
+  "line": 374,
+  "reason": "Function '__replace__' hides 6 implicit field(s) (\"dev\", \"epoch\", \"local\", \"post\", \"pre\") inside **kwargs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "0db6d253b504470f",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "packaging",
+  "file": "version.py",
+  "line": 734,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "43a51154f652272c",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "yaml",
+  "file": "constructor.py",
+  "line": 180,
+  "reason": "Function 'flatten_mapping' is tangled: nesting depth 5 and cyclomatic complexity 10. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "504658ffb768cc31",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "yaml",
+  "file": "emitter.py",
+  "line": 854,
+  "reason": "Function 'write_single_quoted' is tangled: nesting depth 5 and cyclomatic complexity 26. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "32a68ae3e10037fd",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "yaml",
+  "file": "emitter.py",
+  "line": 991,
+  "reason": "Function 'write_folded' is tangled: nesting depth 5 and cyclomatic complexity 24. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "6a4c2f4ef99edb12",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "yaml",
+  "file": "emitter.py",
+  "line": 1045,
+  "reason": "Function 'write_literal' is tangled: nesting depth 5 and cyclomatic complexity 15. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "98ddd6210c646fd0",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "yaml",
+  "file": "emitter.py",
+  "line": 1080,
+  "reason": "Function 'write_plain' is tangled: nesting depth 5 and cyclomatic complexity 22. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "61d2e8174b0acace",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "yaml",
+  "file": "scanner.py",
+  "line": 1185,
+  "reason": "Function 'scan_flow_scalar_non_spaces' is tangled: nesting depth 5 and cyclomatic complexity 18. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "2be4de386552f9a4",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "yaml",
+  "file": "constructor.py",
+  "line": 160,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: constructor.py, representer.py"
+ },
+ {
+  "fingerprint": "424ab78052e6932e",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "yaml",
+  "file": "constructor.py",
+  "line": 171,
+  "reason": "Class 'SafeConstructor' has 17 methods split into 5 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "5566de4ed3ea363e",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "yaml",
+  "file": "constructor.py",
+  "line": 482,
+  "reason": "Class 'FullConstructor' has 17 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "3cd6d6341a12d194",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "yaml",
+  "file": "emitter.py",
+  "line": 626,
+  "reason": "Function 'analyze_scalar' has 111 code lines and cyclomatic complexity 46: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "537bfa0ca0d9d4e9",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "yaml",
+  "file": "parser.py",
+  "line": 273,
+  "reason": "Function 'parse_node' has 93 code lines and cyclomatic complexity 27: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "12479420e3e9436b",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "yaml",
+  "file": "parser.py",
+  "line": 72,
+  "reason": "Class 'Parser' has 30 methods split into 2 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "66217ca4e714546a",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "yaml",
+  "file": "scanner.py",
+  "line": 187,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "772ceae41d54d4be",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "yaml",
+  "file": "scanner.py",
+  "line": 761,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "f632d64fd1b5d208",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "yaml",
+  "file": "scanner.py",
+  "line": 46,
+  "reason": "Class 'Scanner' has 70 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "0ba2bfcdfb1951d6",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "yaml",
+  "file": "emitter.py",
+  "line": 18,
+  "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "971485035757917d",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "yaml",
+  "file": "error.py",
+  "line": 6,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "34fe7144bc5729dd",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "yaml",
+  "file": "scanner.py",
+  "line": 38,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "73d0264d727dab8d",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pluggy",
+  "file": "_callers.py",
+  "line": 76,
+  "reason": "Function '_multicall' is tangled: nesting depth 6 and cyclomatic complexity 21. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "3b5589ebe8605a38",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pluggy",
+  "file": "_hooks.py",
+  "line": 308,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "dc3ed482db4438cd",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pluggy",
+  "file": "_manager.py",
+  "line": 191,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "6562eed726252468",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pluggy",
+  "file": "_hooks.py",
+  "line": 411,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "315ab08f0ef13fb7",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pluggy",
+  "file": "_hooks.py",
+  "line": 417,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "b5005f6bdbee8b35",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pluggy",
+  "file": "_hooks.py",
+  "line": 421,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "183c7dcba0f43e7b",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "pluggy",
+  "file": "_manager.py",
+  "line": 80,
+  "reason": "Class 'PluginManager' has 24 methods split into 3 unrelated responsibility groups (low cohesion / LCOM4)."
+ }
+]
