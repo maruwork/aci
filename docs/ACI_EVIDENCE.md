@@ -22,6 +22,7 @@ perfect; it aims to be *useful where it is used* and *honest about the rest*.
 | Multi-language taint, precision-gated | recall 1.0 / **0 false positives** on a source→sink + control corpus | [`shared/tools/aci_taint_eval.py`](../shared/tools/aci_taint_eval.py) |
 | Detectors generalize to untuned real code | **100% mutation recall** on the CPython stdlib | [`shared/tools/aci_independent_eval.py`](../shared/tools/aci_independent_eval.py) |
 | Orchestration actually runs | **13/13 analyzers execution-ready, CI-proven** on Linux/Windows/macOS | `.github/workflows/ci.yml` |
+| Scales to many projects | **2,546 findings across 35 packages**; ~1,462 from ≈95–100%-precision detectors | [`large-scan-summary.json`](../examples/aci-field-precision/large-scan-summary.json) |
 
 ---
 
@@ -97,6 +98,29 @@ development (36%) — which is its intended use. Both numbers are published;
 neither alone is the truth.
 
 ---
+
+### 2d. Large-N volume scan (35 projects, 2,546 findings) — what scales and what doesn't
+
+Per-finding human adjudication does not scale to thousands by hand, so the
+precision/usefulness percentages above are a **483-finding labeled sample**. What
+*does* scale, with no adjudication, is **finding volume and distribution**, plus
+the yield of the **deterministic high-precision detectors** whose precision is an
+established property of the detector (a TODO marker is a TODO; an argument count
+is exact). A single scan over **35 real packages** produced **2,546 findings**:
+
+| layer | result | basis |
+|---|---|---|
+| Raw volume | 2,546 findings across 35 projects (median 34/project) | direct scan, fully reproducible |
+| High-precision detectors | **1,462 findings** from CI-02 / CI-03 / CI-18 (≈95–100% precision) | counts are credible without re-judging — precision is a measured detector property |
+| Estimated true positives | **≈2,057** (each CI-ID's count × its sample-measured precision) | **extrapolation**, not 2,546 hand-judgments |
+| Confirmed weak at scale | CI-04 = 0% (127 findings → ~0 TP), CI-20 = 0% | sample precision applied to scale |
+
+This is honestly an *extrapolation*: 2,546 findings were **not** individually
+adjudicated. It scales the credible dimensions (volume, deterministic-detector
+yield) while the precision/usefulness rates remain anchored to the 483 hand-judged
+findings. A truly rigorous public benchmark would label more — the human-judgment
+ceiling is real and is stated, not hidden. Raw per-CI-ID and per-project counts:
+`examples/aci-field-precision/large-scan-summary.json`.
 
 ## 3. Multi-language source→sink taint, precision-gated
 
