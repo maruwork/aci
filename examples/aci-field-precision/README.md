@@ -30,7 +30,13 @@ named as the thing blocking an honest precision claim.
 ## Headline results
 
 - **Detection precision: 76%** (95 true / 125 adjudicated; 1 skip).
-- **Review-worthiness: 4%** (5 of 126) on mature libraries.
+- **Review-worthiness: 4%** (5 of 126) **on mature libraries**.
+
+> This pack measures **mature, finished libraries**, where 4% review-worthiness
+> means "ACI on a polished library is mostly noise" — not "ACI is mostly noise".
+> The contrast pack `dev-code/` measures actively-developed application code and
+> finds **50% review-worthiness** (and 84% precision). Both numbers belong in the
+> honest picture; ACI's value is concentrated on code under active development.
 
 | CI-ID | precision | n | note |
 |---|---:|--:|---|

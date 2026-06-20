@@ -184,11 +184,13 @@
       ],
       "kind": "precision-limit",
       "title": "Curated-suite precision overstates real-code precision",
-      "summary": "The in-repo validation scorecard reports 100% recall / 0 false positives, but that is on fixtures authored alongside the detectors. On a human-labeled field corpus of mature third-party packages (126 native findings; see examples/aci-field-precision/), measured detection precision was ~76% overall, and only ~4% of findings were review-worthy on that mature code. CI-04 (god class) was the weakest at 0% (its cohesion clustering mislabels large-but-cohesive visitor/parser/registry/value-object classes), with CI-05 (~40%) and CI-22 (~50%) next; CI-14/CI-18/CI-03 measured ~100%.",
-      "operator_guidance": "Treat native structural findings as review candidates, not verdicts. Be especially skeptical of CI-04 on idiomatic many-method classes, and of CI-05/CI-22 on boilerplate and caller-managed resources. On mature, well-reviewed code most true positives are idiomatic and not worth acting on; expect a higher actionable share on first-party code under active change.",
+      "summary": "The in-repo validation scorecard reports 100% recall / 0 false positives, but that is on fixtures authored alongside the detectors. Two human-labeled field corpora (see examples/aci-field-precision/) measure real-code behaviour. On mature third-party libraries (126 findings) detection precision was ~76% and only ~4% of findings were review-worthy. On actively-developed application/tool code (50 findings) precision was ~84% and ~50% were review-worthy -- about 12x the mature rate. So review-worthiness depends heavily on code maturity: ACI is mostly noise on a finished library and genuinely useful on code under active change. CI-04 (god class) was the weakest detector at 0% on mature code (its cohesion clustering mislabels large-but-cohesive classes), with CI-05 (~40%) and CI-22 (~50%) next; CI-14/CI-18/CI-03 measured ~100%.",
+      "operator_guidance": "Treat native structural findings as review candidates, not verdicts. Be especially skeptical of CI-04 on idiomatic many-method classes, and of CI-05/CI-22 on boilerplate and caller-managed resources. Review-worthiness is much higher on code under active development (~50% measured) than on mature, finished code (~4%), where most true positives are idiomatic; weigh a clean or noisy result against the maturity of the scanned code.",
       "source_refs": [
         "examples/aci-field-precision/README.md",
         "examples/aci-field-precision/labels.json",
+        "examples/aci-field-precision/dev-code/README.md",
+        "examples/aci-field-precision/dev-code/labels.json",
         "shared/tools/aci_precision_benchmark.py",
         "shared/tools/aci_corpus_harness.py"
       ]

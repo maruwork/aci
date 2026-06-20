@@ -1,0 +1,302 @@
+[
+ {
+  "fingerprint": "277c65a83ab32aaa",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "d2aa836a9b78ee45",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "24ab3de4510815f9",
+  "ci_id": "CI-02",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "1d3d4c322e21ccec",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "fe8c6efa32f91c78",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "fe4bd9b4856bb2ca",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "0eac9ee8fb8aee1c",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "dfc2183fc402fefd",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "5a39f8b8105ac8bd",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "f09ddada945cd85e",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "d96278cfd370df4f",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "7aec236fa8965c7d",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "48d70ef9cbaf001b",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "bf81f632a9d6ba55",
+  "ci_id": "CI-07",
+  "label": "false-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "342906234c8d9f25",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "bfc32d432d5c09ef",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "5012acaf1b47eab6",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "83a14d3032cdc721",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "8b86cdc03c443529",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "5dea1e44a32de06a",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "4ef5c2895f17d862",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "95dbce6a30ef5979",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "93046fb82f2e46c4",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4b2fbe00e2e08d40",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4628c005b80df81d",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a5424865459a216b",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "89be080558f4b5c5",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "221242825e5e3d98",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "2bef23f782ba9535",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "de2fd6058cecf041",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "4ebce967bfc1f347",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "ecd07d0e64f1d89e",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "64799f0099f3ee6f",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "9bc0e0dda9b57503",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "10dbff9793da26e1",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "3d5d24b66afc1ef9",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "1c8c9a5d9b247ec8",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "4fc74db933f3f499",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "ea9e6a03d51c7f95",
+  "ci_id": "CI-07",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "df4ebf8ae6bd3c4f",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e7911ac1d656733f",
+  "ci_id": "CI-14",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "03059e72c5b85215",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4df316cab59ca2d2",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "0ba47b13be6e3eab",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f5040e9d25747535",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "354f73902f58cd1c",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "8223d75d8f0e7cc8",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "410f6e99c7dc3f33",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e23012b9bcbc1310",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c495a606339612fa",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ }
+]

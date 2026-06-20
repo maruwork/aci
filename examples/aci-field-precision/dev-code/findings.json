@@ -1,0 +1,452 @@
+[
+ {
+  "fingerprint": "342906234c8d9f25",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "httpie",
+  "file": "cli/definition.py",
+  "line": 723,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "277c65a83ab32aaa",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "httpie",
+  "file": "client.py",
+  "line": 43,
+  "reason": "Function 'collect_messages' is tangled: nesting depth 5 and cyclomatic complexity 21. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "89be080558f4b5c5",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "httpie",
+  "file": "core.py",
+  "line": 170,
+  "reason": "Function 'program' is tangled: nesting depth 5 and cyclomatic complexity 24. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "c495a606339612fa",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "httpie",
+  "file": "internal/update_warnings.py",
+  "line": 158,
+  "reason": "'datetime.now()' reads wall-clock time; naive datetime is timezone- and replay-dependent and can differ across machines and CI."
+ },
+ {
+  "fingerprint": "4628c005b80df81d",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "httpie",
+  "file": "internal/update_warnings.py",
+  "line": 69,
+  "reason": "'datetime.now()' reads wall-clock time; naive datetime is timezone- and replay-dependent and can differ across machines and CI."
+ },
+ {
+  "fingerprint": "e23012b9bcbc1310",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "httpie",
+  "file": "internal/update_warnings.py",
+  "line": 48,
+  "reason": "'datetime.now()' reads wall-clock time; naive datetime is timezone- and replay-dependent and can differ across machines and CI."
+ },
+ {
+  "fingerprint": "03059e72c5b85215",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "httpie",
+  "file": "output/ui/man_pages.py",
+  "line": 30,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "83a14d3032cdc721",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "httpie",
+  "file": "output/ui/man_pages.py",
+  "line": 30,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "4df316cab59ca2d2",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "httpie",
+  "file": "uploads.py",
+  "line": 90,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "8b86cdc03c443529",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "httpie",
+  "file": "uploads.py",
+  "line": 90,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "1d3d4c322e21ccec",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "cli/argparser.py",
+  "line": 79,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "2bef23f782ba9535",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "cli/argparser.py",
+  "line": 188,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "fe8c6efa32f91c78",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "cli/argparser.py",
+  "line": 235,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "de2fd6058cecf041",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "cli/argparser.py",
+  "line": 283,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "fe4bd9b4856bb2ca",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "cli/argparser.py",
+  "line": 422,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "a5424865459a216b",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "httpie",
+  "file": "client.py",
+  "line": 43,
+  "reason": "Function 'collect_messages' has 84 code lines and cyclomatic complexity 21: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "4ebce967bfc1f347",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "client.py",
+  "line": 88,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "d2aa836a9b78ee45",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "httpie",
+  "file": "core.py",
+  "line": 32,
+  "reason": "Function 'raw_main' has 94 code lines and cyclomatic complexity 26: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "0eac9ee8fb8aee1c",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "core.py",
+  "line": 139,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "ecd07d0e64f1d89e",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "core.py",
+  "line": 175,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "dfc2183fc402fefd",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "downloads.py",
+  "line": 198,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "64799f0099f3ee6f",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "downloads.py",
+  "line": 219,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "5a39f8b8105ac8bd",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "manager/tasks/plugins.py",
+  "line": 167,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "9bc0e0dda9b57503",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "output/formatters/colors.py",
+  "line": 183,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "f09ddada945cd85e",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "sessions.py",
+  "line": 103,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "10dbff9793da26e1",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpie",
+  "file": "uploads.py",
+  "line": 162,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "df4ebf8ae6bd3c4f",
+  "ci_id": "CI-14",
+  "signal": "CI14_UNSAFE_YAML_LOAD",
+  "package": "mkdocs",
+  "file": "theme.py",
+  "line": 133,
+  "reason": "yaml.load without SafeLoader can construct unsafe objects from untrusted input."
+ },
+ {
+  "fingerprint": "bfc32d432d5c09ef",
+  "ci_id": "CI-14",
+  "signal": "CI14_UNSAFE_YAML_LOAD",
+  "package": "mkdocs",
+  "file": "utils/meta.py",
+  "line": 67,
+  "reason": "yaml.load without SafeLoader can construct unsafe objects from untrusted input."
+ },
+ {
+  "fingerprint": "e7911ac1d656733f",
+  "ci_id": "CI-14",
+  "signal": "CI14_UNSAFE_YAML_LOAD",
+  "package": "mkdocs",
+  "file": "utils/yaml.py",
+  "line": 132,
+  "reason": "yaml.load without SafeLoader can construct unsafe objects from untrusted input."
+ },
+ {
+  "fingerprint": "0ba47b13be6e3eab",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "mkdocs",
+  "file": "__main__.py",
+  "line": 42,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "8223d75d8f0e7cc8",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "mkdocs",
+  "file": "commands/gh_deploy.py",
+  "line": 38,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "93046fb82f2e46c4",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "mkdocs",
+  "file": "commands/gh_deploy.py",
+  "line": 54,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "410f6e99c7dc3f33",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "mkdocs",
+  "file": "commands/gh_deploy.py",
+  "line": 73,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "95dbce6a30ef5979",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "mkdocs",
+  "file": "commands/gh_deploy.py",
+  "line": 25,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "24ab3de4510815f9",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "mkdocs",
+  "file": "config/config_options.py",
+  "line": 132,
+  "reason": "Function 'run_validation' is tangled: nesting depth 6 and cyclomatic complexity 8. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "4b2fbe00e2e08d40",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "mkdocs",
+  "file": "contrib/search/search_index.py",
+  "line": 105,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "5dea1e44a32de06a",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "mkdocs",
+  "file": "livereload/__init__.py",
+  "line": 112,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "f5040e9d25747535",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "mkdocs",
+  "file": "livereload/__init__.py",
+  "line": 243,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "4ef5c2895f17d862",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "mkdocs",
+  "file": "livereload/__init__.py",
+  "line": 256,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "221242825e5e3d98",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "mkdocs",
+  "file": "structure/pages.py",
+  "line": 419,
+  "reason": "Function 'path_to_url' is tangled: nesting depth 5 and cyclomatic complexity 29. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "354f73902f58cd1c",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "mkdocs",
+  "file": "utils/meta.py",
+  "line": 72,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "4fc74db933f3f499",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "mkdocs",
+  "file": "structure/nav.py",
+  "line": 75,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: structure/nav.py, structure/pages.py"
+ },
+ {
+  "fingerprint": "d96278cfd370df4f",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "mkdocs",
+  "file": "config/config_options.py",
+  "line": 875,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "3d5d24b66afc1ef9",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "mkdocs",
+  "file": "contrib/search/__init__.py",
+  "line": 79,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "48d70ef9cbaf001b",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "mkdocs",
+  "file": "plugins.py",
+  "line": 493,
+  "reason": "Class 'PluginCollection' has 23 methods split into 2 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "7aec236fa8965c7d",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "mkdocs",
+  "file": "utils/rendering.py",
+  "line": 12,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "1c8c9a5d9b247ec8",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "mkdocs",
+  "file": "utils/rendering.py",
+  "line": 19,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "bf81f632a9d6ba55",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "mkdocs",
+  "file": "structure/files.py",
+  "line": 608,
+  "reason": "Private function '_sort_files' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "ea9e6a03d51c7f95",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "mkdocs",
+  "file": "structure/files.py",
+  "line": 613,
+  "reason": "Private function '_filter_paths' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "5012acaf1b47eab6",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "mkdocs",
+  "file": "__main__.py",
+  "line": 305,
+  "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ }
+]
