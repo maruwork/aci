@@ -104,6 +104,47 @@ def test_semgrep_lane_produces_multi_language_findings(tmp_path: Path) -> None:
     assert js_findings[0].get("ci_id", "").startswith("CI-")
 
 
+_TAINT_FIXTURE_PACK = Path(__file__).resolve().parent / "fixtures" / "taint_multilang"
+
+
+@pytest.mark.skipif(shutil.which("semgrep") is None, reason="semgrep not installed")
+def test_semgrep_lane_detects_multilang_taint_flow(tmp_path: Path) -> None:
+    # G3 closure gate: prove *source -> sink* taint (not a bare-pattern match)
+    # for more than one language through the orchestrated lane. The committed
+    # fixture pack carries a JS (req.query -> eval) and a Python
+    # (request.args -> eval) flow, each routed through a local variable so only a
+    # taint engine connects source to sink.
+    #
+    # The fixtures are copied into tmp_path before scanning: semgrep's default
+    # ignore set drops any path under a `tests/` directory, so scanning the pack
+    # in place would silently report "executed" with zero scanned files. Copying
+    # to a neutral temp dir is the regression guard against that false green.
+    for name in ("app.js", "svc.py"):
+        shutil.copy(_TAINT_FIXTURE_PACK / name, tmp_path / name)
+
+    report = _scan_with_external(tmp_path)
+
+    runs = {r["analyzer_id"]: r for r in report.get("external_analyzer_runs", [])}
+    assert runs.get("semgrep", {}).get("runtime_state") == "executed", f"semgrep did not run: {runs.get('semgrep')!r}"
+
+    taint = [
+        f
+        for f in report["findings"]
+        if f.get("signal") == "EXT_SEMGREP" and "taint-" in (f.get("evidence_ref") or "")
+    ]
+    js_taint = [f for f in taint if f["target_file"].endswith("app.js")]
+    py_taint = [f for f in taint if f["target_file"].endswith("svc.py")]
+    assert js_taint, f"expected a normalized JS source->sink taint finding; got {taint!r}"
+    assert py_taint, f"expected a normalized Python source->sink taint finding; got {taint!r}"
+
+    # Both flows are code injection -> CI-14, carried by the external lane with a
+    # real line number (the sink), not raw tool output.
+    for finding in (js_taint[0], py_taint[0]):
+        assert finding.get("ci_id") == "CI-14", finding
+        assert finding.get("owner_lane") == "external-analyzer"
+        assert isinstance(finding.get("line"), int) and finding["line"] >= 1
+
+
 @pytest.mark.skipif(shutil.which("sqlfluff") is None, reason="sqlfluff not installed")
 def test_sqlfluff_lane_runs_and_normalizes_sql_findings(tmp_path: Path) -> None:
     (tmp_path / "query.sql").write_text("SELECT a,b FROM mytable WHERE x=1\n", encoding="utf-8")

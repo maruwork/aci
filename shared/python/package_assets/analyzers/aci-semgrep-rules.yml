@@ -44,3 +44,31 @@ rules:
     pattern-either:
       - pattern: RUN chmod 777 ...
       - pattern: RUN chmod -R 777 ...
+  # Multi-language source -> sink taint (G3)
+  - id: aci.ci14.taint-js-code-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Untrusted request input flows into a JavaScript code-execution sink (taint).
+    pattern-sources:
+      - pattern: $REQ.query
+      - pattern: $REQ.body
+      - pattern: $REQ.params
+      - pattern: process.argv
+    pattern-sinks:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+  - id: aci.ci14.taint-py-code-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: Untrusted input flows into a Python code-execution sink (taint).
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+      - pattern: flask.request.args.get(...)
+      - pattern: input(...)
+    pattern-sinks:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: os.system(...)

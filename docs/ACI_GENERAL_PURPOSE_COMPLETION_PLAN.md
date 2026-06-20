@@ -17,7 +17,7 @@ orchestration of best-in-class analyzers**, honestly bounded.
   multi-year effort; ACI borrows multi-language depth via orchestration. Native
   structural depth stays Python.
 
-## Present position (2026-06-20, after G1)
+## Present position (2026-06-20, after G3)
 
 - execution-ready (12): ruff, pyflakes, mypy, pytest, semgrep, eslint, tsc,
   shellcheck, sqlfluff, osv-scanner, trivy, gitleaks
@@ -37,9 +37,19 @@ orchestration of best-in-class analyzers**, honestly bounded.
   live e2e runs in a dedicated Linux CI job that installs the codeql bundle. Live
   runs surfaced two more real bugs (no query suite → empty SARIF; pack default
   suite is narrower than security-and-quality).
-- **G3 partially met by G2**: that codeql finding *is* multi-language source→sink
-  taint (proven for Python). Remaining G3 work is JS taint coverage + a dedicated
-  taint fixture pack.
+- **G3 done — multi-language source→sink taint proven through the default lane**:
+  the bundled `aci-semgrep-rules.yml` now carries taint-mode rules
+  (`aci.ci14.taint-js-code-injection`, `aci.ci14.taint-py-code-injection`) that
+  track untrusted input through a local variable into a code-execution sink. A
+  committed fixture pack (`shared/tests/fixtures/taint_multilang/`) encodes a JS
+  (`req.query` → `eval`) and a Python (`request.args` → `eval`) flow, and
+  `test_semgrep_lane_detects_multilang_taint_flow` asserts a normalized CI-14
+  source→sink finding for **both** languages through the orchestrated lane.
+  semgrep runs by default (codeql remains opt-in), so taint depth is now part of
+  the default general-purpose scan, not an opt-in heavy lane. Live runs surfaced
+  two more real bugs (a 10s version-probe edge that flapped semgrep's readiness on
+  its ~9s cold start → widened to 30s; semgrep's default `tests/` ignore silently
+  scanning zero files → fixtures copied to a neutral temp dir in the e2e).
 - **all 13 cataloged analyzers are now execution-ready; none remain
   availability-only.**
 
@@ -91,10 +101,15 @@ Closure gate (mechanical):
 Risk: high. codeql DB-build is heavy, per-language, and slow; may warrant a
 dedicated CI job rather than the main matrix.
 
-## Phase G3 — Multi-language taint depth
+## Phase G3 — Multi-language taint depth  ✅ DONE (2026-06-20)
 
 Goal: prove source→sink taint across languages (the SAST definition), not just
 Python intra-procedural (CI14_TAINTED_FLOW).
+
+Closure evidence: `test_semgrep_lane_detects_multilang_taint_flow` scans the
+committed `shared/tests/fixtures/taint_multilang/` pack with semgrep installed and
+asserts a normalized CI-14 source→sink finding for both JS (`req.query` → `eval`)
+and Python (`request.args` → `eval`) through the external-analyzer lane.
 
 Tasks:
 1. Curate semgrep taint-mode rules (source→sink) for the major languages in the
@@ -129,10 +144,11 @@ Closure gate (mechanical):
 ## Maturity gates
 
 - **Working general-purpose (orchestration), live-proven** — reached today for 8
-  lanes; G1 closes the remaining executable lanes.
+  lanes; G1 closes the remaining executable lanes. ✅
 - **Complete general-purpose (orchestration)** — G1 + G2 + G3 + G4 closed: every
   executable lane live-CI-proven, codeql wired, multi-language taint proven, and
-  the product positioned honestly.
+  the product positioned honestly. **G1+G2+G3 closed; G4 (honest positioning)
+  remains.**
 
 ## Honest ceiling (stated, not hidden)
 

@@ -47,7 +47,12 @@ ANALYZER_EXECUTION_SUPPORT_LEVELS: dict[str, str] = {
     ),
 }
 
-VERSION_PROBE_TIMEOUT_SECONDS: int = 10
+# Heavy analyzers (semgrep loads a Python + OCaml core) take ~9s just to print
+# their version on a cold start, which sat right on a tighter 10s edge and caused
+# intermittent version-or-runtime-problem readiness flaps. A broken executable
+# still fails fast via OSError; this only widens the margin for slow-but-healthy
+# startups. Surfaced by a live run, not parser tests.
+VERSION_PROBE_TIMEOUT_SECONDS: int = 30
 ANALYZER_TIMEOUT_SECONDS: int = 60
 # codeql builds a database then runs query suites; each step can take minutes.
 CODEQL_TIMEOUT_SECONDS: int = 900
