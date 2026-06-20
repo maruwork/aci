@@ -448,5 +448,1418 @@
   "file": "__main__.py",
   "line": 305,
   "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "9eaee9e52f257ff6",
+  "ci_id": "CI-14",
+  "signal": "CI14_DYNAMIC_CODE_EXECUTION",
+  "package": "textual",
+  "file": "_doc.py",
+  "line": 183,
+  "reason": "Dynamic code execution through eval/exec expands the attack surface and weakens reviewability."
+ },
+ {
+  "fingerprint": "5c3725991ec91d39",
+  "ci_id": "CI-14",
+  "signal": "CI14_UNSAFE_DESERIALIZATION",
+  "package": "textual",
+  "file": "style.py",
+  "line": 534,
+  "reason": "pickle.loads can deserialize attacker-controlled data and trigger unsafe code paths."
+ },
+ {
+  "fingerprint": "3ee76690cfbb141f",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "_debug.py",
+  "line": 25,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "227c98a826ab655d",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "_dispatch_key.py",
+  "line": 52,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "e148404a2dd76a85",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "textual",
+  "file": "_files.py",
+  "line": 21,
+  "reason": "'datetime.now()' reads wall-clock time; naive datetime is timezone- and replay-dependent and can differ across machines and CI."
+ },
+ {
+  "fingerprint": "2e13872df422d675",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "textual",
+  "file": "_files.py",
+  "line": 23,
+  "reason": "'datetime.now()' reads wall-clock time; naive datetime is timezone- and replay-dependent and can differ across machines and CI."
+ },
+ {
+  "fingerprint": "26603da658403847",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "_markup_playground.py",
+  "line": 111,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "30941437a4bae91d",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "textual",
+  "file": "_wrap.py",
+  "line": 32,
+  "reason": "Function 'compute_wrap_offsets' is tangled: nesting depth 5 and cyclomatic complexity 17. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "8df208da2c02d3f7",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "_xterm_parser.py",
+  "line": 439,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "e9a8f88d3becaab3",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "textual",
+  "file": "_xterm_parser.py",
+  "line": 71,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "ac862d238481a7db",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "textual",
+  "file": "app.py",
+  "line": 3364,
+  "reason": "Function '_process_messages' is tangled: nesting depth 7 and cyclomatic complexity 8. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "b07e4406b9db86f3",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "textual",
+  "file": "app.py",
+  "line": 4849,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "60a0d28f4c9a2b97",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "textual",
+  "file": "app.py",
+  "line": 4930,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "5bb12c6a15d6e90d",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "command.py",
+  "line": 315,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "30683654047c1fa7",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "textual",
+  "file": "compose.py",
+  "line": 12,
+  "reason": "Function 'compose' is tangled: nesting depth 5 and cyclomatic complexity 13. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "aad2770dc12574b9",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "css/_styles_builder.py",
+  "line": 626,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "a30eb9478b4ba607",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "textual",
+  "file": "css/parse.py",
+  "line": 368,
+  "reason": "Function 'substitute_references' is tangled: nesting depth 6 and cyclomatic complexity 18. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "f525d0699dae2f24",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "textual",
+  "file": "demo/game.py",
+  "line": 166,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "9aea798f161cb5c6",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "demo/page.py",
+  "line": 73,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "c989fe492e51afb4",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "demo/widgets.py",
+  "line": 409,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "f23a662eff6b04d7",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "drivers/linux_driver.py",
+  "line": 371,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "1c86eb97168974be",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "highlight.py",
+  "line": 163,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "f683ea07f517e470",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "textual",
+  "file": "lazy.py",
+  "line": 120,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "aea517e7089889fd",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "textual",
+  "file": "message_pump.py",
+  "line": 910,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "cb5de59a98bec2cb",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "textual",
+  "file": "pilot.py",
+  "line": 488,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "ffa622f5b0e8a920",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "textual",
+  "file": "screen.py",
+  "line": 1630,
+  "reason": "Function '_handle_mouse_move' is tangled: nesting depth 5 and cyclomatic complexity 13. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "4c7f2827ccfd009f",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "textual",
+  "file": "screen.py",
+  "line": 561,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "97c5e03f6a24efde",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "textual",
+  "file": "widget.py",
+  "line": 4545,
+  "reason": "Function '_check_refresh' is tangled: nesting depth 5 and cyclomatic complexity 14. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "c9ef5a9ed9119e45",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "textual",
+  "file": "widgets/_header.py",
+  "line": 100,
+  "reason": "'datetime.now()' reads wall-clock time; naive datetime is timezone- and replay-dependent and can differ across machines and CI."
+ },
+ {
+  "fingerprint": "a2ba58be7e243786",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "_animator.py",
+  "line": 148,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: _animator.py, css/scalar_animation.py"
+ },
+ {
+  "fingerprint": "970e4972e964e072",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "_animator.py",
+  "line": 257,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: _animator.py, widgets/_option_list.py"
+ },
+ {
+  "fingerprint": "13850e21a8aa2620",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "app.py",
+  "line": 1120,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: app.py, scroll_view.py"
+ },
+ {
+  "fingerprint": "bc3960d3c8ac72fc",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "app.py",
+  "line": 4682,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: app.py, widgets/_input.py"
+ },
+ {
+  "fingerprint": "4506cba058da6e5c",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "binding.py",
+  "line": 378,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: binding.py, widgets/_option_list.py"
+ },
+ {
+  "fingerprint": "71a7e4e22301161d",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "content.py",
+  "line": 780,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 3 files without a shared abstraction: content.py, css/stylesheet.py, strip.py"
+ },
+ {
+  "fingerprint": "f4928c998c7094fa",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "dom.py",
+  "line": 1807,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: dom.py, widget.py"
+ },
+ {
+  "fingerprint": "986edc09e0166972",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "drivers/headless_driver.py",
+  "line": 48,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: drivers/headless_driver.py, drivers/linux_driver.py"
+ },
+ {
+  "fingerprint": "d7ae9a37cd82e573",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "drivers/linux_driver.py",
+  "line": 128,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 3 files without a shared abstraction: drivers/linux_driver.py, drivers/linux_inline_driver.py, drivers/windows_driver.py"
+ },
+ {
+  "fingerprint": "e51cb2f963b586f6",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "drivers/linux_driver.py",
+  "line": 187,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: drivers/linux_driver.py, drivers/windows_driver.py"
+ },
+ {
+  "fingerprint": "6123b2d3e7c3d753",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "widgets/_button.py",
+  "line": 388,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: widgets/_button.py, widgets/_rule.py"
+ },
+ {
+  "fingerprint": "bf16a2cdfe7430ef",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "widgets/_button.py",
+  "line": 395,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 3 files without a shared abstraction: widgets/_button.py, widgets/_placeholder.py, widgets/_rule.py"
+ },
+ {
+  "fingerprint": "51da8f800f0f1815",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "widgets/_data_table.py",
+  "line": 2474,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: widgets/_data_table.py, widgets/_tree.py"
+ },
+ {
+  "fingerprint": "a609e03106a5af9c",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "widgets/_input.py",
+  "line": 821,
+  "reason": "2 function bodies are structurally duplicated (rename-invariant near-duplicates) across 2 files without a shared abstraction (widgets/_input.py, widgets/_text_area.py): _pause_blink, action_copy"
+ },
+ {
+  "fingerprint": "01ac8d1bc210926f",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "widgets/_list_view.py",
+  "line": 182,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: widgets/_list_view.py, widgets/_option_list.py"
+ },
+ {
+  "fingerprint": "68e3072e49dc0d07",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "widgets/_select.py",
+  "line": 170,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: widgets/_select.py, widgets/_tabs.py"
+ },
+ {
+  "fingerprint": "e3e54746be3bd72b",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "textual",
+  "file": "widgets/_selection_list.py",
+  "line": 569,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: widgets/_selection_list.py, widgets/_tabs.py"
+ },
+ {
+  "fingerprint": "ba16a566b741bbac",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "_arrange.py",
+  "line": 15,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "6d5cd4c108a93f57",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "textual",
+  "file": "_compositor.py",
+  "line": 548,
+  "reason": "Function 'add_widget' has 139 code lines and cyclomatic complexity 24: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "9d5f54e7e71d89af",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "_compositor.py",
+  "line": 282,
+  "reason": "Class 'Compositor' has 24 methods split into 3 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "f1eb2e2bfea31d7d",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "_two_way_dict.py",
+  "line": 22,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "27e33fbb0fbb9c69",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "_xterm_parser.py",
+  "line": 324,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "f0c990716cf7d659",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "app.py",
+  "line": 525,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "faac3c89ecc57096",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "color.py",
+  "line": 137,
+  "reason": "Class 'Color' has 25 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "86a6ca9dd6572bfe",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "content.py",
+  "line": 1068,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "b4e23c6b8c8b9509",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "css/_styles_builder.py",
+  "line": 90,
+  "reason": "Class 'StylesBuilder' has 70 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "ef8c3744ebe732d1",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "css/styles.py",
+  "line": 1334,
+  "reason": "Class 'RenderStyles' has 19 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "549fa3cebe378de6",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "textual",
+  "file": "css/tokenizer.py",
+  "line": 227,
+  "reason": "Function 'get_token' has 98 code lines and cyclomatic complexity 16: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "7257a870f24f742e",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "css/tokenizer.py",
+  "line": 56,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "e66a7e0c34cc1f3e",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "dom.py",
+  "line": 925,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "03ce7e20544bde44",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "dom.py",
+  "line": 135,
+  "reason": "Class 'DOMNode' has 82 methods split into 16 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "048049704ba6dae5",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "drivers/linux_inline_driver.py",
+  "line": 302,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "40c88fe139541a28",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "drivers/linux_inline_driver.py",
+  "line": 28,
+  "reason": "Class 'LinuxInlineDriver' has 16 methods split into 2 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "b8fa9a95fe65f59c",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "geometry.py",
+  "line": 1377,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "e69526761ab98faa",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "textual",
+  "file": "layouts/grid.py",
+  "line": 48,
+  "reason": "Function 'arrange' has 283 code lines and cyclomatic complexity 41: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "be66440bae768123",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "textual",
+  "file": "markup.py",
+  "line": 323,
+  "reason": "Function '_to_content' has 97 code lines and cyclomatic complexity 27: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "83361bd5941f9c5e",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "message_pump.py",
+  "line": 115,
+  "reason": "Class 'MessagePump' has 51 methods split into 5 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "c6425b1af7990f17",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "screen.py",
+  "line": 148,
+  "reason": "Class 'Screen' has 89 methods split into 9 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "ca812db719d75971",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "widget.py",
+  "line": 1948,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "4022dec86e409d64",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "widget.py",
+  "line": 4560,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "6b865a4f3fe08387",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "widget.py",
+  "line": 283,
+  "reason": "Class 'Widget' has 239 methods split into 23 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "5a8aea2016c397fd",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "widgets/_data_table.py",
+  "line": 2378,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "d6a617fec15552ed",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "widgets/_input.py",
+  "line": 71,
+  "reason": "Class 'Input' has 61 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "f3196ddae3a11df4",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "widgets/_option_list.py",
+  "line": 297,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "ceea5503bad35511",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "widgets/_option_list.py",
+  "line": 108,
+  "reason": "Class 'OptionList' has 54 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "29ac9e3a8654b010",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "widgets/_rich_log.py",
+  "line": 270,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "d5b5f2f3e784f891",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "textual",
+  "file": "widgets/_selection_list.py",
+  "line": 540,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "be73e65a5201d3f8",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "widgets/_tabs.py",
+  "line": 213,
+  "reason": "Class 'Tabs' has 30 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "27d7d9f36bfbb82c",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "textual",
+  "file": "widgets/_tree.py",
+  "line": 91,
+  "reason": "Class 'TreeNode' has 37 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "8be7598c3ad4f143",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "textual",
+  "file": "app.py",
+  "line": 3416,
+  "reason": "Numeric literal 0.25 appears across 5 files without a named constant: app.py, command.py, demo/widgets.py"
+ },
+ {
+  "fingerprint": "a61f7c756dba6e75",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "textual",
+  "file": "app.py",
+  "line": 1377,
+  "reason": "Numeric literal 0.1 appears across 8 files without a named constant: app.py, command.py, demo/widgets.py"
+ },
+ {
+  "fingerprint": "5c24e4596f3fcca1",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "textual",
+  "file": "demo/game.py",
+  "line": 233,
+  "reason": "Numeric literal 0.2 appears across 3 files without a named constant: demo/game.py, widget.py, widgets/_button.py"
+ },
+ {
+  "fingerprint": "0ea5d7738f04702d",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "textual",
+  "file": "demo/widgets.py",
+  "line": 640,
+  "reason": "Numeric literal 0.3 appears across 5 files without a named constant: demo/widgets.py, design.py, widget.py"
+ },
+ {
+  "fingerprint": "9899e4e178b2303a",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "_border.py",
+  "line": 326,
+  "reason": "Function takes 9 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "bd28afd214596860",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "_compositor.py",
+  "line": 548,
+  "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "1a24e2675a0c17e1",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "_doc.py",
+  "line": 19,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "d7a4e45e29e8d3de",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "_doc.py",
+  "line": 159,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "26081f25383a2977",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "_styles_cache.py",
+  "line": 163,
+  "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "1e15ff77cb408310",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "_styles_cache.py",
+  "line": 267,
+  "reason": "Function takes 13 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "2a20f1124554ff25",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "css/scalar_animation.py",
+  "line": 15,
+  "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "d162370d5b2b0326",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "css/styles.py",
+  "line": 526,
+  "reason": "Function takes 7 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "c5859266049ca6d0",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "events.py",
+  "line": 367,
+  "reason": "Function takes 9 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "e7fbe889d4344512",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "events.py",
+  "line": 644,
+  "reason": "Function takes 9 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "690fb2ff5a69ee77",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "strip.py",
+  "line": 168,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "c8ebbc163b0fa7a5",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "textual",
+  "file": "widgets/_data_table.py",
+  "line": 2190,
+  "reason": "Function takes 9 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "e20dcd56453af692",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "poetry",
+  "file": "console/logging/io_handler.py",
+  "line": 29,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "b34f7208b33e3506",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "poetry",
+  "file": "inspection/lazy_wheel.py",
+  "line": 298,
+  "reason": "'NamedTemporaryFile' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "a5f8e78cb3f3c7f1",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "poetry",
+  "file": "json/schemas/poetry.json",
+  "line": 2,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "8e33ac21c3ac902d",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "poetry",
+  "file": "mixology/version_solver.py",
+  "line": 533,
+  "reason": "Function '_get_comp_key' is tangled: nesting depth 5 and cyclomatic complexity 18. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "ae89e683f7329fcc",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "poetry",
+  "file": "publishing/uploader.py",
+  "line": 340,
+  "reason": "Function '_get_metadata' is tangled: nesting depth 5 and cyclomatic complexity 11. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "afdb5bbc3bce7388",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "poetry",
+  "file": "utils/helpers.py",
+  "line": 410,
+  "reason": "Function 'extractall' is tangled: nesting depth 6 and cyclomatic complexity 10. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "a05f3f2b904fbf89",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "poetry",
+  "file": "console/application.py",
+  "line": 124,
+  "reason": "Class 'Application' has 17 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "607d14d24719204f",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "poetry",
+  "file": "console/commands/add.py",
+  "line": 126,
+  "reason": "Function 'handle' has 224 code lines and cyclomatic complexity 73: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "8c724af10fed34f4",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "poetry",
+  "file": "console/commands/group_command.py",
+  "line": 48,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "a4e3526d1804a075",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "poetry",
+  "file": "console/commands/init.py",
+  "line": 305,
+  "reason": "Function '_determine_requirements' has 97 code lines and cyclomatic complexity 22: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "6df7c38a9425b6ae",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "poetry",
+  "file": "console/commands/show.py",
+  "line": 261,
+  "reason": "Function '_display_packages_information' has 196 code lines and cyclomatic complexity 47: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "1e0dbb4670a36606",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "poetry",
+  "file": "factory.py",
+  "line": 366,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "87a9bd27dd075ff2",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "poetry",
+  "file": "installation/chooser.py",
+  "line": 180,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "9caf0ad40e67fc99",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "poetry",
+  "file": "installation/executor.py",
+  "line": 333,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "cd81ab51d1cd4282",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "poetry",
+  "file": "installation/installer.py",
+  "line": 36,
+  "reason": "Class 'Installer' has 23 methods split into 2 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "4ff5e2a07e535276",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "poetry",
+  "file": "packages/locker.py",
+  "line": 55,
+  "reason": "Class 'Locker' has 18 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "b57e18d6893cb443",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "poetry",
+  "file": "puzzle/transaction.py",
+  "line": 45,
+  "reason": "Function 'calculate_operations' has 106 code lines and cyclomatic complexity 36: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "265122db989f243d",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "poetry",
+  "file": "repositories/http_repository.py",
+  "line": 58,
+  "reason": "Class 'HTTPRepository' has 22 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "3e8c3488601a1ce1",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "poetry",
+  "file": "repositories/installed_repository.py",
+  "line": 146,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "f4bca0429038eecd",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "poetry",
+  "file": "utils/authenticator.py",
+  "line": 100,
+  "reason": "Class 'Authenticator' has 23 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "7c9954a559f03d7b",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "poetry",
+  "file": "utils/authenticator.py",
+  "line": 193,
+  "reason": "Function 'request' hides 7 implicit field(s) (\"allow_redirects\", \"cert\", \"headers\", \"proxies\", \"stream\") inside **kwargs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "fc76412f14b2a872",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "poetry",
+  "file": "installation/installer.py",
+  "line": 37,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "705605bfcfb71017",
+  "ci_id": "CI-14",
+  "signal": "CI14_SUBPROCESS_SHELL_TRUE",
+  "package": "pdm",
+  "file": "cli/commands/config.py",
+  "line": 54,
+  "reason": "subprocess with shell=True can widen command injection risk and obscure execution boundaries."
+ },
+ {
+  "fingerprint": "de1f3f5efdf5fc6b",
+  "ci_id": "CI-14",
+  "signal": "CI14_DYNAMIC_CODE_EXECUTION",
+  "package": "pdm",
+  "file": "models/in_process/parse_setup.py",
+  "line": 194,
+  "reason": "Dynamic code execution through eval/exec expands the attack surface and weakens reviewability."
+ },
+ {
+  "fingerprint": "a38aa27b3efc96e1",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pdm",
+  "file": "cli/actions.py",
+  "line": 41,
+  "reason": "Function 'do_lock' is tangled: nesting depth 5 and cyclomatic complexity 33. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "8513b2148411a347",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pdm",
+  "file": "cli/actions.py",
+  "line": 61,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "bc123f565c84b409",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "pdm",
+  "file": "cli/commands/config.py",
+  "line": 54,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "735a0f6d3e59ec78",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pdm",
+  "file": "cli/commands/lock.py",
+  "line": 79,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "14be2f93b1162704",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "pdm",
+  "file": "cli/commands/run.py",
+  "line": 298,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "c2689a25c3eb7fb6",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pdm",
+  "file": "installers/synchronizers.py",
+  "line": 192,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "19fb40c754e67bf1",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pdm",
+  "file": "models/auth.py",
+  "line": 109,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "4616638b3434a0d1",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pdm",
+  "file": "models/candidates.py",
+  "line": 574,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "fc1baa2019da36a9",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pdm",
+  "file": "project/core.py",
+  "line": 378,
+  "reason": "Function '_get_dependencies' is tangled: nesting depth 6 and cyclomatic complexity 16. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "3b987cd3836dd1d2",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pdm",
+  "file": "project/core.py",
+  "line": 618,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "6adcb7167f9fe665",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "pdm",
+  "file": "pytest.py",
+  "line": 119,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "75c15c1a07b3e852",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "pdm",
+  "file": "termui.py",
+  "line": 268,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "23771783b7fea92c",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "pdm",
+  "file": "utils.py",
+  "line": 192,
+  "reason": "'os.open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "82730f251b4000ff",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pdm",
+  "file": "builders/editable.py",
+  "line": 12,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 3 files without a shared abstraction: builders/editable.py, builders/sdist.py, builders/wheel.py"
+ },
+ {
+  "fingerprint": "916e7acd06fd9abc",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pdm",
+  "file": "builders/editable.py",
+  "line": 21,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: builders/editable.py, builders/wheel.py"
+ },
+ {
+  "fingerprint": "4361d34b72c0fa95",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pdm",
+  "file": "cli/commands/python.py",
+  "line": 39,
+  "reason": "2 function bodies are structurally duplicated (rename-invariant near-duplicates) across 2 files without a shared abstraction (cli/commands/python.py, cli/commands/self_cmd.py): register_to, add_arguments"
+ },
+ {
+  "fingerprint": "c86cc093bc9f22cb",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pdm",
+  "file": "formats/flit.py",
+  "line": 146,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: formats/flit.py, formats/poetry.py"
+ },
+ {
+  "fingerprint": "b3dda2ae4a90031a",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "pdm",
+  "file": "cli/commands/init.py",
+  "line": 146,
+  "reason": "Function 'get_metadata_from_input' has 81 code lines and cyclomatic complexity 25: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "9fbda00e9543a930",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pdm",
+  "file": "cli/utils.py",
+  "line": 128,
+  "reason": "Function '__init__' hides 3 implicit field(s) (\"add_help\", \"color\", \"formatter_class\") inside **kwargs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "6182a51e4561919c",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "pdm",
+  "file": "installers/synchronizers.py",
+  "line": 143,
+  "reason": "Function 'synchronize' has 88 code lines and cyclomatic complexity 24: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "765f3a4b617db55b",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pdm",
+  "file": "models/markers.py",
+  "line": 158,
+  "reason": "Function 'replace' hides 3 implicit field(s) (\"implementation\", \"platform\", \"requires_python\") inside **kwargs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "66d174809fd5c63b",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pdm",
+  "file": "models/requirements.py",
+  "line": 139,
+  "reason": "Function 'create' hides 4 implicit field(s) (\"extras\", \"marker\", \"name\", \"specifier\") inside **kwargs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "9eca1e968ade9bce",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pdm",
+  "file": "project/core.py",
+  "line": 176,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "71469c5d1ce8b7eb",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "pdm",
+  "file": "project/core.py",
+  "line": 63,
+  "reason": "Class 'Project' has 54 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "783806efb439bb5b",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "pdm",
+  "file": "pytest.py",
+  "line": 377,
+  "reason": "Function takes 6 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "f472b3e5449c99ee",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "httpx",
+  "file": "_main.py",
+  "line": 194,
+  "reason": "Function 'format_certificate' is tangled: nesting depth 5 and cyclomatic complexity 8. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "4b3d71829ee43b51",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "httpx",
+  "file": "_transports/asgi.py",
+  "line": 171,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "cd1b0bdf0b9a0138",
+  "ci_id": "CI-26",
+  "signal": "CI26_RACE_HAZARD",
+  "package": "httpx",
+  "file": "_transports/default.py",
+  "line": 97,
+  "reason": "Function 'map_httpcore_exceptions' modifies module-level state 'HTTPCORE_EXC_MAP' via 'global'; concurrent calls share this mutable state without explicit synchronization."
+ },
+ {
+  "fingerprint": "a0b57b29725395c8",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "httpx",
+  "file": "_utils.py",
+  "line": 232,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "52b3b34eafa7e1d5",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "httpx",
+  "file": "_utils.py",
+  "line": 240,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "00f8e9dc42b7fa02",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "httpx",
+  "file": "_exceptions.py",
+  "line": 97,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: _exceptions.py, _models.py"
+ },
+ {
+  "fingerprint": "6471fbc93a4c0f83",
+  "ci_id": "CI-20",
+  "signal": "CI20_SCATTERED_CONSTANT",
+  "package": "httpx",
+  "file": "_main.py",
+  "line": 117,
+  "reason": "String constant appears in 3 files without a single defining owner: _main.py, _models.py, _transports/wsgi.py"
+ },
+ {
+  "fingerprint": "38a618d21ef472cc",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "httpx",
+  "file": "_auth.py",
+  "line": 267,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "d8b922de1ce5fb88",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "httpx",
+  "file": "_client.py",
+  "line": 188,
+  "reason": "Class 'BaseClient' has 31 methods split into 14 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "edf27fd38ec00161",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "httpx",
+  "file": "_client.py",
+  "line": 594,
+  "reason": "Class 'Client' has 17 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "038606d9e05f8380",
+  "ci_id": "CI-12",
+  "signal": "CI12_POLTERGEIST",
+  "package": "httpx",
+  "file": "_decoders.py",
+  "line": 306,
+  "reason": "Class 'TextDecoder' wraps a single dependency and delegates all 2 public method(s) without adding logic."
+ },
+ {
+  "fingerprint": "e78f0791e5e6413f",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "httpx",
+  "file": "_urlparse.py",
+  "line": 213,
+  "reason": "Function 'urlparse' hides 8 implicit field(s) (\"authority\", \"fragment\", \"host\", \"path\", \"port\") inside **kwargs; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "6c97ebf8a815d116",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "httpx",
+  "file": "_urls.py",
+  "line": 15,
+  "reason": "Class 'URL' has 23 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "d3d9e41c6c10f8cb",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "httpx",
+  "file": "_main.py",
+  "line": 452,
+  "reason": "Function takes 17 positional arguments; consider a named parameter object."
  }
 ]

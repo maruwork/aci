@@ -17,8 +17,8 @@ perfect; it aims to be *useful where it is used* and *honest about the rest*.
 
 | Claim | Measured | Evidence |
 |---|---|---|
-| Useful on code under active development | **50% of findings review-worthy**, 84% detection precision (n=50) | [`examples/aci-field-precision/dev-code/`](../examples/aci-field-precision/dev-code/README.md) |
-| Honestly bounded on finished code | 4% review-worthy, 76% precision (n=126) | [`examples/aci-field-precision/`](../examples/aci-field-precision/README.md) |
+| Useful on code under active development | **36% of findings review-worthy**, 73% detection precision (n=207, 6 projects) | [`examples/aci-field-precision/dev-code/`](../examples/aci-field-precision/dev-code/README.md) |
+| Honestly bounded on finished code | 3% review-worthy, 70% precision (n=276, 10 packages) | [`examples/aci-field-precision/`](../examples/aci-field-precision/README.md) |
 | Multi-language taint, precision-gated | recall 1.0 / **0 false positives** on a source→sink + control corpus | [`shared/tools/aci_taint_eval.py`](../shared/tools/aci_taint_eval.py) |
 | Detectors generalize to untuned real code | **100% mutation recall** on the CPython stdlib | [`shared/tools/aci_independent_eval.py`](../shared/tools/aci_independent_eval.py) |
 | Orchestration actually runs | **13/13 analyzers execution-ready, CI-proven** on Linux/Windows/macOS | `.github/workflows/ci.yml` |
@@ -40,56 +40,61 @@ finding**.
 
 ### 2a. Mature, finished libraries (the conservative case)
 
-Corpus: `click 8.1.8`, `jinja2 3.1.6`, `attrs 25.4.0`, `packaging 26.0`,
-`pyyaml 6.0.3`, `pluggy 1.6.0` — 126 native findings, all adjudicated.
+Corpus (10 packages, 276 findings adjudicated): `click 8.1.8`, `jinja2 3.1.6`,
+`attrs 25.4.0`, `packaging 26.0`, `pyyaml 6.0.3`, `pluggy 1.6.0`,
+`werkzeug @1b00618`, `flask @36e4a82`, `rich 14.3.3`, `pygments 2.19.2`.
 
-- **Detection precision: 76%**
-- **Review-worthiness: 4%**
+- **Detection precision: 70%**
+- **Review-worthiness: 3%**
 
 | detector | precision | n | note |
 |---|---:|--:|---|
-| CI-14 security | 100% | 7 | every shell=True / pickle / eval flagged was real |
-| CI-18 param cluster | 100% | 16 | exact argument counts |
-| CI-03 TODO/HACK | 100% | 12 | text markers |
-| CI-02 long/tangled | 92% | 26 | 2 flat functions mis-flagged |
-| CI-21 broad except | 75% | 36 | FPs on handlers that re-raise / delegate |
-| CI-22 resource | 50% | 6 | FPs where the resource is caller-managed |
-| CI-05 copy-paste | 40% | 5 | FPs on trivial boilerplate / re-exports |
-| CI-04 god class | 0% | 11 | cohesion clustering misfires on cohesive classes |
+| CI-06 / CI-18 | 100% | 33 | exact literals / argument counts |
+| CI-03 TODO/HACK | 96% | 28 | text markers |
+| CI-02 long/tangled | 95% | 42 | inherently complex lexers/parsers |
+| CI-23 / CI-05 | ~87% | 37 | idiomatic `**kwargs` APIs / parallel structures |
+| CI-21 broad except | 75% | 52 | FPs on handlers that log / re-raise |
+| CI-14 security | 35% | 23 | FPs on lexer `url=` metadata & docstring text |
+| CI-22 resource | 33% | 15 | FPs where the resource is caller-managed |
+| CI-07 unused/dead | 23% | 13 | FPs on symbols reached via module `__getattr__` |
+| CI-20 / CI-04 | 0% | 27 | lexer regex fragments / cohesion clustering misfires |
 
 On a finished, heavily-reviewed library, most of what ACI flags is idiomatic and
-not worth acting on. **4% review-worthiness means "ACI on a polished library is
+not worth acting on. **3% review-worthiness means "ACI on a polished library is
 mostly noise" — not "ACI is mostly noise."**
 
-### 2b. Actively-developed application/tool code (the intended use)
+### 2b. Actively-developed projects (the intended use)
 
-Corpus: `httpie @5b604c3` (CLI app) + `mkdocs @2862536` (docs tool) — 50 native
-findings, all adjudicated, same rubric.
+Corpus (6 projects, 207 findings adjudicated): `httpie @5b604c3` (CLI app),
+`mkdocs @2862536` (docs tool), `textual @182277f` (TUI framework),
+`poetry @cf54a1c` and `pdm @ad49b1d` (packaging tools), `httpx @b5addb6`.
 
-- **Detection precision: 84%**
-- **Review-worthiness: 50%** — about **12× the mature-library rate**
+- **Detection precision: 73%**
+- **Review-worthiness: 36%** — roughly **12× the mature-library rate**
 
 | detector | precision | review-worthy | n |
 |---|---:|---:|--:|
-| CI-03 TODO/FIXME/HACK | 100% | 16/18 | 18 |
-| CI-02 long/tangled | 83% | 5/6 | 6 |
-| CI-21 broad except | 78% | 2/9 | 9 |
-| CI-07 unused/dead | 50% | 2/2 | 2 |
-| CI-22 resource | 100% | 0/5 | 5 |
-| CI-25 env drift | 100% | 0/3 | 3 |
-| CI-14 security | 25% | 0/4 | 4 |
+| CI-03 TODO/FIXME/HACK | 100% | 38/40 | 40 |
+| CI-02 long/tangled | 96% | 23/28 | 28 |
+| CI-18 param cluster | 100% | 3/16 | 16 |
+| CI-21 broad except | 71% | 4/31 | 31 |
+| CI-05 copy-paste | 70% | 1/23 | 23 |
+| CI-14 security | 42% | 1/12 | 12 |
+| CI-04 god class | 13% | 2/23 | 23 |
 
-On code still being written, **half of ACI's findings are worth acting on**. The
-driver is exactly what you'd expect of live code: CI-03 surfaces the developers'
-own live reminders ("Refactor and drastically simplify…", "FIXME: some servers
-still might send…", "TODO: raise a deprecation warning in 1.3"), and CI-02
-flagged long functions whose *own code* carries a "refactor and simplify" TODO.
+On code still being written, **about a third of ACI's findings are worth acting
+on**. The driver is exactly what you'd expect of live code: CI-03 surfaces the
+developers' own live reminders ("Refactor and drastically simplify…", "TODO:
+this should move into poetry-core"), and CI-02 flags long functions a maintainer
+would reasonably consider splitting. (An earlier 2-project sample measured 50%;
+the 6-project number is the more honest one — see `dev-code/`.)
 
 ### 2c. The finding
 
 **ACI's usefulness depends heavily on code maturity.** It is noisy on finished
-libraries and genuinely useful on code under active development — which is its
-intended use. Both numbers are published; neither alone is the truth.
+libraries (3% review-worthy) and genuinely useful on code under active
+development (36%) — which is its intended use. Both numbers are published;
+neither alone is the truth.
 
 ---
 
@@ -159,8 +164,9 @@ installs every tool, so the orchestration is proven end-to-end, not by mock.
 
 ## 7. Honest caveats & boundaries (what this evidence does *not* show)
 
-- **Sample sizes are small:** n=126 (mature) and n=50 (dev), a handful of
-  projects each. Directionally strong, not statistically tight.
+- **Sample sizes are moderate:** n=276 (mature, 10 packages) and n=207 (dev, 6
+  projects), all human-adjudicated; larger packages were stratified-sampled per
+  CI-ID. Directionally strong, not statistically tight.
 - **Python-centric:** native structural and intra-procedural taint depth is
   **Python only**; multi-language depth is borrowed from orchestrated analyzers,
   not natively re-implemented (an explicit non-goal).

@@ -1132,5 +1132,1355 @@
   "file": "_manager.py",
   "line": 80,
   "reason": "Class 'PluginManager' has 24 methods split into 3 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "7405d254a007a2dd",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "werkzeug",
+  "file": "datastructures/file_storage.py",
+  "line": 188,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "dc303e79983be87f",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "werkzeug",
+  "file": "debug/__init__.py",
+  "line": 369,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2f6a77aa27d152a9",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "werkzeug",
+  "file": "debug/__init__.py",
+  "line": 90,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "98984b3a8b389693",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "werkzeug",
+  "file": "debug/console.py",
+  "line": 178,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "0ae717dcfde5be45",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "werkzeug",
+  "file": "debug/repr.py",
+  "line": 237,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "5dff17ebc4d8d5ea",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 552,
+  "reason": "Function 'parse_options_header' is tangled: nesting depth 5 and cyclomatic complexity 19. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "4c4d4ae3eec5fa41",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "werkzeug",
+  "file": "middleware/lint.py",
+  "line": 223,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2959a308f52cd153",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "werkzeug",
+  "file": "middleware/shared_data.py",
+  "line": 152,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "d7d13eca744540f4",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "werkzeug",
+  "file": "routing/matcher.py",
+  "line": 85,
+  "reason": "Function '_match' is tangled: nesting depth 5 and cyclomatic complexity 27. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "d437ad71683a3aef",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "werkzeug",
+  "file": "test.py",
+  "line": 90,
+  "reason": "'TemporaryFile' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "c0ffcf603956cdca",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "werkzeug",
+  "file": "utils.py",
+  "line": 490,
+  "reason": "'open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "bbe2457ffda0d7b5",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "werkzeug",
+  "file": "datastructures/cache_control.py",
+  "line": 153,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: datastructures/cache_control.py, datastructures/structures.py"
+ },
+ {
+  "fingerprint": "beddac3ddde0452d",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "werkzeug",
+  "file": "sansio/request.py",
+  "line": 307,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: sansio/request.py, sansio/response.py"
+ },
+ {
+  "fingerprint": "121ae7ffd393d0a4",
+  "ci_id": "CI-13",
+  "signal": "CI13_CIRCULAR_IMPORT",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 1,
+  "reason": "Circular import among 2 modules: http, sansio.http. Modules that import each other are tightly coupled and fragile to load order."
+ },
+ {
+  "fingerprint": "ed22390a8c2a82a6",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "werkzeug",
+  "file": "datastructures/headers.py",
+  "line": 21,
+  "reason": "Class 'Headers' has 34 methods split into 3 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "1dc0263cf8c48f24",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "werkzeug",
+  "file": "test.py",
+  "line": 177,
+  "reason": "Class 'EnvironBuilder' has 27 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "27d73cb3fcbd88e2",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "werkzeug",
+  "file": "test.py",
+  "line": 775,
+  "reason": "Class 'Client' has 16 methods split into 4 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "95d7a9227864c5f9",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "werkzeug",
+  "file": "wrappers/request.py",
+  "line": 32,
+  "reason": "Class 'Request' has 23 methods split into 5 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "9d66e72d72a4fced",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "werkzeug",
+  "file": "debug/__init__.py",
+  "line": 365,
+  "reason": "Numeric literal 500 appears across 4 files without a named constant: debug/__init__.py, exceptions.py, formparser.py"
+ },
+ {
+  "fingerprint": "c841ec48d01389cd",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "werkzeug",
+  "file": "middleware/lint.py",
+  "line": 177,
+  "reason": "Numeric literal 304 appears across 3 files without a named constant: middleware/lint.py, utils.py, wrappers/response.py"
+ },
+ {
+  "fingerprint": "10332580a70ff56b",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 375,
+  "reason": "Private function '_dump_csp_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "ba55fb4edeff329c",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 718,
+  "reason": "Private function '_parse_accept_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "0dfb528411e8094f",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 772,
+  "reason": "Private function '_parse_cache_control_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "ae1108582536067c",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 833,
+  "reason": "Private function '_parse_csp_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "70d0b94b0cd8cd2e",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 872,
+  "reason": "Private function '_parse_set_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "f17d85e9cbc5dc05",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 916,
+  "reason": "Private function '_parse_if_range_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "86f5f8fbed79dc11",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 940,
+  "reason": "Private function '_parse_range_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "ee67f0d4bbe83ec3",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 965,
+  "reason": "Private function '_parse_content_range_header' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "1e9504f1d0712c9c",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "http.py",
+  "line": 1043,
+  "reason": "Private function '_parse_etags' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "fe436900c969c83d",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "werkzeug",
+  "file": "routing/rules.py",
+  "line": 87,
+  "reason": "Private function '_find' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "b39e1be3c577d3a1",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "werkzeug",
+  "file": "routing/map.py",
+  "line": 423,
+  "reason": "Function takes 7 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "25eead568b6bdac7",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "werkzeug",
+  "file": "sansio/request.py",
+  "line": 112,
+  "reason": "Function takes 8 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "c602b132d612acd4",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "flask",
+  "file": "app.py",
+  "line": 1045,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2396010e90de0b4b",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "flask",
+  "file": "config.py",
+  "line": 163,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "629812f1658dd230",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "flask",
+  "file": "app.py",
+  "line": 73,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: app.py, sansio/app.py"
+ },
+ {
+  "fingerprint": "aa2d515dae3b70bd",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "flask",
+  "file": "app.py",
+  "line": 365,
+  "reason": "3 function bodies are structurally duplicated (rename-invariant near-duplicates) across 2 files without a shared abstraction (app.py, blueprints.py): get_send_file_max_age, send_static_file, open_resource"
+ },
+ {
+  "fingerprint": "baeb3a10b6991613",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "flask",
+  "file": "sansio/app.py",
+  "line": 670,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: sansio/app.py, sansio/blueprints.py"
+ },
+ {
+  "fingerprint": "43c8774ee91c5cf5",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "flask",
+  "file": "sansio/app.py",
+  "line": 59,
+  "reason": "Class 'App' has 34 methods split into 16 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "f12f458b90678b4b",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "flask",
+  "file": "sansio/blueprints.py",
+  "line": 119,
+  "reason": "Class 'Blueprint' has 27 methods split into 7 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "2a78b34f00a0e8e3",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "flask",
+  "file": "cli.py",
+  "line": 691,
+  "reason": "Private function '_path_is_ancestor' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "dbab00b6de59a114",
+  "ci_id": "CI-18",
+  "signal": "CI18_PARAMETER_CLUSTER",
+  "package": "flask",
+  "file": "cli.py",
+  "line": 935,
+  "reason": "Function takes 9 positional arguments; consider a named parameter object."
+ },
+ {
+  "fingerprint": "257430ac9d39833b",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "rich",
+  "file": "_fileno.py",
+  "line": 19,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "8fddf7464de4ad21",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "rich",
+  "file": "_windows_renderer.py",
+  "line": 7,
+  "reason": "Function 'legacy_windows_render' is tangled: nesting depth 5 and cyclomatic complexity 20. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "a0ce94a162795a4c",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "rich",
+  "file": "console.py",
+  "line": 2223,
+  "reason": "Function 'export_html' is tangled: nesting depth 5 and cyclomatic complexity 14. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "f5a91506b052de57",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "rich",
+  "file": "console.py",
+  "line": 2027,
+  "reason": "'os.open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "89e083a07ac075ab",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "rich",
+  "file": "live.py",
+  "line": 381,
+  "reason": "'random.randint' draws on the global PRNG; if this value feeds logic, IDs, or output it makes runs non-reproducible. Confirm the randomness is intended."
+ },
+ {
+  "fingerprint": "3fa24e8b70c1d50f",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "rich",
+  "file": "live.py",
+  "line": 384,
+  "reason": "'random.random' draws on the global PRNG; if this value feeds logic, IDs, or output it makes runs non-reproducible. Confirm the randomness is intended."
+ },
+ {
+  "fingerprint": "f33d3afaeaaa2238",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "rich",
+  "file": "markup.py",
+  "line": 106,
+  "reason": "Function 'render' is tangled: nesting depth 6 and cyclomatic complexity 21. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "a7bb23ecac161b80",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "rich",
+  "file": "pretty.py",
+  "line": 621,
+  "reason": "Function '_traverse' is tangled: nesting depth 6 and cyclomatic complexity 47. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "df68f8f352edaf68",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "rich",
+  "file": "pretty.py",
+  "line": 86,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2ae2acb41c44e8cb",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "rich",
+  "file": "pretty.py",
+  "line": 661,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "0448ec7dab128378",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "rich",
+  "file": "pretty.py",
+  "line": 86,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "5e062ab37c57e37e",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "rich",
+  "file": "pretty.py",
+  "line": 167,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "ab354653afefd9a1",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "rich",
+  "file": "pretty.py",
+  "line": 574,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "c36cae7fcd4f6e2c",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "rich",
+  "file": "progress.py",
+  "line": 1373,
+  "reason": "'io.open' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "7569139905b971cc",
+  "ci_id": "CI-25",
+  "signal": "CI25_ENVIRONMENT_DRIFT",
+  "package": "rich",
+  "file": "progress.py",
+  "line": 1715,
+  "reason": "'random.randint' draws on the global PRNG; if this value feeds logic, IDs, or output it makes runs non-reproducible. Confirm the randomness is intended."
+ },
+ {
+  "fingerprint": "f7cbe2106b2255d2",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "rich",
+  "file": "segment.py",
+  "line": 633,
+  "reason": "Function 'divide' is tangled: nesting depth 5 and cyclomatic complexity 13. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "6dcb0baf5ba6f759",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "rich",
+  "file": "table.py",
+  "line": 755,
+  "reason": "Function '_render' is tangled: nesting depth 5 and cyclomatic complexity 46. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "b94b63c76a1e9dbd",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "rich",
+  "file": "traceback.py",
+  "line": 214,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "06200778fbd50e89",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "rich",
+  "file": "columns.py",
+  "line": 62,
+  "reason": "Function '__rich_console__' has 98 code lines and cyclomatic complexity 15: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "57f0ba1b024f8cca",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "rich",
+  "file": "console.py",
+  "line": 587,
+  "reason": "Class 'Console' has 67 methods split into 9 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "7a5d59d8c328734b",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "rich",
+  "file": "style.py",
+  "line": 36,
+  "reason": "Class 'Style' has 25 methods split into 3 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "4d7821c701cb7c74",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "rich",
+  "file": "text.py",
+  "line": 118,
+  "reason": "Class 'Text' has 44 methods split into 2 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "4fcecf790cf992bf",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "rich",
+  "file": "traceback.py",
+  "line": 433,
+  "reason": "Function 'extract' has 140 code lines and cyclomatic complexity 33: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "956c96d2ff804297",
+  "ci_id": "CI-07",
+  "signal": "CI07_UNUSED_PRIVATE_SYMBOL",
+  "package": "rich",
+  "file": "console.py",
+  "line": 2619,
+  "reason": "Private function '_svg_hash' is defined but referenced nowhere in the scanned project \u2014 likely dead code (a single-file linter cannot see this)."
+ },
+ {
+  "fingerprint": "f8d8fc0ff475b869",
+  "ci_id": "CI-14",
+  "signal": "CI14_DYNAMIC_CODE_EXECUTION",
+  "package": "pygments",
+  "file": "formatters/__init__.py",
+  "line": 103,
+  "reason": "Dynamic code execution through eval/exec expands the attack surface and weakens reviewability."
+ },
+ {
+  "fingerprint": "ec674c5573a78bc3",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pygments",
+  "file": "cmdline.py",
+  "line": 182,
+  "reason": "Function 'main_inner' is tangled: nesting depth 5 and cyclomatic complexity 88. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "46631e5d17bbb6b5",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pygments",
+  "file": "cmdline.py",
+  "line": 644,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "2f727a20be1df31b",
+  "ci_id": "CI-21",
+  "signal": "CI21_BROAD_EXCEPTION_SWALLOW",
+  "package": "pygments",
+  "file": "cmdline.py",
+  "line": 522,
+  "reason": "A broad `except Exception:` handler can hide unexpected failures and blur the recovery contract."
+ },
+ {
+  "fingerprint": "f4a3afa5c1e092e6",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "pygments",
+  "file": "formatters/img.py",
+  "line": 93,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "77340710b53d2515",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pygments",
+  "file": "formatters/latex.py",
+  "line": 333,
+  "reason": "Function 'format_unencoded' is tangled: nesting depth 6 and cyclomatic complexity 34. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "3c1bd1433c7e8feb",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pygments",
+  "file": "lexer.py",
+  "line": 700,
+  "reason": "Function 'get_tokens_unprocessed' is tangled: nesting depth 8 and cyclomatic complexity 17. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "6eaa9513545b7ab0",
+  "ci_id": "CI-22",
+  "signal": "CI22_RESOURCE_CLEANUP_GAP",
+  "package": "pygments",
+  "file": "lexers/_scilab_builtins.py",
+  "line": 3061,
+  "reason": "'subprocess.Popen' opens a resource without a context manager; the lifecycle may not be closed on exception paths."
+ },
+ {
+  "fingerprint": "6445ffe17817c508",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/algebra.py",
+  "line": 202,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "fa5100f00c766123",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/configs.py",
+  "line": 162,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "3e791fddd1935852",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/d.py",
+  "line": 192,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "6dcf7329eea45fe7",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pygments",
+  "file": "lexers/data.py",
+  "line": 469,
+  "reason": "Function 'get_tokens_unprocessed' is tangled: nesting depth 5 and cyclomatic complexity 50. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "4bf20496c32f53f6",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/dylan.py",
+  "line": 222,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "4a5de54832e4bd82",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/grammar_notation.py",
+  "line": 74,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "701253ac6b92b4bd",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/inferno.py",
+  "line": 29,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "aa2c926d3a6cc690",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/jvm.py",
+  "line": 125,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "15ef077f066e3dc5",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/lisp.py",
+  "line": 36,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "1663c3fd0626d06d",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/modeling.py",
+  "line": 127,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "176f406d91a20c0a",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/parsers.py",
+  "line": 220,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "e513c1cf6c68cc56",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/prolog.py",
+  "line": 97,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "1f3c0cb81c163350",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/scripting.py",
+  "line": 1046,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "880b0b4ac5ee5b34",
+  "ci_id": "CI-02",
+  "signal": "CI02_SPAGHETTI_CODE",
+  "package": "pygments",
+  "file": "lexers/special.py",
+  "line": 101,
+  "reason": "Function 'get_tokens_unprocessed' is tangled: nesting depth 5 and cyclomatic complexity 8. Deep nesting plus heavy branching obscures state movement."
+ },
+ {
+  "fingerprint": "7893050a2c2c486a",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/templates.py",
+  "line": 505,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "065f7f216c8e3f0b",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/templates.py",
+  "line": 783,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "58d3cf8de29651bf",
+  "ci_id": "CI-14",
+  "signal": "CI14_INSECURE_HTTP",
+  "package": "pygments",
+  "file": "lexers/webmisc.py",
+  "line": 32,
+  "reason": "Plain HTTP endpoint usage can weaken transport guarantees if the target is expected to be protected."
+ },
+ {
+  "fingerprint": "659cfd32ac228daf",
+  "ci_id": "CI-21",
+  "signal": "CI21_SILENT_EXCEPTION_RETURN",
+  "package": "pygments",
+  "file": "util.py",
+  "line": 127,
+  "reason": "Exception handler returns a silent sentinel value instead of propagating or logging the failure."
+ },
+ {
+  "fingerprint": "29a31ccdde5287ec",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "formatters/__init__.py",
+  "line": 28,
+  "reason": "3 function bodies are structurally duplicated (rename-invariant near-duplicates) across 2 files without a shared abstraction (formatters/__init__.py, lexers/__init__.py): _fn_matches, _load_formatters, load_formatter_from_file"
+ },
+ {
+  "fingerprint": "6aa00e783a6b7610",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "formatters/groff.py",
+  "line": 91,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 3 files without a shared abstraction: formatters/groff.py, formatters/terminal.py, formatters/terminal256.py"
+ },
+ {
+  "fingerprint": "dc2f468bcd2ccd37",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/_lua_builtins.py",
+  "line": 251,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: lexers/_lua_builtins.py, lexers/_php_builtins.py"
+ },
+ {
+  "fingerprint": "1170a85e26a4e071",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/_mysql_builtins.py",
+  "line": 1317,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: lexers/_mysql_builtins.py, lexers/_postgres_builtins.py"
+ },
+ {
+  "fingerprint": "3ba347a83277aa32",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/asm.py",
+  "line": 104,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: lexers/asm.py, lexers/rebol.py"
+ },
+ {
+  "fingerprint": "b7d538dc38abf0e6",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/business.py",
+  "line": 503,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 3 files without a shared abstraction: lexers/business.py, lexers/ecl.py, lexers/hdl.py"
+ },
+ {
+  "fingerprint": "c4ecae55d6a5743e",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/dylan.py",
+  "line": 257,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: lexers/dylan.py, lexers/ruby.py"
+ },
+ {
+  "fingerprint": "d17047c9239f2286",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/floscript.py",
+  "line": 29,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 4 files without a shared abstraction: lexers/floscript.py, lexers/gdscript.py, lexers/prql.py"
+ },
+ {
+  "fingerprint": "b81e8b03e72102be",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/graphics.py",
+  "line": 777,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: lexers/graphics.py, lexers/oberon.py"
+ },
+ {
+  "fingerprint": "da983a17d9cafabb",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/mojo.py",
+  "line": 61,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 2 files without a shared abstraction: lexers/mojo.py, lexers/python.py"
+ },
+ {
+  "fingerprint": "725cb998ec09a0a9",
+  "ci_id": "CI-05",
+  "signal": "CI05_COPY_PASTE_CODE",
+  "package": "pygments",
+  "file": "lexers/mojo.py",
+  "line": 86,
+  "reason": "Function body is structurally duplicated (rename-invariant near-duplicate) across 3 files without a shared abstraction: lexers/mojo.py, lexers/prql.py, lexers/python.py"
+ },
+ {
+  "fingerprint": "5005028fde9aebaf",
+  "ci_id": "CI-20",
+  "signal": "CI20_SCATTERED_CONSTANT",
+  "package": "pygments",
+  "file": "filters/__init__.py",
+  "line": 82,
+  "reason": "String constant appears in 7 files without a single defining owner: filters/__init__.py, lexers/basic.py, lexers/dotnet.py"
+ },
+ {
+  "fingerprint": "53a7057c823bf3d5",
+  "ci_id": "CI-20",
+  "signal": "CI20_SCATTERED_CONSTANT",
+  "package": "pygments",
+  "file": "lexers/actionscript.py",
+  "line": 138,
+  "reason": "String constant appears in 3 files without a single defining owner: lexers/actionscript.py, lexers/dotnet.py, lexers/erlang.py"
+ },
+ {
+  "fingerprint": "ee6b8d595c7f3932",
+  "ci_id": "CI-20",
+  "signal": "CI20_SCATTERED_CONSTANT",
+  "package": "pygments",
+  "file": "lexers/dotnet.py",
+  "line": 642,
+  "reason": "String constant appears in 3 files without a single defining owner: lexers/dotnet.py, lexers/ml.py, lexers/theorem.py"
+ },
+ {
+  "fingerprint": "6b8013659cba5005",
+  "ci_id": "CI-20",
+  "signal": "CI20_SCATTERED_CONSTANT",
+  "package": "pygments",
+  "file": "lexers/dotnet.py",
+  "line": 645,
+  "reason": "String constant appears in 3 files without a single defining owner: lexers/dotnet.py, lexers/ml.py, lexers/theorem.py"
+ },
+ {
+  "fingerprint": "d75489d388c608be",
+  "ci_id": "CI-20",
+  "signal": "CI20_SCATTERED_CONSTANT",
+  "package": "pygments",
+  "file": "lexers/fantom.py",
+  "line": 38,
+  "reason": "String constant appears in 3 files without a single defining owner: lexers/fantom.py, lexers/int_fiction.py, lexers/templates.py"
+ },
+ {
+  "fingerprint": "ec06b88bc2eeaf8b",
+  "ci_id": "CI-20",
+  "signal": "CI20_SCATTERED_CONSTANT",
+  "package": "pygments",
+  "file": "lexers/hare.py",
+  "line": 28,
+  "reason": "String constant appears in 3 files without a single defining owner: lexers/hare.py, lexers/hdl.py, lexers/jvm.py"
+ },
+ {
+  "fingerprint": "910e1b30c50c87fe",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatter.py",
+  "line": 83,
+  "reason": "Function '__init__' hides 4 implicit field(s) (\"encoding\", \"outencoding\", \"style\", \"title\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "b95d273f809db938",
+  "ci_id": "CI-04",
+  "signal": "CI04_GOD_CLASS",
+  "package": "pygments",
+  "file": "formatters/html.py",
+  "line": 121,
+  "reason": "Class 'HtmlFormatter' has 27 methods split into 6 unrelated responsibility groups (low cohesion / LCOM4)."
+ },
+ {
+  "fingerprint": "c3a2bbebe5fcafdd",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatters/html.py",
+  "line": 419,
+  "reason": "Function '__init__' hides 12 implicit field(s) (\"classprefix\", \"cssclass\", \"cssfile\", \"cssstyles\", \"filename\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "2346cbb56247d4fd",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "formatters/img.py",
+  "line": 548,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "2349aae94a793f3a",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatters/img.py",
+  "line": 390,
+  "reason": "Function '__init__' hides 4 implicit field(s) (\"font_name\", \"hl_color\", \"line_number_bg\", \"line_number_fg\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "5572f75527f5ad4f",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatters/irc.py",
+  "line": 122,
+  "reason": "Function '__init__' hides 2 implicit field(s) (\"colorscheme\", \"linenos\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "bd3b52143a0a2e05",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatters/latex.py",
+  "line": 256,
+  "reason": "Function '__init__' hides 6 implicit field(s) (\"commandprefix\", \"docclass\", \"envname\", \"escapeinside\", \"preamble\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "c306f1e805a78fbc",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatters/rtf.py",
+  "line": 105,
+  "reason": "Function '__init__' hides 3 implicit field(s) (\"fontface\", \"hl_color\", \"lineno_color\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "adab25c4af018caf",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatters/svg.py",
+  "line": 93,
+  "reason": "Function '__init__' hides 2 implicit field(s) (\"fontfamily\", \"fontsize\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "ea134e1ea2ceffca",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "formatters/terminal.py",
+  "line": 83,
+  "reason": "Function '__init__' hides 2 implicit field(s) (\"colorscheme\", \"linenos\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "bb3508878b3eaef7",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "lexer.py",
+  "line": 145,
+  "reason": "Function '__init__' hides 2 implicit field(s) (\"encoding\", \"inencoding\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "95bd0ec987d46bbe",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "lexers/__init__.py",
+  "line": 304,
+  "reason": "Function 'guess_lexer' hides 2 implicit field(s) (\"encoding\", \"inencoding\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "80339878f46a1136",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/ada.py",
+  "line": 116,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "a892cc638bbb4062",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/dotnet.py",
+  "line": 558,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "fda663f08e1dbf54",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/graphics.py",
+  "line": 172,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "4c1ae7c6190d2f47",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/haskell.py",
+  "line": 445,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "8d4dde8494e9ee4c",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/julia.py",
+  "line": 195,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "e267fdac428687cf",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/markup.py",
+  "line": 656,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "a0873a72d68cc7a1",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/markup.py",
+  "line": 998,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "9e7cfb6b38607bf2",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "lexers/mime.py",
+  "line": 59,
+  "reason": "Function '__init__' hides 3 implicit field(s) (\"Content_Transfer_Encoding\", \"Content_Type\", \"Multipart-Boundary\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "0715650726248334",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/mojo.py",
+  "line": 123,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "b2a799f8875737ef",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/nix.py",
+  "line": 123,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "9cf2408e791e7ab9",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/objective.py",
+  "line": 130,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "2f13c9882cd91910",
+  "ci_id": "CI-02",
+  "signal": "CI02_LONG_FUNCTION",
+  "package": "pygments",
+  "file": "lexers/pascal.py",
+  "line": 422,
+  "reason": "Function 'get_tokens_unprocessed' has 187 code lines and cyclomatic complexity 98: long enough and branch-heavy enough that it likely bundles several responsibilities."
+ },
+ {
+  "fingerprint": "bbb9da7b40869c22",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/rnc.py",
+  "line": 36,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "54836a1168cd49b3",
+  "ci_id": "CI-23",
+  "signal": "CI23_CONTRACT_FIELD_DRIFT",
+  "package": "pygments",
+  "file": "lexers/robotframework.py",
+  "line": 68,
+  "reason": "Function '__init__' hides 2 implicit field(s) (\"encoding\", \"tabsize\") inside **options; the call contract is invisible to callers."
+ },
+ {
+  "fingerprint": "07846d51567da903",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/sql.py",
+  "line": 347,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "5b91844c1ab8565f",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/templates.py",
+  "line": 755,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "22c8167d05985c12",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/textfmts.py",
+  "line": 240,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "c07aef81c9be1de1",
+  "ci_id": "CI-03",
+  "signal": "CI03_TODO_HACK",
+  "package": "pygments",
+  "file": "lexers/wgsl.py",
+  "line": 396,
+  "reason": "Patchwork markers such as TODO/FIXME/HACK remain in the scanned target."
+ },
+ {
+  "fingerprint": "63313945744f7095",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/actionscript.py",
+  "line": 199,
+  "reason": "Numeric literal 0.3 appears across 8 files without a named constant: lexers/actionscript.py, lexers/dalvik.py, lexers/forth.py"
+ },
+ {
+  "fingerprint": "b1878b836a1d0fa4",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/algebra.py",
+  "line": 79,
+  "reason": "Numeric literal 0.7 appears across 4 files without a named constant: lexers/algebra.py, lexers/inferno.py, lexers/modeling.py"
+ },
+ {
+  "fingerprint": "989c28d00268686b",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/algebra.py",
+  "line": 144,
+  "reason": "Numeric literal 0.9 appears across 13 files without a named constant: lexers/algebra.py, lexers/asm.py, lexers/basic.py"
+ },
+ {
+  "fingerprint": "02ce76e22dae7adb",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/asm.py",
+  "line": 108,
+  "reason": "Numeric literal 0.1 appears across 18 files without a named constant: lexers/asm.py, lexers/c_cpp.py, lexers/carbon.py"
+ },
+ {
+  "fingerprint": "9de1094c297da2a9",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/basic.py",
+  "line": 352,
+  "reason": "Numeric literal 0.2 appears across 11 files without a named constant: lexers/basic.py, lexers/c_cpp.py, lexers/dotnet.py"
+ },
+ {
+  "fingerprint": "144824a155f52ba5",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/business.py",
+  "line": 508,
+  "reason": "Numeric literal 0.05 appears across 10 files without a named constant: lexers/business.py, lexers/dotnet.py, lexers/graphics.py"
+ },
+ {
+  "fingerprint": "f6e0c282471c930f",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/c_cpp.py",
+  "line": 414,
+  "reason": "Numeric literal 0.4 appears across 6 files without a named constant: lexers/c_cpp.py, lexers/gdscript.py, lexers/javascript.py"
+ },
+ {
+  "fingerprint": "9a1f33f7f1a0b7f8",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/configs.py",
+  "line": 78,
+  "reason": "Numeric literal 0.8 appears across 11 files without a named constant: lexers/configs.py, lexers/gdscript.py, lexers/html.py"
+ },
+ {
+  "fingerprint": "d8820f1246ce0526",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/dalvik.py",
+  "line": 125,
+  "reason": "Numeric literal 0.6 appears across 4 files without a named constant: lexers/dalvik.py, lexers/jvm.py, lexers/modula2.py"
+ },
+ {
+  "fingerprint": "b2a08409ee00d32d",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/ecl.py",
+  "line": 138,
+  "reason": "Numeric literal 0.01 appears across 10 files without a named constant: lexers/ecl.py, lexers/idl.py, lexers/oberon.py"
+ },
+ {
+  "fingerprint": "b65e96e0ed7c6616",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/esoteric.py",
+  "line": 65,
+  "reason": "Numeric literal 0.25 appears across 4 files without a named constant: lexers/esoteric.py, lexers/ezhil.py, lexers/objective.py"
+ },
+ {
+  "fingerprint": "53a36ad390ad7ef6",
+  "ci_id": "CI-06",
+  "signal": "CI06_MAGIC_NUMBER",
+  "package": "pygments",
+  "file": "lexers/r.py",
+  "line": 157,
+  "reason": "Numeric literal 0.11 appears across 3 files without a named constant: lexers/r.py, lexers/scripting.py, lexers/templates.py"
  }
 ]

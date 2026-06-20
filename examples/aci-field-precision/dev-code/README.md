@@ -1,58 +1,74 @@
 # Field precision on actively-developed code (the contrast pack)
 
-The parent pack measured ACI on **mature, finished libraries** and found ~4%
+The parent pack measured ACI on **mature, finished libraries** and found ~3%
 review-worthiness — useful as a warning, but only half the picture. ACI's home
-turf is code **being actively developed**, which the mature sample did not
-represent. This pack closes that gap: the same harness and the same two-axis
-rubric, run on two real, actively-developed application/tool projects.
+turf is code **being actively developed**. This pack closes that gap: the same
+harness and the same two-axis rubric, run on six real, actively-developed
+projects.
 
-This is **current-state confirmation, not new work** — ACI is unchanged. It
-verifies a claim the parent pack left unverified.
+This is **current-state confirmation, not new work** — ACI is unchanged.
 
 ## Method
 
-- **Corpus** (native lane, `--scope-mode source-only`): `httpie` (CLI HTTP
-  client, app code) `@5b604c3` and `mkdocs` (docs tool) `@2862536` — real,
-  actively-developed end-user projects rather than foundational libraries.
-- Same pipeline (`aci_corpus_harness.py` → 50 findings → human adjudication) and
-  the same two axes as the parent pack: **detection correctness** and
-  **review-worthiness** (would a maintainer of this *live* project act on it?).
-- All 50 findings were adjudicated by reading the cited code.
+- **Corpus** (native lane, `--scope-mode source-only`) — 6 actively-developed
+  projects, **207 findings adjudicated**:
+  `httpie @5b604c3` (CLI app), `mkdocs @2862536` (docs tool),
+  `textual @182277f` (TUI framework), `poetry @cf54a1c` and `pdm @ad49b1d`
+  (packaging tools), `httpx @b5addb6` (HTTP client).
+- Same pipeline (`aci_corpus_harness.py` → human adjudication) and the same two
+  axes as the parent pack: **detection correctness** and **review-worthiness**
+  (would a maintainer of this *live* project act on it?). Larger projects were
+  stratified-sampled per CI-ID.
 
 ## Result — the contrast is the finding
 
-| corpus | detection precision | review-worthiness |
-|---|---:|---:|
-| mature libraries (parent pack) | 76% | **4%** |
-| **actively-developed app/tool** (this pack) | **84%** | **50%** |
+| corpus | n | detection precision | review-worthiness |
+|---|--:|---:|---:|
+| mature libraries (parent pack) | 276 | 70% | **3%** |
+| **actively-developed projects** (this pack) | 207 | 73% | **36%** |
 
-On code that is still being written, **half of ACI's findings are worth acting
-on** — about 12x the rate on mature libraries. The driver is exactly what you
-would expect of live code:
+On code that is still being written, **about a third of ACI's findings are worth
+acting on** — roughly **12× the mature-library rate**. Per detector:
 
-- **CI-03 (TODO/FIXME/HACK)** dominates and is mostly review-worthy: these are
-  the developers' own live reminders of unfinished work ("Refactor and
-  drastically simplify…", "FIXME: some servers still might send…", "TODO: raise
-  a deprecation warning in 1.3"). On a finished library the same markers were
-  stale; on live code they are actionable.
-- **CI-02 (long/tangled functions)** flagged functions whose own code carries a
-  TODO asking to split them — true positives a maintainer would act on.
-- Detection precision is also a little higher (84% vs 76%): app code has fewer of
-  the huge-but-cohesive classes that made CI-04 misfire on libraries.
+| detector | precision | review-worthy | n |
+|---|---:|---:|--:|
+| CI-03 TODO/FIXME/HACK | 100% | 38/40 | 40 |
+| CI-02 long/tangled | 96% | 23/28 | 28 |
+| CI-18 param cluster | 100% | 3/16 | 16 |
+| CI-21 broad except | 71% | 4/31 | 31 |
+| CI-07 unused/dead | 50% | 2/2 | 2 |
+| CI-05 copy-paste | 70% | 1/23 | 23 |
+| CI-14 security | 42% | 1/12 | 12 |
+| CI-22 resource | 36% | 0/14 | 14 |
+| CI-04 god class | 13% | 2/23 | 23 |
+
+The driver is exactly what you'd expect of live code: **CI-03** surfaces the
+developers' own live reminders ("Refactor and drastically simplify…", "TODO:
+this should move into poetry-core", "FIXME: …more targeted cache clear"), and
+**CI-02** flags long functions a maintainer would reasonably consider splitting.
+
+## Honesty note: more data moved the number down, and that's the point
+
+The first version of this pack used only 2 projects (httpie + mkdocs, 50
+findings) and measured **50%** review-worthiness. Expanding to 6 projects (207
+findings) moved it to **36%** — `textual`/`poetry`/`pdm`/`httpx` are more
+library-like and polished than the two CLI apps, so they sit between mature
+libraries (3%) and pure application code (the apps alone were ~50%). The larger
+sample is the more honest number; the contrast with mature code (12×) holds
+either way.
 
 ## What this means
 
 ACI is **noisy on mature code and genuinely useful on code under active
-development** — which is its intended use. The 4% figure is not "ACI is mostly
-noise"; it is "ACI on a finished library is mostly noise." Both numbers belong in
-the honest picture; neither alone is the truth.
+development** — its intended use. Both numbers are published; neither alone is
+the truth.
 
 ## Caveats
 
-- n = 50 on two projects; small. "Actively-developed" is approximated by
-  app/tool projects vs foundational libraries, not by commit recency.
-- True first-party in-progress code (the user's own) is still not measured; these
-  external app projects are the closest reproducible proxy.
+- n = 207 across 6 projects; larger projects stratified-sampled, not full.
+- "Actively-developed" is approximated by app/tool/framework projects vs
+  foundational libraries, not by commit recency. True first-party in-progress
+  code (a user's own work) is the closest case still unmeasured here.
 
-Files: `labels.json` (the adjudicated dataset), `findings.json` (portable
-records). Parent method and the mature baseline: `../README.md`.
+Files: `labels.json` (adjudicated dataset), `findings.json` (portable records).
+Parent method and the mature baseline: `../README.md`.
