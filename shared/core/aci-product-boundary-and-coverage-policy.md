@@ -25,6 +25,31 @@ explicit non-goal). Native structural and intra-procedural taint depth stays
 Python-only. The closure evidence for this stance lives in
 `docs/ACI_GENERAL_PURPOSE_COMPLETION_PLAN.md` (gates G1–G4).
 
+**What "complete" means — and what it does not.** Completion is defined by
+*balanced orchestration*, not by building features in-house. Completion is an
+*equilibrium*, not a finish line of coverage. ACI is complete when it holds these
+four — each verbalizable — in balance:
+
+1. **Own only what is genuinely ACI's** — the CI-ID taxonomy, finding
+   normalization, the analyzer adapters, the Python-native detectors, and a
+   closed convenience baseline. Everything generic and multi-language is
+   **borrowed** from best-in-class analyzers, never re-implemented.
+2. **Borrow, but actually deliver** — a borrowed lane counts only when it is
+   wired, live-verified, and normalized into a CI-ID. Orchestration that is
+   claimed but not proven to run is under-built.
+3. **Claim only what is proven; bound the rest** — coverage that is not
+   live-CI-proven is not claimed; residual limits are documented honestly
+   (`aci_known_limits.py`), not hidden.
+4. **Convenience without unbounded growth** — a small closed baseline for
+   out-of-box use; deeper or wider coverage is opt-in and borrowed, never grown
+   into ACI's bundle.
+
+Because completion is an equilibrium, "add another analyzer / language / rule" is
+**not** automatically "more complete". Past the balance point, adding native or
+bundled coverage is over-building — it moves ACI *away* from completion. Coverage
+breadth is the analyzers' axis to grow; ACI's axis is the **quality and honesty
+of the orchestration**.
+
 The common shelf may claim:
 
 - bounded native structural/code-smell coverage (with documented blind spots) only for Python

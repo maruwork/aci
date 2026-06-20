@@ -8,10 +8,19 @@
 
 ## Target definition (what "complete general-purpose" means here)
 
-ACI = **Python-native structural core + fully live-verified multi-language
-orchestration of best-in-class analyzers**, honestly bounded.
+Completion is **balanced orchestration**, not in-housing features. ACI =
+**Python-native structural core + fully live-verified multi-language orchestration
+of best-in-class analyzers**, honestly bounded — held at an *equilibrium*, not
+driven toward maximal coverage.
 
 - This is the *orchestration model* of general-purpose, the only realistic path.
+- Completion is an equilibrium: past the balance point, adding native or bundled
+  coverage is over-building and moves ACI *away* from complete. "More analyzers /
+  languages / rules" is not "more complete". The authoritative definition of the
+  balance — own only ACI's own taxonomy/adapters/Python core/closed baseline;
+  borrow everything generic and multi-language; claim only what is live-CI-proven;
+  no unbounded bundle growth — lives in the Canonical Completion Stance of
+  `shared/core/aci-product-boundary-and-coverage-policy.md`.
 - **Explicit non-goal**: self-implemented native structural/taint detectors for
   languages other than Python. That competes with CodeQL/Semgrep and is a
   multi-year effort; ACI borrows multi-language depth via orchestration. Native
