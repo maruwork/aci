@@ -93,30 +93,6 @@ _CASES: tuple[tuple[str, str, bool, str], ...] = (
      "function h(){ const c = 'safe'; return eval(c); }\n"),
     ("js_neg_source_no_sink", "js_neg_source_no_sink.js", False,
      "function h(req, res){ const c = req.query.x; return res.send(c); }\n"),
-
-    # ── Go positives: untrusted input reaches a command-execution sink ───────
-    ("go_pos_var", "go_pos_var.go", True,
-     "package main\n"
-     "import (\n\t\"net/http\"\n\t\"os/exec\"\n)\n"
-     "func h(r *http.Request) {\n\tcmd := r.URL.Query().Get(\"c\")\n\texec.Command(\"sh\", \"-c\", cmd)\n}\n"),
-    ("go_pos_direct", "go_pos_direct.go", True,
-     "package main\n"
-     "import (\n\t\"net/http\"\n\t\"os/exec\"\n)\n"
-     "func h(r *http.Request) {\n\texec.Command(\"sh\", \"-c\", r.FormValue(\"c\"))\n}\n"),
-    ("go_pos_args", "go_pos_args.go", True,
-     "package main\n"
-     "import (\n\t\"os\"\n\t\"os/exec\"\n)\n"
-     "func h() {\n\tcmd := os.Args[1]\n\texec.Command(cmd)\n}\n"),
-
-    # ── Go controls (must not fire) ──────────────────────────────────────────
-    ("go_neg_constant", "go_neg_constant.go", False,
-     "package main\n"
-     "import \"os/exec\"\n"
-     "func h() {\n\texec.Command(\"ls\", \"-la\")\n}\n"),
-    ("go_neg_source_no_sink", "go_neg_source_no_sink.go", False,
-     "package main\n"
-     "import (\n\t\"fmt\"\n\t\"net/http\"\n)\n"
-     "func h(r *http.Request) {\n\tcmd := r.URL.Query().Get(\"c\")\n\tfmt.Println(cmd)\n}\n"),
 )
 
 

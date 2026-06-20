@@ -72,14 +72,8 @@ rules:
       - pattern: eval(...)
       - pattern: exec(...)
       - pattern: os.system(...)
-  - id: aci.ci14.taint-go-command-injection
-    mode: taint
-    languages: [go]
-    severity: ERROR
-    message: Untrusted input flows into a Go command-execution sink (taint).
-    pattern-sources:
-      - pattern: $R.URL.Query().Get(...)
-      - pattern: $R.FormValue(...)
-      - pattern: os.Args
-    pattern-sinks:
-      - pattern: exec.Command(...)
+  # CLOSED BASELINE. This taint set is intentionally JS + Python only and is not
+  # grown language-by-language: multi-language taint depth is borrowed from the
+  # analyzers' own maintained rulesets (codeql query suites; semgrep registry),
+  # not authored here. See "Taint: what ACI authors vs borrows" in
+  # shared/core/aci-product-boundary-and-coverage-policy.md.

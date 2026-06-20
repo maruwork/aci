@@ -88,13 +88,14 @@ This means:
   executable product surface (execution-ready adapters that normalize their
   output into CI-14 findings when the tool is installed). gitleaks runs via a
   bounded temp-report-file invocation; the others are JSON-on-stdout. `semgrep`
-  also carries bundled taint-mode rules, so the default lane proves
-  source→sink taint for JavaScript, Python, and Go, not only bare patterns.
-  Those rules are precision-gated by `shared/tools/aci_taint_eval.py` (perfect
-  recall and zero false positives on a curated source→sink + control corpus);
-  adding further languages is an incremental, measured extension. Real-world
-  precision on unlabelled code still needs human adjudication — the gate proves
-  discrimination on a controlled set, not a field false-positive rate.
+  also carries a **closed** bundled taint-mode baseline (JavaScript + Python), so
+  the default lane proves source→sink taint out of the box, not only bare
+  patterns. That baseline is precision-gated by `shared/tools/aci_taint_eval.py`
+  (perfect recall and zero false positives on a curated source→sink + control
+  corpus). It is **not** grown language-by-language — see "Taint: what ACI
+  authors vs borrows" below. Real-world precision on unlabelled code still needs
+  human adjudication; the gate proves discrimination on a controlled set, not a
+  field false-positive rate.
 - `codeql` is **also execution-ready**: the shelf has a database-build → analyze
   → SARIF → normalized-CI-14 adapter (per-language DB create, then the
   security-and-quality suite). It stays **default-opt-in** because the
@@ -154,6 +155,39 @@ surfaces such as:
 Completed `ACI` under the current boundary means this narrow scope is
 documented honestly. Broader manifest support is an allowed future extension,
 not part of the current completion claim.
+
+## 6. Taint: What ACI Authors vs Borrows
+
+This section draws an explicit, verbalizable line so "strengthening" is never
+confused with "complexification". The boundary is stated as DO / DON'T, and the
+bundled ruleset is cut exactly there.
+
+**ACI authors (and maintains):**
+
+- the Python-native intra-procedural taint detector (`CI14_TAINTED_FLOW`) — the
+  native core
+- the analyzer adapters, the SARIF/JSON normalization, and the CI-ID taxonomy
+- rules that encode ACI's **own catalog concepts** that the ecosystem does not
+  express (e.g. CI-21 silent-shell-continue, CI-22 fire-and-forget, CI-26
+  world-writable) — the engine is borrowed, the taxonomy is ACI's
+- a single **closed** taint baseline: JavaScript + Python source→sink, kept small
+  and precision-gated, so the default lane is useful out of the box
+
+**ACI does not author (it borrows):**
+
+- generic, multi-language taint coverage — that is what `codeql` query suites and
+  the `semgrep` registry already own and maintain; ACI orchestrates those rather
+  than re-implementing them
+- additional bundled taint rules added **language-by-language as a coverage
+  project** (no Go/Java/Rust/… taint rules grown into the bundle to chase
+  breadth). Multi-language depth is reached by pointing at the analyzers' own
+  rulesets, not by enlarging ACI's
+
+**The one-line rule:** ACI authors rules only for its own catalog concepts and a
+closed convenience baseline. Coverage growth is the analyzer's job, delivered by
+**orchestrating** maintained rulesets — never by expanding ACI's bundle. A change
+that adds a language or a generic security rule to the bundle to "cover more" is
+complexification, not strengthening, and is out of scope by this policy.
 
 ## Reading Rule
 
