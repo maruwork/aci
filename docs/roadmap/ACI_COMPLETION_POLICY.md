@@ -46,14 +46,31 @@ phase's closure criterion holds. Phase detail and measured baselines live in
 
 ## Maturity Gates
 
-- "Honest, robust Python-first tool": Phase 0 + 1 + 2 closed.
+- "Honest, robust Python-first tool": Phase 0 + 1 + 2 closed. ✅ **REACHED**
 - "General-purpose code-audit tool (orchestration model)": additionally Phase
-  3 + 4 closed.
+  3 + 4 closed. ✅ **REACHED (2026-06-20)**
 
-Until the relevant phases are closed, public docs must describe ACI as a
-Python-first tool with bounded coverage and documented blind spots (see
-`shared/python/aci_known_limits.py`), not as a completed general-purpose
-auditor.
+Both maturity gates are now reached. Public docs may describe ACI as a
+**completed general-purpose code-audit tool on the orchestration model** — with
+the explicit, non-negotiable boundary that native structural and
+intra-procedural taint depth is Python-only and multi-language depth is borrowed
+from orchestrated analyzers (an explicit non-goal to re-implement them). The
+honest blind spots in `shared/python/aci_known_limits.py` remain in force; the
+completion claim is the orchestration model, not language-general native depth.
+
+## General-Purpose Completion Closure (G1–G4)
+
+The newer `docs/ACI_GENERAL_PURPOSE_COMPLETION_PLAN.md` refines Phase 3 + 4 into
+four mechanically-gated steps; all are closed:
+
+| Gate | Theme | Closure evidence (re-runnable) |
+|---|---|---|
+| G1 | Every executable lane live-verified | `pytest shared/tests/test_aci_external_analyzer_e2e.py` runs a live e2e per execution-ready analyzer; CI installs each tool so none skips there |
+| G2 | codeql execution adapter | `show-analyzer-availability` reports `codeql` execution-ready; the `codeql-e2e` CI job builds a DB, analyzes, and normalizes a real data-flow finding |
+| G3 | Multi-language source→sink taint | `test_semgrep_lane_detects_multilang_taint_flow` asserts a normalized CI-14 source→sink finding for **both** JS and Python through the default lane |
+| G4 | Honest positioning | `README.md` + `aci-product-boundary-and-coverage-policy.md` state the orchestration-complete claim with the native-Python boundary; no now-false "codeql availability-only" / "until the shelf gains a database-build adapter" claim remains; known-limits and sample-report assets stay in sync (`test_sample_report_asset_known_limits_stay_in_sync`) |
+
+"Complete general-purpose (orchestration)" = G1 + G2 + G3 + G4 all closed.
 
 ## Reading Order
 

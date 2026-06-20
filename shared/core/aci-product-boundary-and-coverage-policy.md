@@ -13,8 +13,17 @@ Execution-order and closure policy for repo-local completion work lives in
 
 ## Canonical Completion Stance
 
-`ACI` is a **Python-first code audit tool with polyglot text-scan and
-external-analyzer evidence lanes**.
+`ACI` is a **complete general-purpose code audit tool on the orchestration
+model**: a Python-native structural core plus a fully live-verified
+multi-language orchestration of best-in-class analyzers (all 13 cataloged lanes
+execution-ready and CI-proven to run), with polyglot text-scan evidence lanes.
+
+"Complete general-purpose" here is the *orchestration* definition, the only
+realistic path: multi-language depth — including source→sink taint — is borrowed
+from orchestrated analyzers, not re-implemented natively per language (an
+explicit non-goal). Native structural and intra-procedural taint depth stays
+Python-only. The closure evidence for this stance lives in
+`docs/ACI_GENERAL_PURPOSE_COMPLETION_PLAN.md` (gates G1–G4).
 
 The common shelf may claim:
 
@@ -78,11 +87,15 @@ This means:
 - `semgrep`, `osv-scanner`, `trivy`, and `gitleaks` are part of the common
   executable product surface (execution-ready adapters that normalize their
   output into CI-14 findings when the tool is installed). gitleaks runs via a
-  bounded temp-report-file invocation; the others are JSON-on-stdout.
-- `codeql` is a product-visible catalog surface, but not part of the completed
-  common executable baseline: its execution model requires a separately-built
-  database (per-language, multi-step) rather than a bounded single invocation,
-  so it stays opt-in until the shelf gains a database-build adapter
+  bounded temp-report-file invocation; the others are JSON-on-stdout. `semgrep`
+  also carries bundled taint-mode rules, so the default lane proves
+  source→sink taint for JavaScript and Python, not only bare patterns.
+- `codeql` is **also execution-ready**: the shelf has a database-build → analyze
+  → SARIF → normalized-CI-14 adapter (per-language DB create, then the
+  security-and-quality suite). It stays **default-opt-in** because the
+  per-language database build is heavy (a multi-step, slow invocation), not
+  because the adapter is missing. All 13 cataloged analyzers are now
+  execution-ready; none remain availability-only.
 
 ## 4. Domain-Pack Completion Rule For CI-19
 
