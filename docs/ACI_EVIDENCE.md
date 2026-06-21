@@ -217,6 +217,24 @@ Four defects now, each found only by exercising real use — the change-review
 workflow (§2e), staged baseline adoption (§2f, §2g), and now running a borrowed
 lane at real scale.
 
+### 2i. Vendored code in the native lane — a fifth defect, the native twin of §2h
+
+The eslint fix (§2h) prompted the same question of the native lane: does it scan
+**vendored** third-party code? Scanning `pip` answered it — `pip/_vendor/` holds
+345 bundled files (pygments, rich, six, …), and **280 of pip's 362 native
+findings (77%) came from `_vendor/`** — code pip ships but does not own and cannot
+fix.
+
+Root cause: the generated/skip path set excluded build and cache dirs but not
+vendored ones. Fix: `DEFAULT_GENERATED_PATH_SEGMENTS` now includes `_vendor`,
+`vendor`, `vendored`, `third_party`, `site-packages`, etc. After the fix pip
+reports 74 findings, **0 from `_vendor`**, while its own code is still scanned.
+Locked by `test_vendored_third_party_code_is_not_scanned`.
+
+Five defects, every one found only by exercising real use — and §2h/§2i are the
+same defect (scanning code that isn't the project's source) in the two lanes,
+found one after the other by asking the same question of each.
+
 ## 3. Multi-language source→sink taint, precision-gated
 
 The default scan carries a **closed** semgrep taint-mode baseline (JavaScript +
