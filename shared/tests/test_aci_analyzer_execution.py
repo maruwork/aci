@@ -680,3 +680,54 @@ def test_python_file_discovery_excludes_vendored_third_party(tmp_path: Path) -> 
     parents = {Path(f).parent.name for f in cmdmod._find_python_files(tmp_path)}
     assert "own.py" in discovered
     assert not (parents & {"_vendor", "vendor", "third_party", "site-packages"}), parents
+
+
+def test_schema_drift_in_borrowed_output_degrades_to_parse_failure_not_crash() -> None:
+    # A borrowed tool's version bump can keep its JSON well-formed but shift the
+    # shape (renamed key, null where a table was, list that became an object).
+    # Such drift must degrade to a parse-failure for that one analyzer, never
+    # raise and take the whole scan -- including native findings -- down with it.
+    drift_by_lane = {
+        "ruff": '{"findings": []}',                                      # object, not the expected list
+        "ruff_null": '[{"filename":"a.py","location":null,"code":"E"}]',  # null where a table is expected
+        "ruff_missing": '[{"code":"E501"}]',                             # required key absent
+        "eslint": '{"results": []}',                                     # object, not the expected list
+        "trivy": '{"Results": "not-a-list"}',                           # wrong field type
+        "osv-scanner": '[1, 2, 3]',                                      # scalars where tables are expected
+    }
+    analyzer_for = {"ruff_null": "ruff", "ruff_missing": "ruff"}
+    for label, stdout in drift_by_lane.items():
+        analyzer_id = analyzer_for.get(label, label)
+        findings, parse_ok = execmod._parse_analyzer_findings(analyzer_id, stdout, "", Path("."), 1)
+        assert findings == [] and parse_ok is False, f"{label}: expected graceful parse-failure"
+        ok, runtime_state = execmod._evaluate_analyzer_outcome(analyzer_id, 1, parse_ok)
+        assert ok is False and runtime_state == "parse-failure", f"{label}: {runtime_state}"
+
+
+def test_valid_borrowed_output_still_parses_after_the_drift_guard() -> None:
+    # Regression: broadening the parse-failure catch must not swallow real findings.
+    stdout = '[{"filename":"m.py","location":{"row":3,"column":1},"code":"E501","message":"line too long"}]'
+    findings, parse_ok = execmod._parse_analyzer_findings("ruff", stdout, "", Path("."), 1)
+    assert parse_ok is True
+    assert len(findings) == 1 and findings[0].line == 3
+
+
+def test_sarif_and_gitleaks_drift_is_covered_by_the_shared_catch() -> None:
+    # The codeql (SARIF) and gitleaks report parsers can also crash on shape drift;
+    # their run-loops catch the shared structural-error set so the scan survives.
+    from aci._analyzer_parsers import _gitleaks_findings
+
+    sarif_runs_wrong_type = '{"runs": "not-a-list"}'
+    try:
+        execmod._codeql_findings(sarif_runs_wrong_type, Path("."), 1)
+        raised: Exception | None = None
+    except Exception as exc:  # noqa: BLE001 - asserting the type below
+        raised = exc
+    assert raised is None or isinstance(raised, execmod._SARIF_READ_PARSE_ERRORS), raised
+
+    try:
+        _gitleaks_findings('[{"File": 123}]', Path("."), 1)
+        raised = None
+    except Exception as exc:  # noqa: BLE001 - asserting the type below
+        raised = exc
+    assert raised is None or isinstance(raised, execmod._ANALYZER_PARSE_ERRORS), raised
