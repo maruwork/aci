@@ -121,17 +121,30 @@ aci scan --target . --profile full --severity-threshold critical
 aci scan --target . --profile full --fail-on-new-findings
 ```
 
-## 6. Accept or defer findings (operations file)
+## 6. Adopt on an existing codebase (baseline)
 
-Create an operations TOML and pass `--operations-file ops.toml` to baseline,
-suppress, or waive findings without editing code:
+To start tracking only **new** issues on a project that already has findings,
+generate a baseline from a scan and pass it back on later runs — no hand-edited
+TOML:
+
+```bash
+aci scan --target . --profile full --output report.json   # 1. scan once
+aci emit-baseline --report report.json --output ops.toml   # 2. accept today's findings
+aci scan --target . --profile full --operations-file ops.toml --fail-on-new-findings
+                                                           # 3. from now on, only NEW findings block
+```
+
+Each baseline entry is keyed by the finding's **fingerprint**, which is stable
+across unrelated line shifts, so edits elsewhere in a file do not resurrect a
+baselined finding. When you fix a finding, the next scan reports its entry as
+`resolved` (a candidate to remove from the baseline).
+
+You can also hand-author an operations file to **waive** or **suppress** specific
+findings without editing code:
 
 ```toml
-[baseline]
-entries = [{ ci_id = "CI-03", target_file = "legacy/util.py", line = 12 }]
-
 [waiver]
-entries = [{ waiver_id = "W1", ci_id = "CI-21", target_file = "app/io.py", line = 42 }]
+entries = [{ waiver_id = "W1", fingerprint = "…", owner = "alice", reason = "tracked in JIRA-123", review_condition = "before GA" }]
 ```
 
 ## 7. Hosted CI integration
