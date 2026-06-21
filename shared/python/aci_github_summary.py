@@ -3,11 +3,10 @@
 """GitHub-friendly markdown summary emitter for ACI reports."""
 from __future__ import annotations
 
-from typing import cast
-
-
-def _report_map(value: object) -> dict[str, object]:
-    return cast(dict[str, object], value) if isinstance(value, dict) else {}
+try:
+    from .aci_report_helpers import report_map as _report_map
+except ImportError:  # pragma: no cover - direct script/module import path
+    from aci_report_helpers import report_map as _report_map  # type: ignore[no-redef]
 
 
 def build_github_summary_markdown(report: dict[str, object]) -> str:
