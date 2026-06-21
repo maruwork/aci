@@ -27,6 +27,7 @@ try:
         SCOPE_CLASS_TESTS,
         _classify_relative_path,
     )
+    from .aci_report_helpers import report_map as _report_map, gate_scope_classes as _gate_scope_classes
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import (  # type: ignore[no-redef]
         LANE_EXTERNAL_ANALYZER,
@@ -48,6 +49,7 @@ except ImportError:  # pragma: no cover - direct script/module import path
         SCOPE_CLASS_TESTS,
         _classify_relative_path,
     )
+    from aci_report_helpers import report_map as _report_map, gate_scope_classes as _gate_scope_classes  # type: ignore[no-redef]
 
 
 SUPPORTED_REPORT_SCOPE_CLASSES: tuple[str, ...] = (
@@ -80,10 +82,6 @@ _NON_FAILING_ANALYZER_RUNTIME_STATES = {
     "version-or-runtime-problem",
     "downstream-setup-required",
 }
-
-
-def _report_map(value: object) -> dict[str, object]:
-    return cast(dict[str, object], value) if isinstance(value, dict) else {}
 
 
 def _report_rows(value: object) -> list[dict[str, object]]:
@@ -153,18 +151,6 @@ def _row_line(row: dict[str, object]) -> int | None:
 def _top_counts(values: list[str], *, limit: int = 5) -> list[dict[str, object]]:
     counter = Counter(value for value in values if value)
     return [{"name": name, "count": count} for name, count in counter.most_common(limit)]
-
-
-def _gate_scope_classes(report: dict[str, object]) -> tuple[str, ...]:
-    scope_rules = _report_map(report.get("scope_rules"))
-    gate_scope_classes = scope_rules.get("gate_scope_classes")
-    if not isinstance(gate_scope_classes, list) or not gate_scope_classes:
-        return (SCOPE_CLASS_RUNTIME_SOURCE,)
-    return tuple(
-        str(item)
-        for item in gate_scope_classes
-        if isinstance(item, str) and item
-    ) or (SCOPE_CLASS_RUNTIME_SOURCE,)
 
 
 def _filter_findings(

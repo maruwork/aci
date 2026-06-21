@@ -3,14 +3,18 @@
 """GitHub Actions workflow-command annotation emitter for ACI scan reports."""
 from __future__ import annotations
 
-from typing import cast
-
 try:
     from .aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
-    from .aci_scan import SCOPE_CLASS_RUNTIME_SOURCE, _classify_relative_path
+    from .aci_report_helpers import (
+        gate_scope_classes as _gate_scope_classes,
+        scope_class as _scope_class,
+    )
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_findings import SEVERITY_CRITICAL, SEVERITY_HIGH, SEVERITY_MEDIUM, SEVERITY_LOW
-    from aci_scan import SCOPE_CLASS_RUNTIME_SOURCE, _classify_relative_path
+    from aci_report_helpers import (  # type: ignore[no-redef]
+        gate_scope_classes as _gate_scope_classes,
+        scope_class as _scope_class,
+    )
 
 
 _SEVERITY_TO_LEVEL: dict[str, str] = {
@@ -19,26 +23,6 @@ _SEVERITY_TO_LEVEL: dict[str, str] = {
     SEVERITY_MEDIUM: "warning",
     SEVERITY_LOW: "notice",
 }
-
-
-def _report_map(value: object) -> dict[str, object]:
-    return cast(dict[str, object], value) if isinstance(value, dict) else {}
-
-
-def _gate_scope_classes(report: dict[str, object]) -> tuple[str, ...]:
-    scope_rules = _report_map(report.get("scope_rules"))
-    raw = scope_rules.get("gate_scope_classes")
-    if not isinstance(raw, list) or not raw:
-        return (SCOPE_CLASS_RUNTIME_SOURCE,)
-    values = tuple(str(item) for item in raw if isinstance(item, str) and item)
-    return values or (SCOPE_CLASS_RUNTIME_SOURCE,)
-
-
-def _scope_class(finding: dict[str, object]) -> str:
-    explicit = finding.get("scope_class")
-    if isinstance(explicit, str) and explicit:
-        return explicit
-    return _classify_relative_path(str(finding.get("target_file") or ""))
 
 
 def _encode_param(value: str) -> str:
