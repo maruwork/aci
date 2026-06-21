@@ -235,6 +235,29 @@ Five defects, every one found only by exercising real use — and §2h/§2i are 
 same defect (scanning code that isn't the project's source) in the two lanes,
 found one after the other by asking the same question of each.
 
+### 2j. Closing the root cause behind §2h/§2i — one policy, no drift
+
+§2h and §2i were the *same* defect in two lanes, fixed twice. That repetition was
+the real signal: each lane (native discovery, eslint, mypy/codeql file lists,
+semgrep) kept its **own** skip set, and they had drifted out of sync. Measuring
+the drift directly: the borrowed-analyzer skip sets were each missing ten
+segments the native policy already had — `_vendor`, `vendor`, `vendored`,
+`third_party`, `site-packages`, `bower_components`, and four cache/build dirs.
+
+At the **report** level this leaked nothing: external findings are already bounded
+to the native-discovered file set, so vendored findings were dropped before the
+report (verified — raw ruff on a `_vendor`/`vendor`/`third_party` fixture emits 9
+findings, 8 are dropped, only the project's own file survives). But the borrowed
+tools still *processed* that code: on a pip-scale `_vendor/` tree, handing
+hundreds of bundled files to mypy can exhaust the per-analyzer timeout and starve
+the project's own code of any findings at all.
+
+The fix is structural, not another patch: the analyzer skip sets are now **derived
+from** `DEFAULT_GENERATED_PATH_SEGMENTS` (the single generated-path policy) plus a
+few lane-specific extras, so they cannot drift again. A drift-guard test
+(`test_borrowed_lane_skip_sets_cover_the_generated_path_policy`) fails if any lane
+ever skips less than the policy.
+
 ## 3. Multi-language source→sink taint, precision-gated
 
 The default scan carries a **closed** semgrep taint-mode baseline (JavaScript +

@@ -9,6 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+try:
+    from ._scan_scope import DEFAULT_GENERATED_PATH_SEGMENTS
+except ImportError:  # pragma: no cover - direct script/module import path
+    from _scan_scope import DEFAULT_GENERATED_PATH_SEGMENTS  # type: ignore[no-redef]
+
 
 def _ruff_command(target_root: Path) -> list[str]:
     return ["ruff", "check", str(target_root), "--output-format", "json"]
@@ -18,10 +23,14 @@ def _pyflakes_command(target_root: Path) -> list[str]:
     return ["pyflakes", str(target_root)]
 
 
-_PYTHON_ANALYZER_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
-    ".claude", "archive", "common", "workspace",
+# Borrowed analyzers must skip exactly what the native lane skips: code that is
+# not the project's own source (caches, build output, vendored third-party
+# trees). Derive the base set from the single generated-path policy so the lanes
+# can never drift apart again (the drift that required separate vendored fixes
+# for the native and eslint lanes). `archive`/`common` are ACI-workspace-only
+# extras that have never been part of the public generated-path policy.
+_PYTHON_ANALYZER_SKIP_SEGMENTS: frozenset[str] = frozenset(DEFAULT_GENERATED_PATH_SEGMENTS) | frozenset({
+    "archive", "common",
 })
 
 
@@ -84,11 +93,7 @@ _SEMGREP_SUPPORTED_SUFFIXES: frozenset[str] = frozenset({
 _SEMGREP_SUPPORTED_NAMES: frozenset[str] = frozenset({"Dockerfile", "Containerfile"})
 
 
-_SEMGREP_SKIP_SEGMENTS: frozenset[str] = frozenset({
-    ".git", "__pycache__", ".venv", "venv", "env", "node_modules", "dist", ".tox",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "aci.egg-info",
-    ".claude", "archive", "common", "workspace",
-})
+_SEMGREP_SKIP_SEGMENTS: frozenset[str] = _PYTHON_ANALYZER_SKIP_SEGMENTS
 
 
 _ESLINT_SOURCE_SUFFIXES: frozenset[str] = frozenset({".js", ".mjs", ".cjs", ".jsx"})
@@ -103,9 +108,11 @@ def _eslint_rule_path() -> Path:
 
 
 # Build/vendor output directories and minified files: real JS source, not these.
-# Kept in sync with the bundled aci-eslint.config.mjs `ignores`.
+# Kept in sync with the bundled aci-eslint.config.mjs `ignores`. Vendored
+# segments (vendor, bower_components, ...) come from the shared base set; only
+# the JS-framework build dirs are eslint-specific extras.
 _ESLINT_SKIP_SEGMENTS: frozenset[str] = _PYTHON_ANALYZER_SKIP_SEGMENTS | frozenset({
-    ".next", "_next", "out", "coverage", "vendor", "bower_components",
+    ".next", "_next", "out", "coverage",
 })
 
 
