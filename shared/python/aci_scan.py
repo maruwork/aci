@@ -55,7 +55,7 @@ ACI_TOOL_VERSION = "0.1.8"
 try:
     from .detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY
     from .detectors._helpers import _relative_path
-    from .aci_analyzer_execution import run_analyzer, _readiness_for
+    from .aci_analyzer_execution import run_analyzer
     from .aci_domain_contract import AciDomainRules, CORE_ONLY_DOMAIN_ID
     from .aci_domain_loader import load_domain_rules
     from .aci_findings import (
@@ -85,7 +85,7 @@ try:
 except ImportError:  # pragma: no cover - direct script/module import path
     from detectors import PER_FILE_REGISTRY, CROSS_FILE_REGISTRY  # type: ignore[no-redef]
     from detectors._helpers import _relative_path  # type: ignore[no-redef]
-    from aci_analyzer_execution import run_analyzer, _readiness_for
+    from aci_analyzer_execution import run_analyzer
     from aci_domain_contract import AciDomainRules, CORE_ONLY_DOMAIN_ID
     from aci_domain_loader import load_domain_rules
     from aci_findings import (
@@ -192,14 +192,6 @@ _OPT_IN_NATIVE_SIGNALS: tuple[str, ...] = (
 )
 _EXTERNAL_EVIDENCE_SIGNALS: tuple[str, ...] = ("EXTERNAL_STATIC_ANALYSIS",)
 _HUMAN_JUDGMENT_SIGNALS: tuple[str, ...] = ()
-_RUFF_DELEGATED_SIGNALS: frozenset[str] = frozenset({
-    "CI02_LONG_FUNCTION",
-    "CI03_TODO_HACK",
-    "CI18_PARAMETER_CLUSTER",
-    "CI21_BROAD_EXCEPTION_SWALLOW",
-    "CI26_RACE_HAZARD",
-})
-
 _PROFILE_SIGNALS: dict[str, tuple[str, ...]] = build_profile_signals(
     structure_signals=_STRUCTURE_SIGNALS,
     external_evidence_signals=_EXTERNAL_EVIDENCE_SIGNALS,
@@ -484,21 +476,6 @@ def _external_target_files_for_session(session: ScanSession, target_files: list[
     ]
 
 
-def _delegated_native_signals(
-    session: ScanSession,
-    target_files: list[Path],
-    enabled_lanes: set[str],
-) -> frozenset[str]:
-    if not session.include_external_analyzers or LANE_EXTERNAL_ANALYZER not in enabled_lanes:
-        return frozenset()
-    analyzer_ids = _select_external_analyzers(session.profile_id, target_files, session.target_root)
-    if "ruff" not in analyzer_ids:
-        return frozenset()
-    if _readiness_for("ruff").availability_state != "ready":
-        return frozenset()
-    return _RUFF_DELEGATED_SIGNALS
-
-
 def _run_external_analyzers_for_session(
     session: ScanSession,
     target_files: list[Path],
@@ -538,7 +515,6 @@ def _collect_scan_findings(
     )
     target_files, skipped_targets = _target_files_for_session(session)
     active_signals = set(_PROFILE_SIGNALS.get(session.profile_id, _PROFILE_SIGNALS[PROFILE_FULL]))
-    active_signals -= _delegated_native_signals(session, target_files, enabled_lanes)
     findings, next_id = _run_per_file_detectors(target_files, session, active_signals, 1)
     cross_file_findings, next_id = _run_cross_file_detectors(target_files, session.target_root, active_signals, next_id)
     findings.extend(cross_file_findings)

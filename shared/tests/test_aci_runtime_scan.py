@@ -485,9 +485,15 @@ def test_self_audit_profile_runs_its_default_python_analyzers(tmp_path: Path, mo
     assert calls == ["ruff", "pyflakes", "mypy", "pytest", "semgrep"]
 
 
-def test_ruff_ready_suppresses_overlapping_native_signals(tmp_path: Path, monkeypatch) -> None:
+def test_ruff_ready_but_silent_keeps_native_coverage(tmp_path: Path, monkeypatch) -> None:
+    # Regression for a dogfooding-found defect: ACI used to suppress these native
+    # signals whenever ruff was merely *ready*, on the assumption ruff covered
+    # them. But ruff's default rules detect none of long-function, TODO, broad
+    # except, or race-via-global, so enabling external analyzers silently DROPPED
+    # that coverage -- more analysis yielded fewer findings. Native must be kept
+    # when ruff reports nothing; the cross-lane dedup removes a native finding
+    # only where ruff actually reported the same (ci_id, line).
     _write(tmp_path / "todo.py", "# TODO: remove this\n")
-    _write(tmp_path / "params.py", "def process(name, value, kind, source, target, limit):\n    return None\n")
     _write(
         tmp_path / "exceptions.py",
         "try:\n    pass\nexcept Exception:\n    pass\n",
@@ -509,14 +515,7 @@ def test_ruff_ready_suppresses_overlapping_native_signals(tmp_path: Path, monkey
     long_lines += ["    y = 1" for _ in range(55)]
     _write(tmp_path / "long.py", "\n".join(long_lines))
 
-    monkeypatch.setattr(scanmod, "_readiness_for", lambda analyzer_id: execmod.AnalyzerReadiness(
-        analyzer_id=analyzer_id,
-        executable_path="C:/fake/ruff.exe",
-        availability_state="ready",
-        version_text="ruff 0.4.8",
-        version_ok=True,
-        minimum_version="0.4.8",
-    ))
+    # ruff runs but, as with its default rule set, reports nothing for these.
     monkeypatch.setattr(scanmod, "run_analyzer", lambda analyzer_id, target_root, next_id: execmod.AnalyzerRunResult(
         analyzer_id=analyzer_id,
         ok=True,
@@ -535,11 +534,13 @@ def test_ruff_ready_suppresses_overlapping_native_signals(tmp_path: Path, monkey
     )
 
     signals = {item["signal"] for item in report["findings"]}
-    assert "CI03_TODO_HACK" not in signals
+    assert "CI03_TODO_HACK" in signals
+    assert "CI21_BROAD_EXCEPTION_SWALLOW" in signals
+    assert "CI26_RACE_HAZARD" in signals
+    assert "CI02_LONG_FUNCTION" in signals
+    # CI-18 is a wholly-low-confidence detector, opt-in under `full`, so it stays
+    # absent under quick-gate regardless of the external lane.
     assert "CI18_PARAMETER_CLUSTER" not in signals
-    assert "CI21_BROAD_EXCEPTION_SWALLOW" not in signals
-    assert "CI26_RACE_HAZARD" not in signals
-    assert "CI02_LONG_FUNCTION" not in signals
 
 
 def test_ruff_unavailable_keeps_overlapping_native_signals(tmp_path: Path, monkeypatch) -> None:
@@ -566,14 +567,6 @@ def test_ruff_unavailable_keeps_overlapping_native_signals(tmp_path: Path, monke
     long_lines += ["    y = 1" for _ in range(55)]
     _write(tmp_path / "long.py", "\n".join(long_lines))
 
-    monkeypatch.setattr(scanmod, "_readiness_for", lambda analyzer_id: execmod.AnalyzerReadiness(
-        analyzer_id=analyzer_id,
-        executable_path=None,
-        availability_state="not-installed",
-        version_text=None,
-        version_ok=False,
-        minimum_version="0.4.8",
-    ))
     monkeypatch.setattr(scanmod, "run_analyzer", lambda analyzer_id, target_root, next_id: execmod.AnalyzerRunResult(
         analyzer_id=analyzer_id,
         ok=False,

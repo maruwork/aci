@@ -17,8 +17,11 @@ discussion prompt, `high` as close to a confirmed defect.
 ## Native static detectors (Python)
 
 `vs ruff`: **unique** = a cross-file/structural check ruff cannot do (ACI's core
-value); **overlaps** = ruff already covers this (prefer ruff; ACI auto-dedupes
-its native finding when the ruff lane runs; see README "Relationship to ruff").
+value); **overlaps** = ruff can cover this *when configured for the matching
+rule* (e.g. C901/PLR0915). ACI always runs its native detector and dedupes only
+where the ruff lane actually reports the same finding — so enabling ruff never
+silently drops a native signal ruff's active rules don't emit (see README
+"Relationship to ruff").
 
 | CI-ID | Name | Detects | Confidence | vs ruff |
 |---|---|---|---|---|
