@@ -862,6 +862,20 @@ def test_external_findings_are_scoped_in_diff_mode(tmp_path: Path, monkeypatch) 
     assert not any(f["signal"] == "EXT_RUFF" for f in off_change["findings"]), "external finding off the change must be dropped"
 
 
+def test_vendored_third_party_code_is_not_scanned(tmp_path: Path) -> None:
+    # Bundled third-party code (pip/_vendor, vendor/, third_party/) is not the
+    # project's own source; findings there are noise the maintainer cannot fix.
+    swallow = "def f():\n    try:\n        pass\n    except Exception:\n        pass\n"
+    _write(tmp_path / "own.py", swallow)
+    for vendor_dir in ("_vendor", "vendor", "third_party"):
+        _write(tmp_path / vendor_dir / "dep.py", swallow)
+
+    report = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)
+    files = {f["target_file"].replace("\\", "/") for f in report["findings"]}
+    assert any("own.py" in f for f in files), "the project's own code must still be scanned"
+    assert not any("_vendor" in f or "/vendor/" in f or "third_party" in f for f in files), f"vendored code leaked: {files}"
+
+
 # ── suppression tests ──────────────────────────────────────────────────────
 
 def test_suppression_by_signal_removes_finding(tmp_path: Path) -> None:

@@ -75,6 +75,16 @@ DEFAULT_GENERATED_PATH_SEGMENTS = {
     ".coverage",
     # Node / other ecosystems (common in full-stack repos)
     "node_modules",
+    "bower_components",
+    # Vendored third-party code: bundled into the project but not its own source,
+    # so findings there are noise the maintainer cannot act on (e.g. pip/_vendor,
+    # setuptools/_vendor). Common conventions across ecosystems.
+    "_vendor",
+    "vendor",
+    "vendored",
+    "third_party",
+    "third-party",
+    "site-packages",
     # Local tool state and session scratch space (non-canonical; never in distributed packages)
     ".claude",
     "workspace",
