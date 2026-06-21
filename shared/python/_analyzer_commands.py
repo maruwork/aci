@@ -102,10 +102,23 @@ def _eslint_rule_path() -> Path:
     return Path(__file__).resolve().parent / "package_assets" / "analyzers" / "aci-eslint.config.mjs"
 
 
+# Build/vendor output directories and minified files: real JS source, not these.
+# Kept in sync with the bundled aci-eslint.config.mjs `ignores`.
+_ESLINT_SKIP_SEGMENTS: frozenset[str] = _PYTHON_ANALYZER_SKIP_SEGMENTS | frozenset({
+    ".next", "_next", "out", "coverage", "vendor", "bower_components",
+})
+
+
+def _is_generated_js(path: Path) -> bool:
+    name = path.name.lower()
+    return name.endswith((".min.js", "-bundle.js", ".bundle.js"))
+
+
 def _has_eslint_source(target_root: Path) -> bool:
     return any(
         p.is_file() and p.suffix.lower() in _ESLINT_SOURCE_SUFFIXES
-        and not any(seg in _PYTHON_ANALYZER_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
+        and not _is_generated_js(p)
+        and not any(seg in _ESLINT_SKIP_SEGMENTS for seg in _relative_parts(p, target_root))
         for p in target_root.rglob("*")
     )
 

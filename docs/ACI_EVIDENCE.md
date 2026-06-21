@@ -195,6 +195,28 @@ Three defects total (§2e diff scope, §2f fingerprint stability, this), all in 
 only by exercising the actual intended use, and the third only by exercising two
 features *together*.
 
+### 2h. eslint lane on a real frontend repo — a fourth defect, found by scale
+
+Running the external lanes on a large real repo (`litellm`, 1,892 files) surfaced
+a defect in the borrowed JS lane. litellm ships 100 **built/minified** JS files
+(Next.js chunks, swagger bundles); ACI's eslint lane linted them, produced **11.8
+MB of output (2,125 messages on build artifacts)**, and reported `parse-failure`
+— so on any project with a JS frontend, the eslint lane either silently failed or
+flooded the report with noise from generated code.
+
+Root cause: the eslint lane did not exclude generated/vendored/minified paths,
+even though ACI already excludes them for native detectors. Fix: the bundled
+eslint config now `ignores` build output (`**/_next/**`, `**/dist/**`,
+`**/*.min.js`, …), and `_has_eslint_source` no longer triggers the lane on
+generated-only JS. After the fix, litellm's eslint lane no longer runs on build
+artifacts; a project with real source JS still lints it (and ignores its minified
+files). Locked by `test_eslint_skips_generated_and_minified_js` and
+`test_eslint_lane_ignores_minified_files`.
+
+Four defects now, each found only by exercising real use — the change-review
+workflow (§2e), staged baseline adoption (§2f, §2g), and now running a borrowed
+lane at real scale.
+
 ## 3. Multi-language source→sink taint, precision-gated
 
 The default scan carries a **closed** semgrep taint-mode baseline (JavaScript +
