@@ -181,14 +181,24 @@ def find_active_waiver(finding: AciFinding, operations: OperationsState) -> Waiv
 def find_resolved_baseline_entries(
     operations: OperationsState,
     detected_findings: list[AciFinding],
+    scanned_files: frozenset[str] | None = None,
 ) -> list[dict[str, object]]:
     """Return baseline entries that have no matching finding in the current scan.
 
     A resolved entry means the finding was previously known but is no longer
     detected, making it a candidate for removal from the baseline.
+
+    ``scanned_files`` (target-root-relative POSIX paths) bounds the conclusion to
+    files the scan actually looked at. A partial scan -- e.g. ``--diff-from``,
+    which only scans changed files -- cannot tell whether a baseline finding in an
+    *unscanned* file is resolved or merely unexamined, so those entries are left
+    untouched instead of being falsely reported as resolved. ``None`` preserves
+    the whole-scan behaviour (every baseline entry is eligible).
     """
     resolved: list[dict[str, object]] = []
     for entry in operations.baseline_entries:
+        if scanned_files is not None and (entry.target_file is None or entry.target_file not in scanned_files):
+            continue  # the file was not examined; resolution is undeterminable
         matched = any(
             _matches_location(
                 fingerprint=entry.fingerprint,

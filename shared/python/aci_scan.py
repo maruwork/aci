@@ -803,7 +803,11 @@ def scan_target(
     target_files, skipped_targets, findings, analyzer_runs = _collect_scan_findings(session, domain_patterns)
     findings = _deduplicate_findings(findings)
     findings = _filter_scope_noise(findings)
-    resolved_baseline = find_resolved_baseline_entries(session.operations, findings)
+    # Resolution is only determinable for files the scan actually examined; a diff
+    # scan only looks at changed files, so bound it to avoid reporting every
+    # baseline finding in an untouched file as "resolved".
+    scanned_files = frozenset(_relative_path(path, session.target_root) for path in target_files)
+    resolved_baseline = find_resolved_baseline_entries(session.operations, findings, scanned_files)
     findings, suppressed_count = _apply_operations(findings, session.operations)
     findings = sorted(findings, key=lambda f: SEVERITY_RANK.get(f.severity, 0), reverse=True)
     return _build_scan_report(

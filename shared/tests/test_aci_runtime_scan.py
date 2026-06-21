@@ -806,6 +806,43 @@ def test_structural_fingerprint_stable_when_construct_grows(tmp_path: Path) -> N
     assert fingerprint("") == fingerprint("    z = 0\n")
 
 
+def test_resolved_baseline_is_bounded_to_scanned_files() -> None:
+    # A partial (diff) scan must not report baseline findings in UNSCANNED files
+    # as resolved -- it never looked at them.
+    from aci.aci_operations import OperationsState, BaselineEntry, find_resolved_baseline_entries
+
+    ops = OperationsState(baseline_entries=(
+        BaselineEntry(fingerprint="fp-a", ci_id="CI-21", target_file="a.py", line=4),
+        BaselineEntry(fingerprint="fp-b", ci_id="CI-21", target_file="b.py", line=4),
+    ))
+    # nothing detected this run; only a.py was scanned
+    resolved = find_resolved_baseline_entries(ops, [], scanned_files=frozenset(["a.py"]))
+    assert {r["target_file"] for r in resolved} == {"a.py"}  # b.py is unexamined, not resolved
+    # whole-scan (no bound) keeps the original behaviour: both eligible
+    assert len(find_resolved_baseline_entries(ops, [])) == 2
+
+
+def test_diff_scan_does_not_falsely_resolve_unscanned_baseline(tmp_path: Path, monkeypatch) -> None:
+    swallow = "def f():\n    try:\n        pass\n    except Exception:\n        pass\n"
+    _write(tmp_path / "a.py", swallow)
+    _write(tmp_path / "b.py", swallow)
+    full = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)
+    entries = ", ".join(
+        '{ fingerprint = "%s", target_file = "%s" }' % (f["fingerprint"], f["target_file"].replace("\\", "\\\\"))
+        for f in full["findings"]
+    )
+    ops = tmp_path / "ops.toml"
+    ops.write_text("[baseline]\nentries = [%s]\n" % entries, encoding="utf-8")
+
+    # diff scan that touches only a.py; b.py's baseline finding must not be "resolved"
+    monkeypatch.setattr("aci.aci_scan._git_changed_files", lambda root, ref: frozenset(["a.py"]))
+    monkeypatch.setattr("aci.aci_scan._git_changed_lines", lambda root, ref: {"a.py": {4}})
+    report = scan_target(
+        tmp_path, "full", "core-only", operations_file=ops, diff_from="HEAD~1", include_external_analyzers=False
+    )
+    assert report["summary"]["resolved_baseline_count"] == 0, "unscanned baseline findings must not be reported resolved"
+
+
 # ── suppression tests ──────────────────────────────────────────────────────
 
 def test_suppression_by_signal_removes_finding(tmp_path: Path) -> None:
