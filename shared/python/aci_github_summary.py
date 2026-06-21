@@ -87,4 +87,15 @@ def build_github_summary_markdown(report: dict[str, object]) -> str:
                 continue
             lines.append(f"- `{item.get('analyzer_id', '')}`: `{item.get('runtime_state', '')}`")
         lines.append("")
+    # The non-exhaustiveness disclosure must travel with the human-facing summary,
+    # not just the JSON report: this PR summary is where a reviewer forms the
+    # judgement "ACI passed, the code is clean." A pass with zero findings is
+    # exactly where that false confidence is highest, so the bound is stated here,
+    # at the point of use, sourced from the same disclosure the report carries.
+    disclosure = report.get("detection_disclosure")
+    if isinstance(disclosure, str) and disclosure:
+        lines.append("---")
+        lines.append("")
+        lines.append(f"> **Scope note:** {disclosure}")
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"

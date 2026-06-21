@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from aci.aci_cli import _handle_report_command
+from aci.aci_github_summary import build_github_summary_markdown
 
 
 def _sample_report() -> dict[str, object]:
@@ -238,3 +239,27 @@ def test_emit_sarif_cli_filters_scope_class(tmp_path: Path, capsys) -> None:
     results = payload["runs"][0]["results"]
     assert len(results) == 1
     assert results[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "docs/note.py"
+
+
+def test_github_summary_carries_the_detection_disclosure_at_the_point_of_use() -> None:
+    # ACI's purpose includes making users aware that even its declared checks are
+    # not 100%. The JSON report carries that disclosure, but the human-facing PR
+    # summary is where a reviewer concludes "ACI passed, the code is clean" -- and
+    # a clean, zero-finding pass is exactly where that false confidence is highest.
+    # The disclosure must therefore travel with the summary, sourced from the same
+    # report key (single source of truth).
+    disclosure = "Bounded best-effort audit; detection is not 100%."
+    clean_report: dict[str, object] = {
+        "gate": {"decision": "pass"},
+        "summary": {"total_findings": 0, "blocker_count": 0},
+        "review_brief": {"scope_mode": "full-repo", "blocker_headline": "No blocking findings remain."},
+        "detection_disclosure": disclosure,
+    }
+    markdown = build_github_summary_markdown(clean_report)
+    assert disclosure in markdown, "the non-exhaustiveness disclosure must appear in the human summary"
+    assert "Gate: `pass`" in markdown and "Findings: `0`" in markdown
+
+    # A report without the key must still render (older reports, partial payloads).
+    no_disclosure = {k: v for k, v in clean_report.items() if k != "detection_disclosure"}
+    rendered = build_github_summary_markdown(no_disclosure)
+    assert "Scope note:" not in rendered
