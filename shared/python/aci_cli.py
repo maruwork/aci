@@ -25,6 +25,7 @@ try:
         SCOPE_MODE_SOURCE_ONLY,
     )
     from .aci_annotations import build_github_annotations
+    from .aci_baseline import build_baseline_operations
     from .aci_sarif import build_sarif_report
     from .aci_sarif import validate_sarif_report
     from .aci_package_assets import read_text_asset
@@ -60,6 +61,7 @@ except ImportError:  # pragma: no cover - direct script/module import path
         SCOPE_MODE_SOURCE_ONLY,
     )
     from aci_annotations import build_github_annotations
+    from aci_baseline import build_baseline_operations  # type: ignore[no-redef]
     from aci_sarif import build_sarif_report
     from aci_sarif import validate_sarif_report
     from aci_package_assets import read_text_asset
@@ -228,6 +230,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     github_summary_cmd.add_argument("--report", type=Path, required=True, help="ACI report JSON file to summarize")
     _add_report_view_args(github_summary_cmd)
+
+    baseline_cmd = sub.add_parser(
+        "emit-baseline",
+        help="Generate an operations-file baseline (TOML) from a report JSON, accepting today's findings as pre-existing",
+    )
+    baseline_cmd.add_argument("--report", type=Path, required=True, help="ACI report JSON file to baseline")
+    baseline_cmd.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Write the baseline TOML to this path instead of stdout",
+    )
+    _add_report_view_args(baseline_cmd)
 
     catalog = sub.add_parser(
         "show-analyzer-catalog",
@@ -435,6 +450,20 @@ def _handle_report_command(args: argparse.Namespace) -> int | None:
         if not isinstance(data, dict):
             raise ValueError(f"Report file is not a JSON object: {args.report}")
         print(build_github_summary_markdown(_project_report_view_from_args(data, args)), end="")
+        return EXIT_OK
+    if args.command == "emit-baseline":
+        data = _read_json_file(args.report)
+        if not isinstance(data, dict):
+            raise ValueError(f"Report file is not a JSON object: {args.report}")
+        toml_text = build_baseline_operations(_project_report_view_from_args(data, args))
+        output_path = getattr(args, "output", None)
+        if output_path is not None:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(toml_text, encoding="utf-8")
+            entry_count = toml_text.count("{ ")
+            print(f"ACI baseline written to {output_path} ({entry_count} entr{'y' if entry_count == 1 else 'ies'})")
+        else:
+            print(toml_text, end="")
         return EXIT_OK
     return None
 

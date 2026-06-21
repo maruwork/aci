@@ -5,7 +5,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from aci.aci_cli import _handle_report_command
+from aci.aci_baseline import build_baseline_operations
 from aci.aci_github_summary import build_github_summary_markdown
+from aci.aci_operations import load_operations_state
 
 
 def _sample_report() -> dict[str, object]:
@@ -263,3 +265,58 @@ def test_github_summary_carries_the_detection_disclosure_at_the_point_of_use() -
     no_disclosure = {k: v for k, v in clean_report.items() if k != "detection_disclosure"}
     rendered = build_github_summary_markdown(no_disclosure)
     assert "Scope note:" not in rendered
+
+
+def test_emit_baseline_round_trips_through_the_operations_loader(tmp_path: Path, capsys) -> None:
+    # The generated baseline is only useful if the real loader accepts it and the
+    # entries identify exactly the report's findings by their stable fingerprint.
+    report_path = _write_report(tmp_path)
+
+    result = _handle_report_command(
+        SimpleNamespace(command="emit-baseline", report=report_path, output=None, report_scope_class=[], report_owner_lane=[])
+    )
+    assert result == 0
+    toml_text = capsys.readouterr().out
+
+    ops_path = tmp_path / "ops.toml"
+    ops_path.write_text(toml_text, encoding="utf-8")
+    state = load_operations_state(ops_path)
+    assert {e.fingerprint for e in state.baseline_entries} == {"fp-1", "fp-2", "fp-3"}
+    # Identity is the fingerprint, never the line: no entry carries a line number.
+    assert all(e.line is None for e in state.baseline_entries)
+
+
+def test_emit_baseline_escapes_special_characters_and_round_trips(tmp_path: Path) -> None:
+    # File names and ids can carry TOML metacharacters; the emitter must produce
+    # TOML the strict loader (tomllib) still parses, not a broken file.
+    report = {
+        "findings": [
+            {"fingerprint": "fp-x", "ci_id": "CI-21", "target_file": 'weird "name"\\dir/â.py'},
+        ]
+    }
+    toml_text = build_baseline_operations(report)
+    ops_path = tmp_path / "ops.toml"
+    ops_path.write_text(toml_text, encoding="utf-8")
+    state = load_operations_state(ops_path)  # raises if the escaping is wrong
+    assert state.baseline_entries[0].target_file == 'weird "name"\\dir/â.py'
+
+
+def test_emit_baseline_empty_report_is_a_valid_empty_baseline(tmp_path: Path) -> None:
+    toml_text = build_baseline_operations({"findings": []})
+    ops_path = tmp_path / "ops.toml"
+    ops_path.write_text(toml_text, encoding="utf-8")
+    state = load_operations_state(ops_path)
+    assert state.baseline_entries == ()
+
+
+def test_emit_baseline_is_deterministic() -> None:
+    report = {
+        "findings": [
+            {"fingerprint": "fp-b", "ci_id": "CI-21", "target_file": "b.py"},
+            {"fingerprint": "fp-a", "ci_id": "CI-03", "target_file": "a.py"},
+        ]
+    }
+    first = build_baseline_operations(report)
+    assert first == build_baseline_operations(report)
+    # sorted by target_file, so a.py precedes b.py regardless of input order
+    assert first.index("a.py") < first.index("b.py")

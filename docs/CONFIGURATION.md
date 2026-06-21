@@ -144,11 +144,12 @@ aci scan --target . --profile full --scope-mode full-repo --report-scope-class r
 aci emit-sarif --report report.json > aci.sarif    # SARIF 2.1.0 for code scanning
 aci emit-annotations --report report.json          # GitHub Actions annotations
 aci emit-github-summary --report report.json       # GitHub markdown summary
+aci emit-baseline --report report.json --output ops.toml  # accept current findings as a baseline
 aci validate-report --report report.json           # check against the report contract
 ```
 
 Report-view filters are available on `scan`, `emit-sarif`, `emit-annotations`,
-and `emit-github-summary`:
+`emit-github-summary`, and `emit-baseline`:
 
 ```bash
 --report-scope-class runtime-source
