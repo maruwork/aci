@@ -646,3 +646,37 @@ def test_sqlfluff_warning_violation_maps_to_low_severity(tmp_path: Path) -> None
     ])
     findings = execmod._sqlfluff_findings(stdout, tmp_path, 1)
     assert findings[0].severity == "low"
+
+
+def test_borrowed_lane_skip_sets_cover_the_generated_path_policy() -> None:
+    # Drift guard: every borrowed analyzer must skip at least what the native
+    # lane skips (caches, build output, vendored third-party trees). The native
+    # and eslint lanes each needed a separate vendored-exclusion fix precisely
+    # because these per-lane sets had drifted from the single policy; deriving
+    # them from DEFAULT_GENERATED_PATH_SEGMENTS keeps them aligned for good.
+    from aci._scan_scope import DEFAULT_GENERATED_PATH_SEGMENTS
+
+    for name, skip_set in (
+        ("python", cmdmod._PYTHON_ANALYZER_SKIP_SEGMENTS),
+        ("semgrep", cmdmod._SEMGREP_SKIP_SEGMENTS),
+        ("eslint", cmdmod._ESLINT_SKIP_SEGMENTS),
+    ):
+        missing = DEFAULT_GENERATED_PATH_SEGMENTS - skip_set
+        assert not missing, f"{name} lane no longer skips generated/vendored segments: {sorted(missing)}"
+
+
+def test_python_file_discovery_excludes_vendored_third_party(tmp_path: Path) -> None:
+    # mypy/codeql build their file list from _find_python_files; it must not hand
+    # them bundled third-party code, which would waste the analyzer budget (and
+    # on a large _vendor/ tree could time the analyzer out, starving the
+    # project's own code of findings).
+    (tmp_path / "own.py").write_text("x = 1\n", encoding="utf-8")
+    for vendor_dir in ("_vendor", "vendor", "third_party", "site-packages"):
+        sub = tmp_path / vendor_dir
+        sub.mkdir()
+        (sub / "dep.py").write_text("y = 2\n", encoding="utf-8")
+
+    discovered = {Path(f).name for f in cmdmod._find_python_files(tmp_path)}
+    parents = {Path(f).parent.name for f in cmdmod._find_python_files(tmp_path)}
+    assert "own.py" in discovered
+    assert not (parents & {"_vendor", "vendor", "third_party", "site-packages"}), parents
