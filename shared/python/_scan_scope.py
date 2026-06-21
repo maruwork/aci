@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from pathlib import PurePosixPath
+import re
 import subprocess
 
 try:
@@ -352,6 +353,77 @@ def _git_changed_files(target_root: Path, ref: str) -> frozenset[str]:
         except ValueError:
             pass  # changed file is outside target_root; skip
     return frozenset(changed)
+
+
+_DIFF_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+
+
+def _git_changed_lines(target_root: Path, ref: str) -> dict[str, set[int]]:
+    """Return target-root-relative POSIX path -> set of changed (added) line numbers.
+
+    Runs ``git diff --unified=0 <ref> --`` and parses each hunk header, so a
+    finding can be scoped to the lines a change actually touched rather than to
+    the whole changed file. Same git-root normalization and error handling as
+    ``_git_changed_files``; raises ValueError on git/ref problems.
+    """
+    try:
+        diff_result = subprocess.run(
+            ["git", "diff", "--unified=0", ref, "--"],
+            cwd=target_root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+        )
+        toplevel_result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=target_root,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except FileNotFoundError as exc:
+        raise ValueError("git is not available on PATH; --diff-from requires a git installation") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError(f"git diff timed out for ref {ref!r} in {target_root}") from exc
+    if diff_result.returncode != 0:
+        detail = diff_result.stderr.strip() or "no stderr"
+        raise ValueError(f"git diff --unified=0 {ref!r} failed in {target_root}: {detail}")
+    git_root = (
+        Path(toplevel_result.stdout.strip()).resolve()
+        if toplevel_result.returncode == 0
+        else target_root.resolve()
+    )
+    target_abs = target_root.resolve()
+    changed: dict[str, set[int]] = {}
+    current_rel: str | None = None
+    for line in diff_result.stdout.splitlines():
+        if line.startswith("+++ "):
+            raw = line[4:].strip()
+            if raw == "/dev/null":
+                current_rel = None
+                continue
+            if raw.startswith("b/"):
+                raw = raw[2:]
+            abs_path = git_root / raw
+            try:
+                current_rel = abs_path.relative_to(target_abs).as_posix()
+            except ValueError:
+                current_rel = None
+            continue
+        if current_rel is None:
+            continue
+        match = _DIFF_HUNK_RE.match(line)
+        if match:
+            start = int(match.group(1))
+            count = int(match.group(2) or "1")
+            if count == 0:
+                # a pure deletion hunk; attribute to the surrounding line
+                changed.setdefault(current_rel, set()).add(start)
+            else:
+                changed.setdefault(current_rel, set()).update(range(start, start + count))
+    return changed
 
 def _iter_target_files(
     target_root: Path,

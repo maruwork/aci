@@ -162,25 +162,32 @@ _KNOWN_LIMITS: tuple[dict[str, object], ...] = (
         "summary": (
             "The in-repo validation scorecard reports 100% recall / 0 false "
             "positives, but that is on fixtures authored alongside the detectors. "
-            "On a human-labeled field corpus of mature third-party packages "
-            "(126 native findings; see examples/aci-field-precision/), measured "
-            "detection precision was ~76% overall, and only ~4% of findings were "
-            "review-worthy on that mature code. CI-04 (god class) was the weakest "
-            "at 0% (its cohesion clustering mislabels large-but-cohesive "
-            "visitor/parser/registry/value-object classes), with CI-05 (~40%) and "
-            "CI-22 (~50%) next; CI-14/CI-18/CI-03 measured ~100%."
+            "Two human-labeled field corpora (see examples/aci-field-precision/) "
+            "measure real-code behaviour. On 10 mature third-party libraries "
+            "(276 findings) detection precision was ~70% and only ~3% of findings "
+            "were review-worthy. On 6 actively-developed projects (207 findings) "
+            "precision was ~73% and ~36% were review-worthy -- about 12x the "
+            "mature rate. So review-worthiness depends heavily on code maturity: "
+            "ACI is mostly noise on a finished library and genuinely useful on "
+            "code under active change. CI-04 (god class) is the weakest detector "
+            "(0% on 21 mature findings; its cohesion clustering mislabels "
+            "large-but-cohesive classes); CI-20, CI-07, CI-22 and CI-14 are also "
+            "FP-prone on mature code, while CI-02/CI-03/CI-18 measured ~95-100%."
         ),
         "operator_guidance": (
             "Treat native structural findings as review candidates, not verdicts. "
             "Be especially skeptical of CI-04 on idiomatic many-method classes, "
-            "and of CI-05/CI-22 on boilerplate and caller-managed resources. On "
-            "mature, well-reviewed code most true positives are idiomatic and not "
-            "worth acting on; expect a higher actionable share on first-party "
-            "code under active change."
+            "and of CI-05/CI-22 on boilerplate and caller-managed resources. "
+            "Review-worthiness is much higher on code under active development "
+            "(~50% measured) than on mature, finished code (~4%), where most true "
+            "positives are idiomatic; weigh a clean or noisy result against the "
+            "maturity of the scanned code."
         ),
         "source_refs": [
             "examples/aci-field-precision/README.md",
             "examples/aci-field-precision/labels.json",
+            "examples/aci-field-precision/dev-code/README.md",
+            "examples/aci-field-precision/dev-code/labels.json",
             "shared/tools/aci_precision_benchmark.py",
             "shared/tools/aci_corpus_harness.py",
         ],

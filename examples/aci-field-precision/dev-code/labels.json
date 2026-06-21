@@ -1,0 +1,1244 @@
+[
+ {
+  "fingerprint": "277c65a83ab32aaa",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "d2aa836a9b78ee45",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "24ab3de4510815f9",
+  "ci_id": "CI-02",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "1d3d4c322e21ccec",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "fe8c6efa32f91c78",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "fe4bd9b4856bb2ca",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "0eac9ee8fb8aee1c",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "dfc2183fc402fefd",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "5a39f8b8105ac8bd",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "f09ddada945cd85e",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "d96278cfd370df4f",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "7aec236fa8965c7d",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "48d70ef9cbaf001b",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "bf81f632a9d6ba55",
+  "ci_id": "CI-07",
+  "label": "false-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "342906234c8d9f25",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "bfc32d432d5c09ef",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "5012acaf1b47eab6",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "83a14d3032cdc721",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "8b86cdc03c443529",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "5dea1e44a32de06a",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "4ef5c2895f17d862",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "95dbce6a30ef5979",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "93046fb82f2e46c4",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4b2fbe00e2e08d40",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4628c005b80df81d",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a5424865459a216b",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "89be080558f4b5c5",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "221242825e5e3d98",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "2bef23f782ba9535",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "de2fd6058cecf041",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "4ebce967bfc1f347",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "ecd07d0e64f1d89e",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "64799f0099f3ee6f",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "9bc0e0dda9b57503",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "10dbff9793da26e1",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "3d5d24b66afc1ef9",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "1c8c9a5d9b247ec8",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "4fc74db933f3f499",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "ea9e6a03d51c7f95",
+  "ci_id": "CI-07",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "df4ebf8ae6bd3c4f",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e7911ac1d656733f",
+  "ci_id": "CI-14",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "03059e72c5b85215",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4df316cab59ca2d2",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "0ba47b13be6e3eab",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f5040e9d25747535",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "354f73902f58cd1c",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "8223d75d8f0e7cc8",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "410f6e99c7dc3f33",
+  "ci_id": "CI-22",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e23012b9bcbc1310",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c495a606339612fa",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f472b3e5449c99ee",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a38aa27b3efc96e1",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "b3dda2ae4a90031a",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "6182a51e4561919c",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "fc1baa2019da36a9",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "607d14d24719204f",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "a4e3526d1804a075",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "6df7c38a9425b6ae",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "8e33ac21c3ac902d",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "ae89e683f7329fcc",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "b57e18d6893cb443",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "afdb5bbc3bce7388",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "6d5cd4c108a93f57",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "30941437a4bae91d",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "ac862d238481a7db",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "30683654047c1fa7",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "a30eb9478b4ba607",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "549fa3cebe378de6",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "e69526761ab98faa",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "be66440bae768123",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "ffa622f5b0e8a920",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "97c5e03f6a24efde",
+  "ci_id": "CI-02",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "38a618d21ef472cc",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "9eca1e968ade9bce",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "8c724af10fed34f4",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "1e0dbb4670a36606",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "87a9bd27dd075ff2",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "9caf0ad40e67fc99",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "3e8c3488601a1ce1",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "ba16a566b741bbac",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "f1eb2e2bfea31d7d",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "27e33fbb0fbb9c69",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "f0c990716cf7d659",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "86a6ca9dd6572bfe",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "7257a870f24f742e",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "e66a7e0c34cc1f3e",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "048049704ba6dae5",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "b8fa9a95fe65f59c",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "ca812db719d75971",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "4022dec86e409d64",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "5a8aea2016c397fd",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "f3196ddae3a11df4",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "29ac9e3a8654b010",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "d5b5f2f3e784f891",
+  "ci_id": "CI-03",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "d8b922de1ce5fb88",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "edf27fd38ec00161",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "6c97ebf8a815d116",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "71469c5d1ce8b7eb",
+  "ci_id": "CI-04",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "a05f3f2b904fbf89",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "cd81ab51d1cd4282",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4ff5e2a07e535276",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "265122db989f243d",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f4bca0429038eecd",
+  "ci_id": "CI-04",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "9d5f54e7e71d89af",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "faac3c89ecc57096",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "b4e23c6b8c8b9509",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "ef8c3744ebe732d1",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "03ce7e20544bde44",
+  "ci_id": "CI-04",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "40c88fe139541a28",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "83361bd5941f9c5e",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c6425b1af7990f17",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "6b865a4f3fe08387",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "d6a617fec15552ed",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "ceea5503bad35511",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "be73e65a5201d3f8",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "27d7d9f36bfbb82c",
+  "ci_id": "CI-04",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "00f8e9dc42b7fa02",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "82730f251b4000ff",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "916e7acd06fd9abc",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4361d34b72c0fa95",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c86cc093bc9f22cb",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a2ba58be7e243786",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "970e4972e964e072",
+  "ci_id": "CI-05",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "13850e21a8aa2620",
+  "ci_id": "CI-05",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "bc3960d3c8ac72fc",
+  "ci_id": "CI-05",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4506cba058da6e5c",
+  "ci_id": "CI-05",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "71a7e4e22301161d",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f4928c998c7094fa",
+  "ci_id": "CI-05",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "986edc09e0166972",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "d7ae9a37cd82e573",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e51cb2f963b586f6",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "6123b2d3e7c3d753",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "bf16a2cdfe7430ef",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "51da8f800f0f1815",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a609e03106a5af9c",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "01ac8d1bc210926f",
+  "ci_id": "CI-05",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "68e3072e49dc0d07",
+  "ci_id": "CI-05",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e3e54746be3bd72b",
+  "ci_id": "CI-05",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a61f7c756dba6e75",
+  "ci_id": "CI-06",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "8be7598c3ad4f143",
+  "ci_id": "CI-06",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "5c24e4596f3fcca1",
+  "ci_id": "CI-06",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "0ea5d7738f04702d",
+  "ci_id": "CI-06",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "038606d9e05f8380",
+  "ci_id": "CI-12",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "8513b2148411a347",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "705605bfcfb71017",
+  "ci_id": "CI-14",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "735a0f6d3e59ec78",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "de1f3f5efdf5fc6b",
+  "ci_id": "CI-14",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a5f8e78cb3f3c7f1",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "9eaee9e52f257ff6",
+  "ci_id": "CI-14",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f525d0699dae2f24",
+  "ci_id": "CI-14",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "5c3725991ec91d39",
+  "ci_id": "CI-14",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "d3d9e41c6c10f8cb",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "783806efb439bb5b",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "fc76412f14b2a872",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "9899e4e178b2303a",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "bd28afd214596860",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "1a24e2675a0c17e1",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "d7a4e45e29e8d3de",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "26081f25383a2977",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "1e15ff77cb408310",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "2a20f1124554ff25",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "d162370d5b2b0326",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c5859266049ca6d0",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e7fbe889d4344512",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "690fb2ff5a69ee77",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c8ebbc163b0fa7a5",
+  "ci_id": "CI-18",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "6471fbc93a4c0f83",
+  "ci_id": "CI-20",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4b3d71829ee43b51",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "a0b57b29725395c8",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "52b3b34eafa7e1d5",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c2689a25c3eb7fb6",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "19fb40c754e67bf1",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4616638b3434a0d1",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "3b987cd3836dd1d2",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e20dcd56453af692",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "3ee76690cfbb141f",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "227c98a826ab655d",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "26603da658403847",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "8df208da2c02d3f7",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "5bb12c6a15d6e90d",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "aad2770dc12574b9",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "9aea798f161cb5c6",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "c989fe492e51afb4",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f23a662eff6b04d7",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": true
+ },
+ {
+  "fingerprint": "1c86eb97168974be",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "f683ea07f517e470",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "aea517e7089889fd",
+  "ci_id": "CI-21",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "cb5de59a98bec2cb",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "4c7f2827ccfd009f",
+  "ci_id": "CI-21",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "bc123f565c84b409",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "14be2f93b1162704",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "6adcb7167f9fe665",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "75c15c1a07b3e852",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "23771783b7fea92c",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "b34f7208b33e3506",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e9a8f88d3becaab3",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "b07e4406b9db86f3",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "60a0d28f4c9a2b97",
+  "ci_id": "CI-22",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e78f0791e5e6413f",
+  "ci_id": "CI-23",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "9fbda00e9543a930",
+  "ci_id": "CI-23",
+  "label": "false-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "765f3a4b617db55b",
+  "ci_id": "CI-23",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "66d174809fd5c63b",
+  "ci_id": "CI-23",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "7c9954a559f03d7b",
+  "ci_id": "CI-23",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "e148404a2dd76a85",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "2e13872df422d675",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "c9ef5a9ed9119e45",
+  "ci_id": "CI-25",
+  "label": "true-positive",
+  "review_worthy": false
+ },
+ {
+  "fingerprint": "cd1b0bdf0b9a0138",
+  "ci_id": "CI-26",
+  "label": "true-positive",
+  "review_worthy": false
+ }
+]
