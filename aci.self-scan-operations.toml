@@ -1,0 +1,16 @@
+# ACI baseline -- generated from a scan report by `aci emit-baseline`.
+# Each entry accepts a finding as pre-existing; future scans report only
+# NEW findings. Identity is the fingerprint (stable across line shifts), so
+# no line numbers are stored here. Remove an entry once its finding is
+# fixed -- ACI then reports it as resolved on the next scan.
+[baseline]
+entries = [
+  # _iter_pep621_dependency_specs: depth-5 nesting mirrors the literal depth of
+  # the PEP 621 TOML schema (project → optional-dependencies → group → item).
+  # Splitting the traversal across functions would fragment a single-purpose parse.
+  { fingerprint = "edcbbddad0c4eb15", ci_id = "CI-02", target_file = "detectors/ci_14.py" },
+  # _collect_tainted_names: fixpoint dataflow over an AST walk has an irreducible
+  # structure: while-convergence × for-walk × if-dispatch × for-targets.
+  # The nesting is the algorithm — not incidental tangling.
+  { fingerprint = "fea6bd94c9a930d5", ci_id = "CI-02", target_file = "detectors/ci_14_taint.py" },
+]

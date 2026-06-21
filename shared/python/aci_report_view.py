@@ -278,6 +278,37 @@ def _build_residuals(findings: list[dict[str, object]]) -> list[dict[str, object
     return rows
 
 
+def _gate_fail_reasons(
+    *,
+    blockers: list[dict[str, object]],
+    new_findings: list[dict[str, object]],
+    unreviewed: list[dict[str, object]],
+    analyzer_failures: list[dict[str, object]],
+    fail_on_new_findings: bool,
+    fail_on_unreviewed_review_required: bool,
+    fail_on_analyzer_errors: bool,
+) -> tuple[list[str], list[dict[str, object]]]:
+    reasons: list[str] = []
+    details: list[dict[str, object]] = []
+    if blockers:
+        reasons.append("severity-threshold")
+        details.append({"reason": "severity-threshold", "count": len(blockers),
+                        "finding_ids": [str(i.get("finding_id") or "") for i in blockers]})
+    if fail_on_new_findings and new_findings:
+        reasons.append("new-findings-present")
+        details.append({"reason": "new-findings-present", "count": len(new_findings),
+                        "finding_ids": [str(i.get("finding_id") or "") for i in new_findings]})
+    if fail_on_unreviewed_review_required and unreviewed:
+        reasons.append("unreviewed-review-required")
+        details.append({"reason": "unreviewed-review-required", "count": len(unreviewed),
+                        "finding_ids": [str(i.get("finding_id") or "") for i in unreviewed]})
+    if fail_on_analyzer_errors and analyzer_failures:
+        reasons.append("analyzer-runtime-error")
+        details.append({"reason": "analyzer-runtime-error", "count": len(analyzer_failures),
+                        "analyzers": [str(i.get("analyzer_id") or "") for i in analyzer_failures]})
+    return reasons, details
+
+
 def _build_gate(
     findings: list[dict[str, object]],
     report: dict[str, object],
@@ -288,24 +319,18 @@ def _build_gate(
     source_gate = _report_map(report.get("gate"))
     severity_threshold = str(source_gate.get("severity_threshold") or SEVERITY_HIGH)
     threshold_rank = _SEVERITY_RANK.get(severity_threshold, _SEVERITY_RANK[SEVERITY_HIGH])
-    blocking_severities = [
-        severity for severity, rank in _SEVERITY_RANK.items() if rank >= threshold_rank
-    ]
-    fail_on_new_findings = bool(source_gate.get("fail_on_new_findings", False))
-    fail_on_unreviewed_review_required = bool(
-        source_gate.get("fail_on_unreviewed_review_required", False)
-    )
-    fail_on_analyzer_errors = bool(source_gate.get("fail_on_analyzer_errors", False))
-    gated_findings = [
-        item for item in findings if _row_scope_class(item) in gate_scope_classes
-    ]
+    blocking_severities = [s for s, r in _SEVERITY_RANK.items() if r >= threshold_rank]
+    fail_on_new = bool(source_gate.get("fail_on_new_findings", False))
+    fail_on_unreviewed = bool(source_gate.get("fail_on_unreviewed_review_required", False))
+    fail_on_errors = bool(source_gate.get("fail_on_analyzer_errors", False))
+    gated = [item for item in findings if _row_scope_class(item) in gate_scope_classes]
     new_findings = [
-        item for item in gated_findings
+        item for item in gated
         if str(item.get("baseline_status") or "") == "new"
         and str(item.get("waiver_status") or "none") == "none"
     ]
     unreviewed = [
-        item for item in gated_findings
+        item for item in gated
         if str(item.get("owner_lane") or "") == LANE_HUMAN_JUDGMENT
         and str(item.get("baseline_status") or "") == "new"
         and str(item.get("waiver_status") or "none") == "none"
@@ -315,48 +340,12 @@ def _build_gate(
         item for item in analyzer_runs
         if str(item.get("runtime_state") or "") not in _NON_FAILING_ANALYZER_RUNTIME_STATES
     ]
-    reasons: list[str] = []
-    if blockers:
-        reasons.append("severity-threshold")
-    if fail_on_new_findings and new_findings:
-        reasons.append("new-findings-present")
-    if fail_on_unreviewed_review_required and unreviewed:
-        reasons.append("unreviewed-review-required")
-    if fail_on_analyzer_errors and analyzer_failures:
-        reasons.append("analyzer-runtime-error")
-    reason_details: list[dict[str, object]] = []
-    if blockers:
-        reason_details.append(
-            {
-                "reason": "severity-threshold",
-                "count": len(blockers),
-                "finding_ids": [str(item.get("finding_id") or "") for item in blockers],
-            }
-        )
-    if fail_on_new_findings and new_findings:
-        reason_details.append(
-            {
-                "reason": "new-findings-present",
-                "count": len(new_findings),
-                "finding_ids": [str(item.get("finding_id") or "") for item in new_findings],
-            }
-        )
-    if fail_on_unreviewed_review_required and unreviewed:
-        reason_details.append(
-            {
-                "reason": "unreviewed-review-required",
-                "count": len(unreviewed),
-                "finding_ids": [str(item.get("finding_id") or "") for item in unreviewed],
-            }
-        )
-    if fail_on_analyzer_errors and analyzer_failures:
-        reason_details.append(
-            {
-                "reason": "analyzer-runtime-error",
-                "count": len(analyzer_failures),
-                "analyzers": [str(item.get("analyzer_id") or "") for item in analyzer_failures],
-            }
-        )
+    reasons, reason_details = _gate_fail_reasons(
+        blockers=blockers, new_findings=new_findings, unreviewed=unreviewed,
+        analyzer_failures=analyzer_failures, fail_on_new_findings=fail_on_new,
+        fail_on_unreviewed_review_required=fail_on_unreviewed,
+        fail_on_analyzer_errors=fail_on_errors,
+    )
     return {
         "decision": "fail" if reasons else "pass",
         "blocking_severities": blocking_severities,
@@ -366,9 +355,9 @@ def _build_gate(
         "reasons": reasons,
         "reason_details": reason_details,
         "severity_threshold": severity_threshold,
-        "fail_on_new_findings": fail_on_new_findings,
-        "fail_on_unreviewed_review_required": fail_on_unreviewed_review_required,
-        "fail_on_analyzer_errors": fail_on_analyzer_errors,
+        "fail_on_new_findings": fail_on_new,
+        "fail_on_unreviewed_review_required": fail_on_unreviewed,
+        "fail_on_analyzer_errors": fail_on_errors,
     }
 
 
