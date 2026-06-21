@@ -866,6 +866,50 @@ def test_diff_scan_does_not_falsely_resolve_unscanned_baseline(tmp_path: Path, m
     assert report["summary"]["resolved_baseline_count"] == 0, "unscanned baseline findings must not be reported resolved"
 
 
+def test_baseline_lifecycle_survives_a_real_edit_cycle(tmp_path: Path) -> None:
+    # The central operations workflow, end to end: scan -> build a baseline from
+    # the emitted fingerprints -> edit the code (drift existing findings, fix one,
+    # add a new one) -> rescan with the baseline. This is the guarantee the
+    # "only new issues" review depends on, and the source of three earlier
+    # defects; it ties fingerprint stability to operations matching in one test.
+    # The eval(...) strings below are fixture text written to disk for the CI-14
+    # detector to flag; they are never executed by this test.
+    _write(
+        tmp_path / "svc.py",
+        "def a():\n    try:\n        pass\n    except Exception:\n        pass\n\n\ndef b():\n    eval(\"1 + 1\")\n",
+    )
+    _write(tmp_path / "util.py", "def c():\n    try:\n        pass\n    except Exception:\n        pass\n")
+
+    first = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False)["findings"]
+    assert len(first) == 3, f"fixture must seed exactly three findings: {[f['signal'] for f in first]}"
+    # A naive maintainer copies every field the report shows, line number included.
+    entries = ", ".join(
+        '{ fingerprint = "%s", ci_id = "%s", target_file = "%s", line = %d }'
+        % (f["fingerprint"], f["ci_id"], f["target_file"].replace("\\", "\\\\"), f["line"])
+        for f in first
+    )
+    ops = tmp_path / "ops.toml"
+    ops.write_text("[baseline]\nentries = [%s]\n" % entries, encoding="utf-8")
+
+    # Edit: drift svc.py down two lines, append a brand-new eval, fix util.py.
+    svc = (tmp_path / "svc.py").read_text(encoding="utf-8")
+    _write(tmp_path / "svc.py", "# header 1\n# header 2\n" + svc + "\n\ndef d():\n    eval(\"2 + 2\")\n")
+    _write(tmp_path / "util.py", "import os\n\n\ndef c():\n    try:\n        pass\n    except ValueError:\n        os.getpid()\n")
+
+    rescan = scan_target(tmp_path, "full", "core-only", operations_file=ops, include_external_analyzers=False)
+    by_status: dict[str, list[int]] = {}
+    for f in rescan["findings"]:
+        by_status.setdefault(f["baseline_status"], []).append(f["line"])
+
+    # The two drifted svc.py findings keep their identity despite the line shift.
+    assert len(by_status.get("existing-baseline", [])) == 2, f"drifted baseline findings re-surfaced: {by_status}"
+    # The appended eval is genuinely new.
+    assert len(by_status.get("new", [])) == 1, f"new finding not flagged: {by_status}"
+    # The fixed util.py finding is reported resolved (candidate for baseline removal).
+    resolved = {e["target_file"].replace("\\", "/") for e in rescan["resolved_baseline_entries"]}
+    assert resolved == {"util.py"}, f"fixed finding not reported resolved: {resolved}"
+
+
 @pytest.mark.skipif(shutil.which("ruff") is None, reason="ruff not installed")
 def test_external_findings_are_scoped_in_diff_mode(tmp_path: Path, monkeypatch) -> None:
     # The borrowed lanes carry most of ACI's detection power; they must obey
