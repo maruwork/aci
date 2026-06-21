@@ -765,6 +765,21 @@ def _execute_analyzer_command(
     return completed, None
 
 
+# A borrowed tool's output is not ACI's to control: a version bump can keep the
+# JSON well-formed yet shift its shape (a renamed key, a null where a table was,
+# a list that became an object). Any such structural mismatch is a parse-failure
+# for that one analyzer — recorded as runtime_state "parse-failure" with the
+# tool's output preserved — and must never crash the whole scan and take the
+# native findings down with it. Used at every analyzer-output parse site so the
+# three lanes (stdout JSON, gitleaks report, codeql SARIF) stay consistent.
+_ANALYZER_PARSE_ERRORS: tuple[type[Exception], ...] = (
+    json.JSONDecodeError, KeyError, TypeError, AttributeError, ValueError, IndexError,
+)
+# codeql additionally reads its SARIF from a file, so its parse site also tolerates
+# the file-read error alongside the structural-drift set.
+_SARIF_READ_PARSE_ERRORS: tuple[type[Exception], ...] = (OSError,) + _ANALYZER_PARSE_ERRORS
+
+
 def _parse_analyzer_findings(
     analyzer_id: str,
     stdout: str,
@@ -795,7 +810,7 @@ def _parse_analyzer_findings(
             return _osv_scanner_findings(stdout, target_root, next_id), True
         if analyzer_id == "trivy":
             return _trivy_findings(stdout, target_root, next_id), True
-    except json.JSONDecodeError:
+    except _ANALYZER_PARSE_ERRORS:
         return [], False
     return [], True
 
@@ -834,7 +849,7 @@ def _run_gitleaks(target_root: Path, next_id: int) -> AnalyzerRunResult:
         try:
             findings = _gitleaks_findings(report_text, target_root, next_id)
             parse_ok = True
-        except json.JSONDecodeError:
+        except _ANALYZER_PARSE_ERRORS:
             findings, parse_ok = [], False
         ok, runtime_state = _evaluate_analyzer_outcome("gitleaks", completed.returncode, parse_ok)
         return AnalyzerRunResult(
@@ -884,7 +899,7 @@ def _run_codeql(target_root: Path, next_id: int) -> AnalyzerRunResult:
             try:
                 sarif_text = sarif_path.read_text(encoding="utf-8") if sarif_path.exists() else "{}"
                 findings.extend(_codeql_findings(sarif_text, target_root, next_id + len(findings)))
-            except (OSError, json.JSONDecodeError):
+            except _SARIF_READ_PARSE_ERRORS:
                 continue
         runtime_state = VERIFICATION_EXECUTED if ran else "runtime-failure"
         return AnalyzerRunResult(
