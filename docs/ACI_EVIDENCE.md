@@ -172,6 +172,29 @@ Both "only new issues" paths — diff mode (§2e) and baseline (here) — were b
 by the same root cause: encoding a finding's identity by line number. Both are
 now line-shift-stable.
 
+### 2g. diff × baseline interaction — a third defect, found by running the real workflow
+
+Edge-case inspection found nothing more; running the *combined* workflow did.
+Simulating real adoption — establish a baseline on `textual`, then walk ~10 real
+commits in `--diff-from` + baseline mode — surfaced an interaction defect: each
+diff scan reported **353 of 354 baseline findings as "resolved"**. A diff scan
+only examines changed files, but resolution was computed against the *whole*
+baseline, so every baseline finding in an untouched file looked "gone".
+
+Fix: bound resolution to the files the scan actually examined
+(`find_resolved_baseline_entries(..., scanned_files=...)`). A whole-repo scan is
+unchanged (all files examined); a diff scan no longer claims findings in
+unscanned files are resolved. After the fix the same walk reports 0–1 resolved
+per commit (only genuine removals in changed files), and pre-existing findings on
+changed code are correctly marked `existing-baseline`, not re-flagged as new.
+Locked by `test_resolved_baseline_is_bounded_to_scanned_files` and
+`test_diff_scan_does_not_falsely_resolve_unscanned_baseline`.
+
+Three defects total (§2e diff scope, §2f fingerprint stability, this), all in the
+"only new issues" workflow, none caught by a green unit-test suite — each surfaced
+only by exercising the actual intended use, and the third only by exercising two
+features *together*.
+
 ## 3. Multi-language source→sink taint, precision-gated
 
 The default scan carries a **closed** semgrep taint-mode baseline (JavaScript +
