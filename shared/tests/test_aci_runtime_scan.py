@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 import aci.aci_analyzer_execution as execmod
 from aci.aci_github_summary import build_github_summary_markdown
@@ -841,6 +844,22 @@ def test_diff_scan_does_not_falsely_resolve_unscanned_baseline(tmp_path: Path, m
         tmp_path, "full", "core-only", operations_file=ops, diff_from="HEAD~1", include_external_analyzers=False
     )
     assert report["summary"]["resolved_baseline_count"] == 0, "unscanned baseline findings must not be reported resolved"
+
+
+@pytest.mark.skipif(shutil.which("ruff") is None, reason="ruff not installed")
+def test_external_findings_are_scoped_in_diff_mode(tmp_path: Path, monkeypatch) -> None:
+    # The borrowed lanes carry most of ACI's detection power; they must obey
+    # change-aware diff scoping too, not just native findings.
+    _write(tmp_path / "m.py", "import os\n\n\ndef a():\n    return 1\n")  # ruff F401 unused-import at line 1
+    monkeypatch.setattr("aci.aci_scan._git_changed_files", lambda root, ref: frozenset(["m.py"]))
+
+    monkeypatch.setattr("aci.aci_scan._git_changed_lines", lambda root, ref: {"m.py": {1}})
+    on_change = scan_target(tmp_path, "full", "core-only", include_external_analyzers=True, diff_from="HEAD~1")
+    assert any(f["signal"] == "EXT_RUFF" for f in on_change["findings"]), "external finding on a changed line must surface"
+
+    monkeypatch.setattr("aci.aci_scan._git_changed_lines", lambda root, ref: {"m.py": {5}})
+    off_change = scan_target(tmp_path, "full", "core-only", include_external_analyzers=True, diff_from="HEAD~1")
+    assert not any(f["signal"] == "EXT_RUFF" for f in off_change["findings"]), "external finding off the change must be dropped"
 
 
 # ── suppression tests ──────────────────────────────────────────────────────
