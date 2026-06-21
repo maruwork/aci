@@ -219,6 +219,40 @@ def test_eslint_lane_runs_with_bundled_config(tmp_path: Path) -> None:
     assert any(f.ci_id == "CI-14" for f in js), "expected the no-eval finding mapped to CI-14"
 
 
+def test_eslint_skips_generated_and_minified_js() -> None:
+    # Real projects ship built JS (Next.js chunks, minified bundles). Linting
+    # those is meaningless and produced multi-megabyte output that failed to
+    # parse -- the lane must not trigger on generated-only JS, and must ignore
+    # minified files even when real source is present.
+    from aci._analyzer_commands import _has_eslint_source
+    import tempfile
+
+    only_generated = Path(tempfile.mkdtemp())
+    (only_generated / "_next").mkdir()
+    (only_generated / "_next" / "chunk.js").write_text("var a=1;eval('x')\n", encoding="utf-8")
+    (only_generated / "vendor.min.js").write_text("eval('y')\n", encoding="utf-8")
+    assert _has_eslint_source(only_generated) is False, "build-only JS must not trigger the eslint lane"
+
+    with_source = Path(tempfile.mkdtemp())
+    (with_source / "app.js").write_text("eval('z')\n", encoding="utf-8")
+    (with_source / "bundle.min.js").write_text("eval('w')\n", encoding="utf-8")
+    assert _has_eslint_source(with_source) is True, "a real source .js must still trigger the lane"
+
+
+@pytest.mark.skipif(shutil.which("eslint") is None, reason="eslint not installed")
+def test_eslint_lane_ignores_minified_files(tmp_path: Path) -> None:
+    from aci.aci_analyzer_execution import run_analyzer
+
+    (tmp_path / "app.js").write_text("function f(){ return eval('1') }\n", encoding="utf-8")
+    (tmp_path / "thing.min.js").write_text("function g(){ return eval('2') }\n", encoding="utf-8")
+    result = run_analyzer("eslint", tmp_path, 0)
+
+    assert result.runtime_state == "executed", f"eslint did not run: {result.stderr!r}"
+    flagged = {Path(f.target_file).name for f in result.findings if f.signal == "EXT_ESLINT"}
+    assert "app.js" in flagged
+    assert "thing.min.js" not in flagged, "minified file must be ignored by the bundled config"
+
+
 @pytest.mark.skipif(shutil.which("tsc") is None, reason="tsc not installed")
 def test_tsc_lane_treats_type_errors_as_findings(tmp_path: Path) -> None:
     from aci.aci_analyzer_execution import run_analyzer
