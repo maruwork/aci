@@ -755,6 +755,26 @@ def test_diff_from_falls_back_to_file_level_when_line_diff_fails(tmp_path: Path,
     assert any(f["signal"] == "CI21_BROAD_EXCEPTION_SWALLOW" for f in report["findings"]), "fallback must keep file-level findings"
 
 
+def test_diff_from_tolerates_deleted_file_in_changed_set(tmp_path: Path, monkeypatch) -> None:
+    # Reviewing a branch that deletes files: git reports the deleted path in the
+    # changed set, but it is gone from the working tree. The scan must not crash
+    # and must produce no finding for the vanished file — only the surviving
+    # changed file's findings remain.
+    _write(tmp_path / "kept.py", "def f():\n    try:\n        pass\n    except Exception:\n        pass\n")
+    monkeypatch.setattr(
+        "aci.aci_scan._git_changed_files", lambda root, ref: frozenset(["kept.py", "gone.py"])
+    )
+    monkeypatch.setattr(
+        "aci.aci_scan._git_changed_lines",
+        lambda root, ref: {"kept.py": {1, 2, 3, 4, 5}, "gone.py": {1, 2}},
+    )
+
+    report = scan_target(tmp_path, "full", "core-only", include_external_analyzers=False, diff_from="HEAD~1")
+    targets = {f["target_file"].replace("\\", "/") for f in report["findings"]}
+    assert any("kept.py" in t for t in targets), "the surviving changed file must still be scanned"
+    assert not any("gone.py" in t for t in targets), f"deleted file produced a finding: {targets}"
+
+
 def test_construct_spans_handles_async_and_decorated() -> None:
     from aci.aci_scan import _construct_spans
 
