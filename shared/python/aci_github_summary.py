@@ -3,10 +3,28 @@
 """GitHub-friendly markdown summary emitter for ACI reports."""
 from __future__ import annotations
 
+from typing import Callable
+
 try:
     from .aci_report_helpers import report_map as _report_map
 except ImportError:  # pragma: no cover - direct script/module import path
     from aci_report_helpers import report_map as _report_map  # type: ignore[no-redef]
+
+
+def _append_list_section(
+    lines: list[str],
+    items: object,
+    header: str,
+    row: Callable[[dict[str, object]], str],
+) -> None:
+    if not isinstance(items, list) or not items:
+        return
+    lines.append(f"### {header}")
+    lines.append("")
+    for item in items:
+        if isinstance(item, dict):
+            lines.append(row(item))
+    lines.append("")
 
 
 def build_github_summary_markdown(report: dict[str, object]) -> str:
@@ -41,51 +59,26 @@ def build_github_summary_markdown(report: dict[str, object]) -> str:
     if advisory_headline:
         lines.append(str(advisory_headline))
         lines.append("")
-    top_files = review_brief.get("top_files", [])
-    if isinstance(top_files, list) and top_files:
-        lines.append("### Hottest Files")
-        lines.append("")
-        for item in top_files:
-            if not isinstance(item, dict):
-                continue
-            lines.append(f"- `{item.get('name', '')}`: {item.get('count', 0)} finding(s)")
-        lines.append("")
-    top_signals = review_brief.get("top_signals", [])
-    if isinstance(top_signals, list) and top_signals:
-        lines.append("### Top Signals")
-        lines.append("")
-        for item in top_signals:
-            if not isinstance(item, dict):
-                continue
-            lines.append(f"- `{item.get('name', '')}`: {item.get('count', 0)}")
-        lines.append("")
-    advisory_scope_classes = review_brief.get("advisory_scope_classes", [])
-    if isinstance(advisory_scope_classes, list) and advisory_scope_classes:
-        lines.append("### Advisory Scope Classes")
-        lines.append("")
-        for item in advisory_scope_classes:
-            if not isinstance(item, dict):
-                continue
-            lines.append(f"- `{item.get('name', '')}`: {item.get('count', 0)}")
-        lines.append("")
-    analyzer_failures = review_brief.get("analyzer_failures", [])
-    if isinstance(analyzer_failures, list) and analyzer_failures:
-        lines.append("### Analyzer Failures")
-        lines.append("")
-        for item in analyzer_failures:
-            if not isinstance(item, dict):
-                continue
-            lines.append(f"- `{item.get('analyzer_id', '')}`: `{item.get('runtime_state', '')}`")
-        lines.append("")
-    analyzer_availability_notes = review_brief.get("analyzer_availability_notes", [])
-    if isinstance(analyzer_availability_notes, list) and analyzer_availability_notes:
-        lines.append("### Analyzer Availability Notes")
-        lines.append("")
-        for item in analyzer_availability_notes:
-            if not isinstance(item, dict):
-                continue
-            lines.append(f"- `{item.get('analyzer_id', '')}`: `{item.get('runtime_state', '')}`")
-        lines.append("")
+    _append_list_section(
+        lines, review_brief.get("top_files"), "Hottest Files",
+        lambda i: f"- `{i.get('name', '')}`: {i.get('count', 0)} finding(s)",
+    )
+    _append_list_section(
+        lines, review_brief.get("top_signals"), "Top Signals",
+        lambda i: f"- `{i.get('name', '')}`: {i.get('count', 0)}",
+    )
+    _append_list_section(
+        lines, review_brief.get("advisory_scope_classes"), "Advisory Scope Classes",
+        lambda i: f"- `{i.get('name', '')}`: {i.get('count', 0)}",
+    )
+    _append_list_section(
+        lines, review_brief.get("analyzer_failures"), "Analyzer Failures",
+        lambda i: f"- `{i.get('analyzer_id', '')}`: `{i.get('runtime_state', '')}`",
+    )
+    _append_list_section(
+        lines, review_brief.get("analyzer_availability_notes"), "Analyzer Availability Notes",
+        lambda i: f"- `{i.get('analyzer_id', '')}`: `{i.get('runtime_state', '')}`",
+    )
     # The non-exhaustiveness disclosure must travel with the human-facing summary,
     # not just the JSON report: this PR summary is where a reviewer forms the
     # judgement "ACI passed, the code is clean." A pass with zero findings is
