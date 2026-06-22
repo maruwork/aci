@@ -32,6 +32,7 @@ workspace/
 /docs/tasks/
 /docs/design/
 /docs/release/
+/docs/AUDIT_*.md
 
 # Developer-only AI control files — not published (see REPO_CONTENT_CLASSIFICATION)
 /AGENTS.md
