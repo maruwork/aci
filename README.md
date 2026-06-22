@@ -141,49 +141,37 @@ Analyzer execution bounded contract is in `shared/core/aci-analyzer-execution-co
 ### 1. Try the common shelf first
 
 ```bash
-python shared/python/aci_cli.py smoke
+aci scan --target .
 ```
 
 ```bash
-python shared/python/aci_cli.py show-analyzer-catalog
+aci smoke
 ```
 
-```bash
-python shared/python/aci_cli.py show-profile-catalog
-```
+The core baseline workflow — scan, accept known findings, re-scan for new ones only:
 
 ```bash
-python shared/python/aci_cli.py show-analyzer-availability
-python shared/python/aci_cli.py show-profile-execution-plan
+aci scan --target . --output report.json
+aci emit-baseline --report report.json --output aci.operations.toml
+aci scan --target . --operations-file aci.operations.toml
+```
+
+To inspect available analyzers and profiles:
+
+```bash
+aci show-analyzer-catalog
+aci show-analyzer-availability
+aci show-profile-execution-plan
 ```
 
 Maintainers who want the continuously verified Python analyzer set should install:
 
 ```bash
-python -m pip install -r requirements-dev-analyzers.txt
+pip install -r requirements-dev-analyzers.txt
 ```
-
-```bash
-python shared/python/aci_cli.py emit-github-summary --report report.json
-```
-
-```bash
-python shared/python/aci_cli.py installed-package-check
-```
-
-```bash
-python shared/python/aci_cli.py self-audit-check
-```
-
-This smoke check verifies only:
-
-- `aci core only` (domain packs are optional — load with `--domain <id>`)
-- normalized finding emission
 
 For full install verification (automation-smoke, fixture-check, installed-package-check), see `shared/runtime/aci-ci-and-automation-contract.md`.
 For the dedicated ACI self-audit surface, see `shared/runtime/aci-self-audit-contract.md`.
-For scale budgets and multi-OS verification, see `shared/runtime/aci-scale-and-platform-contract.md`.
-For human-labeled precision review preparation, see `docs/PRECISION_REVIEW_WORKFLOW.md`.
 
 ### 2. Next reading
 
@@ -257,40 +245,19 @@ Editable install proof surface: `shared/runtime/aci-editable-install-proof-contr
 Built wheel proof surface: `shared/runtime/aci-built-wheel-install-proof-contract.md`.
 Source distribution proof surface: `shared/runtime/aci-source-distribution-proof-contract.md`.
 
-## Usage
-
-1. substitute placeholders in the generic code with project-specific paths, scopes, and surfaces to create a runtime copy
-2. bring in templates from `shared/runtime/templates/` and `shared/report/templates/`
-3. replace only the project-specific paths, scopes, surfaces, and result writeback targets
-4. verify expected behavior against samples in `shared/report/examples/`
-
 ## Downstream Adoption
 
 Carry/customize boundary for downstream maintainers: `docs/ACI_DOWNSTREAM_ADOPTION_PACKET.md`.
 
-## Repository Community Files
+## Where to Get Help
 
-- `SUPPORT.md`
-- `.github/ISSUE_TEMPLATE/`
-- `.github/PULL_REQUEST_TEMPLATE.md`
-- `.github/CODEOWNERS`
+- `SUPPORT.md` — support policy and issue reporting
+- `.github/ISSUE_TEMPLATE/` — bug reports and feature requests
+- `docs/QUICKSTART.md` — step-by-step first scan guide
 
-## Rules for the Generic Shelf
+## Contributing
 
-- Do not assume specific project import paths
-- Do not hardcode specific project or tool names in signal rules
-- Do not place operational artifacts such as current registers, operator manuals, or validation results
-
-## What Not to Write
-
-- project-specific current registers
-- project-specific operator manuals
-- project-specific validation records
-
-## Return Point
-
-- To return to the entry point of this shelf: `README.md`
-- When reading as a standalone repo, start from this `README.md`
+See `CONTRIBUTING.md` and `.github/CODEOWNERS` for contribution guidelines and ownership.
 
 ## Domain Pack Bridge Documents
 
