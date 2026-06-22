@@ -83,7 +83,7 @@ The completed common-shelf product claim is intentionally bounded:
 - Python gets the full native structural lane
 - non-Python files get text scans plus applicable external analyzers
 - `CI-08`, `CI-11`, and `CI-24` remain human-judgment-only
-- deep dependency/vulnerability scanners `osv-scanner` and `trivy` now have execution-ready adapters (opt-in install, JSON normalized into CI-14); `codeql` and `gitleaks` stay opt-in/cataloged until the common shelf owns adapters for their database-build / file-report execution models
+- all 13 cataloged analyzers have execution-ready adapters; `codeql` (database build + SARIF) and `gitleaks` (file-report JSON) run via dedicated execution paths. `codeql` remains default-opt-in because the per-language database build is heavy
 - `CI-19` is only substantively complete when a downstream domain pack provides its vocabulary and tests
 - CI-14 supply-chain drift currently covers `requirements*.txt`, `pyproject.toml` dependency surfaces, `package.json`, `Dockerfile` / `Containerfile`, and GitHub workflow `uses:` refs
 
