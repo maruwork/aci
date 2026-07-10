@@ -103,7 +103,8 @@ def test_deferred_expired_fails(tmp_path: Path) -> None:
                 "    state: deferred\n"
                 "    owner: alice\n"
                 "    due: \"2020-01-01\"\n"
-                "    reason: later"
+                "    reason: later\n"
+                "    exit: decide open items"
             )
         else:
             cats_lines.append(f"  {c}:\n    state: filled\n    value: ok")
