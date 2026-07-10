@@ -1,74 +1,75 @@
 ﻿meta:
   subject: aci / ac-inspector
-  revision: 3
+  revision: 4
   methodology: "A-layer basic-omission registry + B-layer seams + achievable ops"
   ops_check: "python scripts/design_methodology/design_methodology_check.py --root ."
+  high_importance: "design authority under docs/design/ is git-tracked"
 
 categories:
   G.goal:
     state: filled
-    value: "see README.md; docs/NON_GOALS.md; docs/ACI_GENERAL_PURPOSE_COMPLETION_PLAN.md"
-    evidence: "product purpose, non-goals, completion plan"
+    value: "see README.md; docs/NON_GOALS.md; docs/design/ACI_DESIGN.md"
+    evidence: "product purpose and technical design"
   G.actor:
     state: filled
     value: "see docs/ACI_DOWNSTREAM_ADOPTION_PACKET.md; report owner_lane (native-static|external-analyzer|human-judgment)"
     evidence: "common shelf vs downstream ownership"
   G.io:
     state: filled
-    value: "see docs/CONFIGURATION.md; docs/QUICKSTART.md; shared/report/"
-    evidence: "scan inputs, config, JSON/SARIF report"
+    value: "see docs/design/ACI_DESIGN.md; docs/CONFIGURATION.md; shared/report/"
+    evidence: "scan inputs, report, design"
   G.behavior:
     state: filled
-    value: "see docs/CONFIGURATION.md profiles; docs/QUICKSTART.md exit and gate usage"
-    evidence: "main scan path, failure exits, profile lanes"
+    value: "see docs/design/ACI_DESIGN.md; docs/CONFIGURATION.md"
+    evidence: "exit/gate/operations and profiles"
   G.data:
     state: filled
     value: "see docs/CI_REFERENCE.md; shared/core/"
-    evidence: "finding identity, suppression/baseline/waiver"
+    evidence: "finding identity"
   G.oracle:
     state: filled
     value: "native+external = machine; human-judgment = human; fail_on_unreviewed_review_required"
-    evidence: "docs/CONFIGURATION.md"
+    evidence: "docs/CONFIGURATION.md; docs/design/ACI_DESIGN.md quality gate"
     seam_hint: S2
   G.invariant:
     state: filled
-    value: "fail-close verification; detection_disclosure required on every report; stable fingerprint"
-    evidence: "docs/ACI_EVIDENCE.md fingerprint fix"
+    value: "fail-close; detection_disclosure required; stable fingerprint; see docs/design/ACI_DESIGN.md fingerprint rule"
+    evidence: "docs/ACI_EVIDENCE.md; docs/design/ACI_DESIGN.md"
     seam_hint: S3
   G.compose:
     state: filled
-    value: "profile N/E/H composition; ops order suppress>baseline>waiver; scope times gate; diff times baseline bounded to scanned files"
-    evidence: "docs/ACI_EVIDENCE.md diff baseline defect"
+    value: "profile composition; ops order; diff baseline bounded; see docs/ACI_EVIDENCE.md"
+    evidence: "docs/ACI_EVIDENCE.md"
     seam_hint: S3
   G.env:
     state: filled
-    value: "see docs/PUBLIC_RUNTIME_ASSUMPTIONS.md; analyzer install; CI Linux/Windows/macOS"
-    evidence: "runtime assumptions + analyzer readiness"
+    value: "see docs/PUBLIC_RUNTIME_ASSUMPTIONS.md"
+    evidence: "runtime assumptions"
     seam_hint: S4
   G.feedback:
     state: filled
-    value: "none (single-shot scan; no endogenous amplifying feedback / self-training)"
-    evidence: "product is per-invocation audit"
+    value: "none (single-shot scan; no endogenous amplifying feedback)"
+    evidence: "product shape"
     seam_hint: none
   G.ops:
     state: filled
-    value: "exit model; CI; docs/MAINTAINER_SCAN_MODE_RUNBOOK.md; waiver review_condition"
-    evidence: "failure and operator paths"
+    value: "see docs/MAINTAINER_SCAN_MODE_RUNBOOK.md; docs/design/ACI_REPO_LOCAL_EXECUTION_DESIGN.md"
+    evidence: "ops and local execution design"
   G.open:
     state: filled
     value: "see docs/roadmap/; shared/python/aci_known_limits.py"
-    evidence: "owner-gated residuals + detection_disclosure"
+    evidence: "residuals"
 
 promoted_slots:
   G.data.fingerprint_stable:
     state: filled
-    value: "Fingerprint uses stable semantic ingredients only; see docs/ACI_EVIDENCE.md"
-    evidence: "docs/ACI_EVIDENCE.md; shared/tests"
+    value: "Fingerprint uses stable semantic ingredients only; see docs/design/ACI_DESIGN.md; docs/ACI_EVIDENCE.md"
+    evidence: "docs/ACI_EVIDENCE.md"
     from_gate_r: GR-001
     seam_hint: S3
   G.compose.diff_baseline_scanned_only:
     state: filled
-    value: "In diff mode, baseline resolved/new must be bounded to scanned_files; see docs/ACI_EVIDENCE.md"
+    value: "diff mode baseline bounded to scanned_files; see docs/ACI_EVIDENCE.md"
     evidence: "docs/ACI_EVIDENCE.md"
     from_gate_r: GR-002
     seam_hint: S3

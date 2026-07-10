@@ -1,4 +1,4 @@
-__pycache__/
+﻿__pycache__/
 *.py[cod]
 *.pyo
 *.log
@@ -21,7 +21,7 @@ env/
 workspace/
 /domains/pier/
 
-# Internal-management shelves — not part of the public distribution
+# Internal-management shelves 窶・not part of the public distribution
 /common/
 /archive/
 /docs/governance/
@@ -30,12 +30,14 @@ workspace/
 # shared/core/aci-product-boundary-and-coverage-policy.md and must ship in the repo.
 !/docs/roadmap/ACI_COMPLETION_POLICY.md
 /docs/tasks/
-/docs/design/
 /docs/release/
 /docs/AUDIT_*.md
 
-# Developer-only AI control files — not published (see REPO_CONTENT_CLASSIFICATION)
+# Developer-only AI control files 窶・not published (see REPO_CONTENT_CLASSIFICATION)
 /AGENTS.md
 /CLAUDE.md
 /.claudeignore
 /docs/AI_AGENT_RUNTIME_TOKEN_OPTIMIZATION.md
+# design methodology: track design authority under docs/design/
+
+
