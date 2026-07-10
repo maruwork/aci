@@ -1,17 +1,6 @@
-# Honest residual declaration (methodology: completeness is not zero defects)
-
-meta:
+﻿meta:
   subject: aci / ac-inspector
   as_of: "2026-07-10"
-
 claimed_complete: false
-
-statement: "A clean or low-finding ACI report is evidence for the declared detection surface, not proof of absence of issues. Residual miss-rate, human-judgment CI IDs, and environment/tool drift remain."
-
-see: "shared/python/aci_known_limits.py; shared/core/aci-product-boundary-and-coverage-policy.md; docs/ACI_EVIDENCE.md"
-
-open_unknown_requirements: "Registry-relative only; unregistered slots are not Gate-0 failures until promoted"
-open_subjective_oracles: "Review-worthiness and some human-judgment CI IDs"
-open_composition_space: "Not exhaustive pairwise of all detector×analyzer×scope modes"
-open_environment_drift: "Analyzer and OS versions outside the contracted matrix"
-open_non_goals: "see docs/NON_GOALS.md"
+statement: "A clean or low-finding ACI report is evidence for the declared detection surface, not proof of absence of issues."
+see: "shared/python/aci_known_limits.py; docs/ACI_EVIDENCE.md; docs/NON_GOALS.md"
