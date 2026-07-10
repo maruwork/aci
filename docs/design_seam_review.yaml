@@ -1,0 +1,24 @@
+# B-layer: known failure modes named and reviewed (not a bug hunt scorecard)
+# Methodology: design_methodology_seams.md — achievable ops, not zero-defect claim
+
+meta:
+  subject: aci / ac-inspector
+  as_of: "2026-07-10"
+  purpose: "name residual uncertainty by seam; do not claim absence of defects"
+
+seams:
+  S1:
+    status: residual
+    note: "Elicitation residual remains; mitigated for known basics via design_base_registry.yaml Gate-0. Unknown slots still possible until Gate-R promotes them."
+  S2:
+    status: mitigated
+    note: "Oracle split: native/external machine lanes; human-judgment lane + fail_on_unreviewed_review_required. Subjective 'review-worthy' stays human (see docs/ACI_EVIDENCE.md)."
+  S3:
+    status: monitored
+    note: "Composition risks (profile×ops, diff×baseline) documented and regression-tested after real defects; pairwise space still not exhaustive."
+  S4:
+    status: monitored
+    note: "Environment open: PUBLIC_RUNTIME_ASSUMPTIONS, analyzer install matrix, CI on Linux/Windows/macOS. Upstream tool versions still drift."
+  S5:
+    status: na
+    note: "Single-shot scan product; no endogenous amplifying feedback / self-training loop. Revisit if online learning or self-modifying rules are added."

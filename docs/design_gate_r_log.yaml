@@ -1,0 +1,33 @@
+# Gate-R recirculation log — close the loop: finding → basic? → promote slot
+# Empty promotions are fine; closed+basic without promoted_slot fails CI.
+
+meta:
+  subject: aci / ac-inspector
+  purpose: "incident/defect close requires basic-yes promote or basic-no reason"
+
+entries:
+  GR-001:
+    status: closed
+    summary: "Fingerprint included volatile line context; baseline re-surfaced unrelated edits as new"
+    seams: "S3 primary; S1 secondary (stable-identity invariant under-specified)"
+    basic: "yes"
+    promoted_slot: "G.data.fingerprint_stable"
+    fill_example: "Finding fingerprint from stable semantic ingredients only (rule id, normalized path, stable anchor, issue signature) — not volatile line-only identity"
+    evidence: "docs/ACI_EVIDENCE.md fingerprint/baseline section; regression tests"
+
+  GR-002:
+    status: closed
+    summary: "diff×baseline treated unscanned files as resolved"
+    seams: "S3 (diff mode composed with baseline resolution)"
+    basic: "yes"
+    promoted_slot: "G.compose.diff_baseline_scanned_only"
+    fill_example: "Baseline resolved-set must be bounded to scanned_files in diff mode"
+    evidence: "docs/ACI_EVIDENCE.md diff×baseline; test_resolved_baseline_is_bounded_to_scanned_files"
+
+  GR-003:
+    status: closed
+    summary: "Mature-library review-worthiness ~3% — product context not a 'missed basic slot' but oracle/context honesty"
+    seams: "S2; S4"
+    basic: "no"
+    not_basic_reason: "Already covered by G.oracle human lane + residual disclosure + intended-use evidence; promoting would duplicate G.goal/G.oracle rather than add a new silence class"
+    evidence: "docs/ACI_EVIDENCE.md field precision sections"

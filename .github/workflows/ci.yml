@@ -30,6 +30,12 @@ jobs:
           pip install -e .
           pip install -r requirements-dev-analyzers.txt
 
+      # Design methodology ops (achievable layer): Gate-0 silence ban, Gate-1 thin
+      # evidence/oracle slice, named seams, residual honesty, Gate-R recirculation.
+      # Does not claim perfect design or zero bugs.
+      - name: Design methodology ops check
+        run: python shared/tools/aci_design_methodology_check.py --root .
+
       - name: Install multi-language analyzers (Linux)
         # These analyzers are not in the pinned pure-Python requirements set, but
         # installing them on Linux makes the multi-language external-analyzer e2e
@@ -165,6 +171,9 @@ jobs:
           pip install -e .
           pip install -r requirements-dev-analyzers.txt
           pip install build
+
+      - name: Design methodology ops check
+        run: python shared/tools/aci_design_methodology_check.py --root .
 
       - name: Run test suite
         run: pytest shared/tests/ -v
